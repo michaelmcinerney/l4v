@@ -68,7 +68,7 @@ locale Finalise_AI_1 =
      empty_slot sl info
      \<lbrace>\<lambda>rv. invs\<rbrace>"
   assumes dom_tcb_cap_cases_lt:
-    "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 5}"
+    "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 6}"
   assumes unbind_notification_final[wp]:
     "\<And> cap t.\<lbrace>is_final_cap' cap :: 'a state \<Rightarrow> bool\<rbrace>
        unbind_notification t
@@ -145,8 +145,8 @@ lemma halted_emptyable:
 
 
 lemma tcb_cap_valid_NullCapD:
-  "\<And>cap sl. \<lbrakk> tcb_cap_valid cap sl s; \<not> is_master_reply_cap cap \<rbrakk> \<Longrightarrow>
-   tcb_cap_valid cap.NullCap sl s"
+  "\<lbrakk> tcb_cap_valid cap sl s; \<not> is_master_reply_cap cap \<rbrakk> \<Longrightarrow>
+     tcb_cap_valid NullCap sl s"
   apply (clarsimp simp: tcb_cap_valid_def valid_ipc_buffer_cap_def
                  elim!: pred_tcb_weakenE split: option.splits)
   apply (rename_tac get set restr)
@@ -158,7 +158,7 @@ lemma tcb_cap_valid_NullCapD:
 
 
 lemma emptyable_valid_NullCapD:
-  "\<lbrakk> emptyable sl s; valid_objs s \<rbrakk> \<Longrightarrow> tcb_cap_valid cap.NullCap sl s"
+  "\<lbrakk> emptyable sl s; valid_objs s \<rbrakk> \<Longrightarrow> tcb_cap_valid NullCap sl s"
   apply (clarsimp simp: emptyable_def tcb_cap_valid_def
                         valid_ipc_buffer_cap_def)
   apply (clarsimp simp: pred_tcb_at_def obj_at_def is_tcb split: option.split)
@@ -169,7 +169,7 @@ lemma emptyable_valid_NullCapD:
 
 
 lemma emptyable_valid_NullCap_strg:
-  "emptyable sl s \<and> valid_objs s \<longrightarrow> tcb_cap_valid cap.NullCap sl s"
+  "emptyable sl s \<and> valid_objs s \<longrightarrow> tcb_cap_valid NullCap sl s"
   by (simp add: emptyable_valid_NullCapD)
 
 
@@ -426,7 +426,7 @@ lemma set_cap_cdt_update:
   done
 
 lemma tcb_cap_cases_lt:
-  "n < 5 \<Longrightarrow> tcb_cap_cases (nat_to_cref 3 n) \<noteq> None"
+  "n < 6 \<Longrightarrow> tcb_cap_cases (nat_to_cref 3 n) \<noteq> None"
   unfolding tcb_cnode_index_def2[symmetric]
   by (simp add: tcb_cap_cases_def
          | erule less_handy_casesE)+
@@ -682,7 +682,7 @@ lemma tcb_cap_valid_imp':
 
 lemma tcb_cap_valid_imp_NullCap:
   "(\<not> is_master_reply_cap cap)
-     \<longrightarrow> (tcb_cap_valid cap sl s \<longrightarrow> tcb_cap_valid cap.NullCap sl s)"
+     \<longrightarrow> (tcb_cap_valid cap sl s \<longrightarrow> tcb_cap_valid NullCap sl s)"
   apply (strengthen tcb_cap_valid_imp')
   apply (clarsimp simp: ran_tcb_cap_cases valid_ipc_buffer_cap_def
                  split: Structures_A.thread_state.split_asm)

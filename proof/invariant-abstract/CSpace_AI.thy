@@ -3919,11 +3919,13 @@ lemma tcb_at_cte_at_0:
   "tcb_at tcb s \<Longrightarrow> cte_at (tcb, tcb_cnode_index 0) s"
   by (auto simp: obj_at_def cte_at_cases is_tcb)
 
-
 lemma tcb_at_cte_at_1:
   "tcb_at tcb s \<Longrightarrow> cte_at (tcb, tcb_cnode_index 1) s"
   by (auto simp: obj_at_def cte_at_cases is_tcb)
 
+lemma tcb_at_cte_at_5:
+  "tcb_at tcb s \<Longrightarrow> cte_at (tcb, tcb_cnode_index 5) s"
+  by (auto simp: obj_at_def cte_at_cases is_tcb)
 
 lemma set_cdt_valid_objs:
   "\<lbrace>valid_objs\<rbrace> set_cdt m \<lbrace>\<lambda>_. valid_objs\<rbrace>"

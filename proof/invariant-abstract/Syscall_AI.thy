@@ -1431,24 +1431,22 @@ lemma receive_ipc_st_tcb_at_runnable:
   done
 
 lemma send_fault_ipc_st_tcb_at_runnable:
-  "\<lbrace>st_tcb_at runnable t and (\<lambda>s. sym_refs (state_refs_of s)) and tcb_at t' and K (t' \<noteq> t)\<rbrace> send_fault_ipc t' f \<lbrace>\<lambda>rv. st_tcb_at runnable t\<rbrace>"
+  "\<lbrace>st_tcb_at runnable t and (\<lambda>s. sym_refs (state_refs_of s)) and tcb_at t' and K (t' \<noteq> t)\<rbrace> send_fault_ipc t' fh f \<lbrace>\<lambda>rv. st_tcb_at runnable t\<rbrace>"
   unfolding send_fault_ipc_def
   apply (rule hoare_pre, wp)
-     apply (clarsimp simp: Let_def)
-     apply wpc
-                apply (wp send_ipc_st_tcb_at_runnable thread_set_no_change_tcb_state thread_set_refs_trivial
-                          hoare_vcg_all_lift_R thread_get_wp
-                        | clarsimp
-                        | wp (once) hoare_drop_imps)+
-  apply (clarsimp simp:  pred_tcb_at_def obj_at_def is_tcb)
+   apply wpc
+              apply (wp send_ipc_st_tcb_at_runnable thread_set_no_change_tcb_state thread_set_refs_trivial
+                        hoare_vcg_all_lift_R thread_get_wp
+                      | clarsimp
+                      | wp (once) hoare_drop_imps)+
   done
 
 lemma handle_fault_st_tcb_at_runnable:
   "\<lbrace>st_tcb_at runnable t and invs and K (t' \<noteq> t) \<rbrace> handle_fault t' x \<lbrace>\<lambda>rv. st_tcb_at runnable t\<rbrace>"
   apply (rule hoare_gen_asm)
-  apply (simp add: handle_fault_def handle_double_fault_def)
+  apply (simp add: handle_fault_def handle_no_fault_handler_def)
   apply wp
-     apply (simp add: handle_fault_def handle_double_fault_def)
+     apply (simp add: handle_fault_def)
      apply (wp sts_st_tcb_at_other send_fault_ipc_st_tcb_at_runnable | simp)+
   apply (clarsimp dest!: get_tcb_SomeD simp: obj_at_def is_tcb)
   done

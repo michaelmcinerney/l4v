@@ -161,7 +161,6 @@ abbreviation
  *)
 record itcb =
   itcb_state         :: thread_state
-  itcb_fault_handler :: cap_ref
   itcb_ipc_buffer    :: vspace_ref
   itcb_fault         :: "fault option"
   itcb_bound_notification     :: "obj_ref option"
@@ -176,7 +175,6 @@ definition
 where
   "tcb_to_itcb tcb \<equiv>
      \<lparr> itcb_state              = tcb_state tcb,
-       itcb_fault_handler      = tcb_fault_handler tcb,
        itcb_ipc_buffer         = tcb_ipc_buffer tcb,
        itcb_fault              = tcb_fault tcb,
        itcb_bound_notification = tcb_bound_notification tcb,
@@ -198,7 +196,6 @@ where
 (* Need one of these simp rules for each field in 'itcb' *)
 lemma tcb_to_itcb_simps[simp]:
   "itcb_state (tcb_to_itcb tcb) = tcb_state tcb"
-  "itcb_fault_handler (tcb_to_itcb tcb) = tcb_fault_handler tcb"
   "itcb_ipc_buffer (tcb_to_itcb tcb) = tcb_ipc_buffer tcb"
   "itcb_fault (tcb_to_itcb tcb) = tcb_fault tcb"
   "itcb_bound_notification (tcb_to_itcb tcb) = tcb_bound_notification tcb"
@@ -332,7 +329,7 @@ where
   | NotificationCap r badge rights \<Rightarrow> AllowGrant \<notin> rights \<and> AllowGrantReply \<notin> rights
   | CNodeCap r bits guard \<Rightarrow> bits \<noteq> 0 \<and> length guard \<le> word_bits
   | IRQHandlerCap irq \<Rightarrow> irq \<le> maxIRQ
-  | Zombie r b n \<Rightarrow> (case b of None \<Rightarrow> n \<le> 5
+  | Zombie r b n \<Rightarrow> (case b of None \<Rightarrow> n \<le> 6
                                           | Some b \<Rightarrow> n \<le> 2 ^ b \<and> b \<noteq> 0)
   | ArchObjectCap ac \<Rightarrow> wellformed_acap ac
   | ReplyCap t master rights \<Rightarrow> AllowWrite \<in> rights \<and> AllowRead \<notin> rights \<and>
@@ -376,7 +373,7 @@ where
   | IRQControlCap \<Rightarrow> True
   | IRQHandlerCap irq \<Rightarrow> irq \<le> maxIRQ
   | Zombie r b n \<Rightarrow>
-         (case b of None \<Rightarrow> tcb_at r s \<and> n \<le> 5
+         (case b of None \<Rightarrow> tcb_at r s \<and> n \<le> 6
                   | Some b \<Rightarrow> cap_table_at b r s \<and> n \<le> 2 ^ b \<and> b \<noteq> 0)
   | ArchObjectCap ac \<Rightarrow> valid_arch_cap ac s)"
 
@@ -461,7 +458,9 @@ where
                                       (=) NullCap
                                   | _ \<Rightarrow> is_reply_cap or (=) NullCap)),
     tcb_cnode_index 4 \<mapsto> (tcb_ipcframe, tcb_ipcframe_update,
-                          (\<lambda>_ _. is_nondevice_page_cap or ((=) NullCap)))]"
+                          (\<lambda>_ _. is_nondevice_page_cap or ((=) NullCap))),
+    tcb_cnode_index 5 \<mapsto> (tcb_fault_handler,tcb_fault_handler_update,
+                         (\<lambda>_ _. valid_fault_handler))]"
 
 definition
   valid_fault :: "ExceptionTypes_A.fault \<Rightarrow> bool"
@@ -506,7 +505,6 @@ where
      \<and> valid_ipc_buffer_cap (tcb_ipcframe t) (tcb_ipc_buffer t)
      \<and> valid_tcb_state (tcb_state t) s
      \<and> (case tcb_fault t of Some f \<Rightarrow> valid_fault f | _ \<Rightarrow> True)
-     \<and> length (tcb_fault_handler t) = word_bits
      \<and> valid_bound_ntfn (tcb_bound_notification t) s
      \<and> valid_arch_tcb (tcb_arch t) s"
 
@@ -1235,6 +1233,9 @@ lemma tcb_cap_cases_simps[simp]:
   "tcb_cap_cases (tcb_cnode_index 4) =
    Some (tcb_ipcframe, tcb_ipcframe_update,
          (\<lambda>_ _. is_nondevice_page_cap or ((=) cap.NullCap)))"
+  "tcb_cap_cases (tcb_cnode_index 5) =
+   Some (tcb_fault_handler,tcb_fault_handler_update,
+                         (\<lambda>_ _. valid_fault_handler))"
   by (simp add: tcb_cap_cases_def)+
 
 lemma ran_tcb_cap_cases:
@@ -1249,7 +1250,8 @@ lemma ran_tcb_cap_cases:
                                        Structures_A.BlockedOnReceive e data \<Rightarrow>
                                          ((=) NullCap)
                                      | _ \<Rightarrow> is_reply_cap or ((=) NullCap))),
-     (tcb_ipcframe, tcb_ipcframe_update, (\<lambda>_ _. is_nondevice_page_cap or ((=) NullCap)))}"
+     (tcb_ipcframe, tcb_ipcframe_update, (\<lambda>_ _. is_nondevice_page_cap or ((=) NullCap))),
+     (tcb_fault_handler, tcb_fault_handler_update, (\<lambda>_ _. valid_fault_handler))}"
   by (simp add: tcb_cap_cases_def insert_commute)
 
 lemma tcb_cnode_map_tcb_cap_cases:
@@ -1258,7 +1260,7 @@ lemma tcb_cnode_map_tcb_cap_cases:
 
 lemma ran_tcb_cnode_map:
   "ran (tcb_cnode_map t) =
-   {tcb_vtable t, tcb_ctable t, tcb_caller t, tcb_reply t, tcb_ipcframe t}"
+   {tcb_vtable t, tcb_ctable t, tcb_caller t, tcb_reply t, tcb_ipcframe t, tcb_fault_handler t}"
   by (fastforce simp: tcb_cnode_map_def)
 
 
@@ -1267,7 +1269,7 @@ lemma st_tcb_idle_cap_valid_Null [simp]:
    tcb_cap_valid NullCap sl s"
   by (fastforce simp: tcb_cap_valid_def tcb_cap_cases_def
                       pred_tcb_at_def obj_at_def
-                      valid_ipc_buffer_cap_null)
+                      valid_ipc_buffer_cap_null valid_fault_handler_def)
 
 
 lemma valid_objsI [intro]:

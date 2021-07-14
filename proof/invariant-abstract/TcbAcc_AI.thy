@@ -99,10 +99,14 @@ lemma ball_tcb_cap_casesI:
                                        Structures_A.BlockedOnReceive e data \<Rightarrow>
                                          ((=) cap.NullCap)
                                      | _ \<Rightarrow> is_reply_cap or ((=) cap.NullCap)));
-     P (tcb_ipcframe, tcb_ipcframe_update, (\<lambda>_ _. is_nondevice_page_cap or ((=) cap.NullCap))) \<rbrakk>
+     P (tcb_ipcframe, tcb_ipcframe_update, (\<lambda>_ _. is_nondevice_page_cap or ((=) cap.NullCap)));
+     P (tcb_fault_handler, tcb_fault_handler_update, (\<lambda>_ _. valid_fault_handler)) \<rbrakk>
     \<Longrightarrow> \<forall>x \<in> ran tcb_cap_cases. P x"
   by (simp add: tcb_cap_cases_def)
 
+lemma valid_fault_handler_Null[simp,intro!]:
+  "valid_fault_handler NullCap"
+  by (simp add: valid_fault_handler_def)
 
 lemma thread_set_typ_at[wp]:
   "\<lbrace>\<lambda>s. P (typ_at T p s)\<rbrace> thread_set f p' \<lbrace>\<lambda>rv s. P (typ_at T p s)\<rbrace>"
@@ -184,8 +188,6 @@ lemma thread_set_valid_objs_triv:
   assumes z: "\<And>tcb. tcb_state (f tcb) = tcb_state tcb"
   assumes w: "\<And>tcb. tcb_ipc_buffer (f tcb) = tcb_ipc_buffer tcb
                         \<or> (tcb_ipc_buffer (f tcb) = 0)"
-  assumes y: "\<And>tcb. tcb_fault_handler (f tcb) \<noteq> tcb_fault_handler tcb
-                       \<longrightarrow> length (tcb_fault_handler (f tcb)) = word_bits"
   assumes a: "\<And>tcb. tcb_fault (f tcb) \<noteq> tcb_fault tcb
                        \<longrightarrow> (case tcb_fault (f tcb) of None \<Rightarrow> True
                                                    | Some f \<Rightarrow> valid_fault f)"
@@ -209,7 +211,6 @@ lemma thread_set_valid_objs_triv:
   apply (rule conjI)
    apply (cut_tac tcb = y in w)
    apply (auto simp: valid_ipc_buffer_cap_simps)[1]
-  apply (cut_tac tcb=y in y)
   apply (cut_tac tcb=y in a)
   apply (cut_tac tcb=y in b)
   by auto[1]
@@ -359,6 +360,11 @@ lemma thread_set_obj_at_impossible:
   apply (clarsimp simp: obj_at_def)
   done
 
+lemma thread_set_wp:
+  "\<lbrace> \<lambda>s. \<forall>tcb. get_tcb t s = Some tcb \<longrightarrow> Q (s\<lparr>kheap := kheap s(t \<mapsto> TCB (f tcb))\<rparr>) \<rbrace>
+    thread_set f t
+   \<lbrace> \<lambda>_. Q \<rbrace>"
+  by (wpsimp simp: thread_set_def wp: set_object_wp)
 
 lemma tcb_not_empty_table:
   "\<not> empty_table S (TCB tcb)"
@@ -457,8 +463,6 @@ lemma thread_set_invs_trivial:
   assumes z'': "\<And>tcb. tcb_iarch (f tcb) = tcb_iarch tcb"
   assumes w: "\<And>tcb. tcb_ipc_buffer (f tcb) = tcb_ipc_buffer tcb
                         \<or> (tcb_ipc_buffer (f tcb) = 0)"
-  assumes y: "\<And>tcb. tcb_fault_handler (f tcb) \<noteq> tcb_fault_handler tcb
-                       \<longrightarrow> length (tcb_fault_handler (f tcb)) = word_bits"
   assumes a: "\<And>tcb. tcb_fault (f tcb) \<noteq> tcb_fault tcb
                        \<longrightarrow> (case tcb_fault (f tcb) of None \<Rightarrow> True
                                                    | Some f \<Rightarrow> valid_fault f)"
@@ -485,7 +489,7 @@ lemma thread_set_invs_trivial:
              thread_set_cap_refs_in_kernel_window
              thread_set_cap_refs_respects_device_region
              thread_set_aligned
-             | rule x z z' z'' w y a arch valid_tcb_arch_ref_lift [THEN fun_cong]
+             | rule x z z' z'' w a arch valid_tcb_arch_ref_lift [THEN fun_cong]
              | erule bspec_split [OF x] | simp add: z')+
   apply (simp add: z)
   done
@@ -1362,6 +1366,7 @@ lemma dom_tcb_cap_cases:
   "tcb_cnode_index 2 \<in> dom tcb_cap_cases"
   "tcb_cnode_index 3 \<in> dom tcb_cap_cases"
   "tcb_cnode_index 4 \<in> dom tcb_cap_cases"
+  "tcb_cnode_index 5 \<in> dom tcb_cap_cases"
   by clarsimp+
 
 lemmas st_tcb_at_reply_cap_valid =

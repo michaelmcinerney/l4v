@@ -2243,9 +2243,9 @@ lemma hf_tcb_at [wp]:
   by (simp add: tcb_at_typ, wp)
 
 lemma sfi_tcb_at [wp]:
-  "\<And>t t' f.
+  "\<And>t t' fh f.
     \<lbrace>tcb_at t :: 'state_ext state \<Rightarrow> bool\<rbrace>
-      send_fault_ipc t' f
+      send_fault_ipc t' fh f
     \<lbrace>\<lambda>_. tcb_at t\<rbrace>"
   by (simp add: tcb_at_typ, wp)
 
@@ -3090,6 +3090,12 @@ lemma si_invs':
   apply (auto dest!: st_tcb_at_state_refs_ofD simp: idle_no_ex_cap idle_not_queued' idle_no_refs)
   done
 
+lemma reply_cap_doesnt_exist_strg':
+  "\<lbrakk>valid_reply_caps s; st_tcb_at active t s\<rbrakk> \<Longrightarrow>
+    \<not> has_reply_cap t s"
+  by (clarsimp dest!: valid_reply_capsD
+                simp: st_tcb_def2)
+
 lemma hf_invs':
   assumes set_endpoint_Q[wp]: "\<And>a b.\<lbrace>Q\<rbrace> set_endpoint a b \<lbrace>\<lambda>_.Q\<rbrace>"
   assumes sts_Q[wp]: "\<And>a b. \<lbrace>Q\<rbrace> set_thread_state a b \<lbrace>\<lambda>_.Q\<rbrace>"
@@ -3099,30 +3105,30 @@ lemma hf_invs':
   assumes thread_set_Q[wp]: "\<And>a b. \<lbrace>Q\<rbrace> thread_set a b \<lbrace>\<lambda>_.Q\<rbrace>"
   notes si_invs''[wp] = si_invs'[where Q=Q]
   shows
-  "\<lbrace>invs and Q and st_tcb_at active t and ex_nonz_cap_to t and (\<lambda>_. valid_fault f)\<rbrace>
-   handle_fault t f
-   \<lbrace>\<lambda>r (s::'state_ext state). invs s \<and> Q s\<rbrace>"
+    "\<lbrace>invs and Q and st_tcb_at active t and ex_nonz_cap_to t and (\<lambda>_. valid_fault f)\<rbrace>
+     handle_fault t f
+     \<lbrace>\<lambda>r (s::'state_ext state). invs s \<and> Q s\<rbrace>"
   apply (cases "valid_fault f"; clarsimp)
-  apply (simp add: handle_fault_def)
-  apply wp
-     apply (simp add: handle_double_fault_def)
-     apply (wp sts_invs_minor)
-   apply (simp add: send_fault_ipc_def Let_def)
-   apply (wpsimp wp: thread_set_invs_trivial
-                     thread_set_no_change_tcb_state ex_nonz_cap_to_pres
-                     thread_set_cte_wp_at_trivial
-                     hoare_vcg_all_lift_R
-          | clarsimp simp: tcb_cap_cases_def
-          | erule disjE)+
-     apply (wpe lookup_cap_ex_cap)
-     apply (wpsimp wp: hoare_vcg_all_lift_R
-        | strengthen reply_cap_doesnt_exist_strg
-        | wp (once) hoare_drop_imps)+
-  apply (simp add: conj_comms)
-  apply (fastforce elim!: pred_tcb_weakenE
-               simp: invs_def valid_state_def valid_idle_def st_tcb_def2
-                     idle_no_ex_cap pred_tcb_def2
-              split: Structures_A.thread_state.splits)
+  apply (simp add: handle_fault_def handle_no_fault_handler_def)
+  apply (wp sts_invs_minor)
+    apply (simp add: send_fault_ipc_def)
+    apply ((wpsimp wp: thread_set_invs_trivial
+                      thread_set_no_change_tcb_state ex_nonz_cap_to_pres
+                      thread_set_cte_wp_at_trivial
+                      hoare_vcg_all_lift_R
+           | clarsimp simp: tcb_cap_cases_def
+           | erule disjE)+)
+  apply (intro conjI; clarsimp?)+
+     apply (fastforce elim!: pred_tcb_weakenE)
+    apply (simp add: idle_no_ex_cap invs_valid_global_refs invs_valid_objs)
+   apply (simp add: invs_valid_reply_caps reply_cap_doesnt_exist_strg')
+  apply (clarsimp simp: ex_nonz_cap_to_def get_tcb_ko_at)
+  apply (subgoal_tac "\<exists>p. fst (get_cap p s) = {(EndpointCap x xa xb,s)}")
+   apply (fastforce simp: cte_wp_at_def)
+  apply (rule_tac x="(t,tcb_cnode_index 5)" in exI)
+  apply (auto split: option.splits
+               simp: in_fail tcb_cnode_map_def get_cap_def obj_at_def get_object_def gets_def
+                     get_def bind_def fst_return assert_opt_def case_option_fail_return_val)
   done
 
 lemmas hf_invs[wp] = hf_invs'[where Q=\<top>,simplified hoare_post_taut, OF TrueI TrueI TrueI TrueI TrueI,simplified]
@@ -3221,22 +3227,21 @@ context Ipc_AI begin
 
 lemma sfi_makes_simple:
   "\<lbrace>st_tcb_at simple t and K (t \<noteq> t') :: 'state_ext state \<Rightarrow> bool\<rbrace>
-     send_fault_ipc t' ft
+     send_fault_ipc t' fh ft
    \<lbrace>\<lambda>rv. st_tcb_at simple t\<rbrace>"
   apply (rule hoare_gen_asm)
   apply (simp add: send_fault_ipc_def Let_def ep_ntfn_cap_case_helper
              cong: if_cong)
-  apply (wp si_blk_makes_simple hoare_drop_imps
-            thread_set_no_change_tcb_state
-       | simp)+
+  apply (wpsimp wp: si_blk_makes_simple hoare_drop_imps thread_set_no_change_tcb_state)
   done
 
 lemma hf_makes_simple:
   "\<lbrace>st_tcb_at simple t' and K (t \<noteq> t') :: 'state_ext state \<Rightarrow> bool\<rbrace>
      handle_fault t ft
    \<lbrace>\<lambda>rv. st_tcb_at simple t'\<rbrace>"
-  unfolding handle_fault_def
-  by (wpsimp wp: sfi_makes_simple sts_st_tcb_at_cases hoare_drop_imps simp: handle_double_fault_def)
+  unfolding handle_fault_def handle_no_fault_handler_def
+  by (wpsimp wp: sfi_makes_simple sts_st_tcb_at_cases hoare_drop_imps weak_if_wp)
+
 
 end
 

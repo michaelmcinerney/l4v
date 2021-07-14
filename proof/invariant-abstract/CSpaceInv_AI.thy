@@ -1602,7 +1602,13 @@ lemma set_cap_valid_ioc[wp]:
                         obj_at_def valid_ioc_def cte_wp_at_cases
                  split: Structures_A.kernel_object.splits)
   apply (intro conjI allI impI)
-             apply fastforce
+               apply fastforce
+              apply fastforce
+             apply (rule ccontr, clarsimp)
+             apply (drule spec, frule spec, erule impE, assumption)
+             apply (drule_tac x="snd pt" in spec)
+             apply (case_tac pt)
+             apply (clarsimp simp: tcb_cap_cases_def  split: if_split_asm)
             apply fastforce
            apply (rule ccontr, clarsimp)
            apply (drule spec, frule spec, erule impE, assumption)
@@ -1962,6 +1968,18 @@ lemma is_arch_cap_max_free_index[simp]:
   by (auto simp: is_cap_simps free_index_update_def split: cap.splits)
 
 
+lemma not_valid_fault_handler[simp]:
+  "\<not>valid_fault_handler (UntypedCap d r n i)"
+  "\<not>valid_fault_handler (ThreadCap t)"
+  "\<not>valid_fault_handler (Zombie p x y)"
+  "\<not>valid_fault_handler (CNodeCap r bits g)"
+  "\<not>valid_fault_handler (DomainCap)"
+  "\<not>valid_fault_handler (NotificationCap r b R)"
+  "\<not>valid_fault_handler (ArchObjectCap a)"
+  "\<not>valid_fault_handler (ReplyCap z bool R)"
+  by (auto simp: valid_fault_handler_def)
+
+
 lemma tcb_cap_valid_update_free_index[simp]:
   "tcb_cap_valid (cap\<lparr>free_index:=a\<rparr>) slot s = tcb_cap_valid cap slot s"
   apply (rule iffI)
@@ -1981,7 +1999,7 @@ lemma tcb_cap_valid_update_free_index[simp]:
    apply (clarsimp simp: tcb_at_def pred_tcb_at_def is_tcb_def obj_at_def
                   dest!: get_tcb_SomeD)
    apply (clarsimp simp: tcb_cap_cases_def free_index_update_def is_cap_simps
-                         is_nondevice_page_cap_simps
+                         is_nondevice_page_cap_simps valid_fault_handler_def
                   dest!: is_valid_vtable_root_is_arch_cap
                   split: if_splits cap.split_asm Structures_A.thread_state.split_asm)
   apply (clarsimp simp: pred_tcb_at_def obj_at_def is_cap_simps free_index_update_def
