@@ -740,8 +740,8 @@ lemma ccorres_break_return:
 
 lemma messageInfoFromWord_spec:
   "\<forall>s. \<Gamma> \<turnstile> {s} Call messageInfoFromWord_'proc {t. seL4_MessageInfo_lift (ret__struct_seL4_MessageInfo_C_' t) =
-            \<lparr>label_CL = (w_' s >> 12) && 0xFFFFF, capsUnwrapped_CL = (w_' s >> 9) && 7,
-                 extraCaps_CL = (w_' s >> 7) && 3, length_CL = let v = w_' s && 0x7F in if v > msgMaxLength then msgMaxLength else v\<rparr>}"
+            \<lparr>label_CL = (w_' s >> 17) && 0x7FFF, capsUnwrapped_CL = (w_' s >> 10) && 0x7F,
+                 extraCaps_CL = (w_' s >> 7) && 7, length_CL = let v = w_' s && 0x7F in if v > msgMaxLength then msgMaxLength else v\<rparr>}"
   apply vcg
   apply (simp add: seL4_MessageInfo_lift_def Let_def msgMaxLength_def mask_def word_sle_def
                    word_sless_def seL4_MsgMaxLength_def
@@ -1314,7 +1314,7 @@ lemma copyMRsFault_ccorres_exception:
                  \<inter> \<lbrace> \<acute>length___unsigned_long = 3 \<rbrace>
                  \<inter> \<lbrace> \<acute>id___anonymous_enum = MessageID_Exception \<rbrace>)
            hs
-           (mapM_x (\<lambda>(x, y). setMR receiver recvBuffer x y) (zip [0..<120] msg))
+           (mapM_x (\<lambda>(x, y). setMR receiver recvBuffer x y) (zip [0..<116] msg))
            (Call copyMRsFault_'proc)"
   apply (unfold K_def)
   apply (intro ccorres_gen_asm)
@@ -1383,7 +1383,7 @@ lemma copyMRsFault_ccorres_syscall:
                  \<inter> \<lbrace>\<acute>length___unsigned_long = 12 \<rbrace>
                  \<inter> \<lbrace> \<acute>id___anonymous_enum = MessageID_Syscall \<rbrace>)
            hs
-           (mapM_x (\<lambda>(x, y). setMR receiver recvBuffer x y) (zip [0..<120] msg))
+           (mapM_x (\<lambda>(x, y). setMR receiver recvBuffer x y) (zip [0..<116] msg))
            (Call copyMRsFault_'proc)"
 proof -
   (* auxiliary lemmas *)
@@ -1391,9 +1391,9 @@ proof -
     by (simp add: option_to_0_def; cases recvBuffer; simp+)
   have drop_n: "\<And>n m. drop n [0..<m] = [n..<m]"
     by simp
-  have less_than_4: "\<And>x y n m. elem (x, y) (zip [n..<120] m) \<Longrightarrow> \<not> x < n "
+  have less_than_4: "\<And>x y n m. elem (x, y) (zip [n..<116] m) \<Longrightarrow> \<not> x < n "
     by (simp | erule in_set_zipE)+
-  have msg_aux: "\<forall>p. elem p (zip [4..<120] (drop 4 msg))
+  have msg_aux: "\<forall>p. elem p (zip [4..<116] (drop 4 msg))
                     \<longrightarrow> (\<lambda>(x1,y1). setMR receiver None x1 y1) p = (\<lambda>_ . return (length msgRegisters)) p"
     by (fastforce simp add: numeral_eqs setMR_def less_than_4 n_msgRegisters_def length_msgRegisters
                             take_bit_Suc
@@ -2137,14 +2137,14 @@ lemma setExtraBadge_ccorres:
   apply (clarsimp simp: bufferCPtrOffset_def word_size msgMaxLength_def wordSize_def'
                         seL4_MsgLengthBits_def seL4_MsgMaxLength_def Types_H.msgLengthBits_def
                         field_simps Collect_const_mem)
-  apply (subgoal_tac " is_aligned (buffer + (of_nat n * 4 + 0x1E8)) 2")
+  apply (subgoal_tac " is_aligned (buffer + (of_nat n * 4 + 0x1D8)) 2")
    apply clarsimp
    prefer 2
    apply (clarsimp simp: valid_ipc_buffer_ptr'_def)
    apply (erule aligned_add_aligned, simp_all add: word_bits_def)
-    apply (rule_tac n=2 in aligned_add_aligned, simp_all add: word_bits_def)
-     apply (rule is_aligned_mult_triv2 [where n = 2, simplified])
-    apply (simp add: is_aligned_def)
+   apply (rule_tac n=2 in aligned_add_aligned, simp_all add: word_bits_def)
+    apply (rule is_aligned_mult_triv2 [where n = 2, simplified])
+   apply (simp add: is_aligned_def)
   apply (auto simp: pointerInUserData_c_guard pointerInUserData_h_t_valid
                     msg_align_bits max_ipc_words_def msg_max_length_def
                     capTransferDataSize_def msgMaxLength_def msgMaxExtraCaps_def
@@ -2313,14 +2313,14 @@ lemma transferCapsLoop_ccorres:
            else 0)))"
       and "check2 \<equiv> \<lambda>caps.
     IF \<acute>ret__int \<noteq> 0 THEN
-      Guard ArrayBounds \<lbrace>\<acute>i < 3\<rbrace> (\<acute>ret__int :==
+      Guard ArrayBounds \<lbrace>\<acute>i < 7\<rbrace> (\<acute>ret__int :==
         (if index (excaprefs_C caps) (unat \<acute>i) \<noteq> cte_Ptr 0 then 1
          else 0))
     FI"
   defines "W \<equiv> \<lambda>ep caps.
            check1;; check2 caps;;
            (While \<lbrace>\<acute>ret__int \<noteq> 0\<rbrace>
-             (Guard ArrayBounds \<lbrace>\<acute>i < 3\<rbrace> (\<acute>slot :== index (excaprefs_C caps) (unat \<acute>i));;
+             (Guard ArrayBounds \<lbrace>\<acute>i < 7\<rbrace> (\<acute>slot :== index (excaprefs_C caps) (unat \<acute>i));;
               Guard C_Guard \<lbrace>hrs_htd \<acute>t_hrs \<Turnstile>\<^sub>t \<acute>slot\<rbrace>
                (\<acute>cap :== h_val (hrs_mem \<acute>t_hrs) (cap_Ptr &(\<acute>slot\<rightarrow>[''cap_C''])));;
               \<acute>ret__unsigned :== CALL cap_get_capType(\<acute>cap);;
@@ -2368,14 +2368,14 @@ lemma transferCapsLoop_ccorres:
             \<and> n \<le> length (interpret_excaps caps')
          \<Longrightarrow> ccorresG rf_sr \<Gamma>
            (\<lambda>r (i, info). r = msgExtraCaps_update (\<lambda>_. i) (message_info_to_H info)
-                       \<and> i \<le> 3) (\<lambda>s. (i_' s, info_' s))
+                       \<and> i \<le> 7) (\<lambda>s. (i_' s, info_' s))
            (valid_pspace' and valid_ipc_buffer_ptr' rcv_buffer and
            (\<lambda>s.  (\<forall>x \<in> set caps. s \<turnstile>' fst x
              \<and> cte_wp_at' (\<lambda>cte. slots \<noteq> [] \<or> is_the_ep (cteCap cte)
                \<longrightarrow> (fst x) =  (cteCap cte)) (snd x) s
              \<and> cte_wp_at' (\<lambda>cte. fst x \<noteq> NullCap  \<longrightarrow> stable (fst x) (cteCap cte)) (snd x) s)) and
            (\<lambda>s. \<forall> sl \<in> (set slots). cte_wp_at' (isNullCap o cteCap) sl s) and
-           (\<lambda>_. n + length caps \<le> 3 \<and> distinct slots ))
+           (\<lambda>_. n + length caps \<le> 7 \<and> distinct slots ))
            (precond n mi slots)
            [catchbrk_C]
            (transferCapsToSlots ep rcv_buffer n caps slots mi)
@@ -2391,13 +2391,13 @@ proof (rule ccorres_gen_asm, induct caps arbitrary: n slots mi)
      apply (rule ccorres_rhs_assoc2, rule ccorres_symb_exec_r)
        apply (rule ccorres_expand_while_iff [THEN iffD1])
        apply (rule ccorres_cond_false)
-       apply (rule_tac P="\<lambda>_. n \<le> 3" and P'="\<lbrace>\<acute>i=of_nat n \<and> mi=message_info_to_H \<acute>info\<rbrace>"
+       apply (rule_tac P="\<lambda>_. n \<le> 7" and P'="\<lbrace>\<acute>i=of_nat n \<and> mi=message_info_to_H \<acute>info\<rbrace>"
                  in ccorres_from_vcg)
        apply (rule allI, rule conseqPre, vcg)
        apply (clarsimp simp: return_def msgExtraCapBits_def word_le_nat_alt unat_of_nat)
       apply vcg
      apply (rule conseqPre, vcg, clarsimp)
-     apply (simp add: seL4_MsgExtraCapBits_def)
+    apply (simp add: seL4_MsgExtraCapBits_def)
     apply (clarsimp simp: excaps_map_def seL4_MsgExtraCapBits_def word_sle_def precond_def)
     apply (subst interpret_excaps_test_null; clarsimp simp: unat_of_nat elim!: le_neq_trans)
     done
@@ -2405,8 +2405,8 @@ next
   note if_split[split]
   case (Cons x xs')
   let ?S="\<lbrace>\<acute>i=of_nat n \<and> mi=message_info_to_H \<acute>info\<rbrace>"
-  have n3: "n \<le> 3" using Cons.prems by simp
-  hence of_nat_n3[intro!]: "of_nat n \<le> (3 :: word32)"
+  have n3: "n \<le> 7" using Cons.prems by simp
+  hence of_nat_n3[intro!]: "of_nat n \<le> (7 :: word32)"
     by (simp add: word_le_nat_alt unat_of_nat)
   have drop_n_foo: "\<And>xs n y ys. drop n xs = y # ys
      \<Longrightarrow> \<exists>xs'. length xs' = n \<and> xs = xs' @ (y # ys)"
@@ -2742,10 +2742,10 @@ lemma transferCaps_ccorres [corres]:
     (valid_pspace' and tcb_at' receiver
      and (case_option \<top> valid_ipc_buffer_ptr') receiveBuffer
      and (excaps_in_mem caps \<circ> ctes_of)
-     and K (length caps \<le> 3)
+     and K (length caps \<le> 7)
      and K (ep \<noteq> Some 0)
      and K (receiveBuffer \<noteq> Some 0)
-     and K (unat (msgExtraCaps mi) \<le> 3))
+     and K (unat (msgExtraCaps mi) \<le> 7))
     (UNIV \<inter> \<lbrace>interpret_excaps \<acute>current_extra_caps = excaps_map caps\<rbrace>
           \<inter> \<lbrace>\<acute>receiver = tcb_ptr_to_ctcb_ptr receiver\<rbrace>
           \<inter> \<lbrace> mi = message_info_to_H \<acute>info\<rbrace>
@@ -2804,7 +2804,7 @@ lemma transferCaps_ccorres [corres]:
         apply (simp add: guard_is_UNIV_def)
         apply (clarsimp simp: message_info_to_H_def split: if_split)
         apply (erule notE, (rule sym)?, rule less_mask_eq)
-        apply (simp add: word_leq_minus_one_le)
+        apply (erule_tac dual_order.strict_trans2[rotated], clarsimp)
        apply (subgoal_tac "rv \<noteq> [0]")
         apply simp
         apply vcg
@@ -2922,7 +2922,7 @@ lemma lookupExtraCaps_ccorres:
            (\<lambda>s. (ret__unsigned_long_' s, current_extra_caps_' (globals s))))
       (valid_pspace' and tcb_at' thread
              and (case buffer of Some x\<Rightarrow> valid_ipc_buffer_ptr' x | _ \<Rightarrow> \<top>)
-             and (\<lambda>s. unat (msgExtraCaps info) <= 3))
+             and (\<lambda>s. unat (msgExtraCaps info) <= 7))
       (UNIV \<inter> {s. thread_' s = tcb_ptr_to_ctcb_ptr thread}
             \<inter> {s. bufferPtr_' s = option_to_ptr buffer}
             \<inter> {s. seL4_MessageInfo_lift (info_' s) = mi_from_H info
@@ -2993,7 +2993,7 @@ proof -
                            apply (clarsimp simp: Bex_def in_monad)
                            apply (clarsimp simp: excaps_map_def array_to_list_def
                                                  lookupSlot_raw_rel_def)
-                           apply (subgoal_tac "length ys < 3")
+                           apply (subgoal_tac "length ys < 7")
                             apply (simp add: take_Suc_conv_app_nth take_map
                                              unat_of_nat32[unfolded word_bits_conv]
                                              word_of_nat_less)
@@ -3183,7 +3183,7 @@ proof -
        apply (clarsimp simp: guard_is_UNIV_def Collect_const_mem)
        apply (clarsimp simp: seL4_MessageInfo_lift_def message_info_to_H_def mask_def
                              msgLengthBits_def word_bw_assocs)
-      apply (wp getMessageInfo_le3 getMessageInfo_msgLength[unfolded K_def] static_imp_wp
+      apply (wp getMessageInfo_le7 getMessageInfo_msgLength[unfolded K_def] static_imp_wp
                   | simp)+
      apply (simp add: Collect_const_mem)
      apply (auto simp: excaps_in_mem_def valid_ipc_buffer_ptr'_def

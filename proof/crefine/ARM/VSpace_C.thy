@@ -1716,8 +1716,8 @@ lemma setRegister_ccorres:
 lemma wordFromMessageInfo_spec:
   defines "mil s \<equiv> seL4_MessageInfo_lift \<^bsup>s\<^esup>mi"
   shows "\<forall>s. \<Gamma> \<turnstile> {s} Call wordFromMessageInfo_'proc
-                  \<lbrace>\<acute>ret__unsigned_long = (label_CL (mil s) << 12)
-                                      || (capsUnwrapped_CL (mil s) << 9)
+                  \<lbrace>\<acute>ret__unsigned_long = (label_CL (mil s) << 17)
+                                      || (capsUnwrapped_CL (mil s) << 10)
                                       || (extraCaps_CL (mil s) << 7)
                                       || length_CL (mil s)\<rbrace>"
   unfolding mil_def

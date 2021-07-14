@@ -429,7 +429,7 @@ definition
       tcb_caller = CapabilityMap (cteCap (tcbCaller tcb)),
       tcb_ipcframe = CapabilityMap (cteCap (tcbIPCBufferFrame tcb)),
       tcb_state = ThStateMap (tcbState tcb),
-      tcb_fault_handler = to_bl (tcbFaultHandler tcb),
+      tcb_fault_handler = CapabilityMap (cteCap (tcbFaultHandler tcb)),
       tcb_ipc_buffer = tcbIPCBuffer tcb,
       tcb_fault = map_option FaultMap (tcbFault tcb),
       tcb_bound_notification = tcbBoundNotification tcb,

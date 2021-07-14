@@ -307,7 +307,8 @@ lemma ball_tcb_cte_casesI:
      P (tcbVTable, tcbVTable_update);
      P (tcbReply, tcbReply_update);
      P (tcbCaller, tcbCaller_update);
-     P (tcbIPCBufferFrame, tcbIPCBufferFrame_update) \<rbrakk>
+     P (tcbIPCBufferFrame, tcbIPCBufferFrame_update);
+     P (tcbFaultHandler, tcbFaultHandler_update) \<rbrakk>
     \<Longrightarrow> \<forall>x \<in> ran tcb_cte_cases. P x"
   by (simp add: tcb_cte_cases_def)
 
@@ -3447,6 +3448,24 @@ lemma cte_at_tcb_at_16':
   apply (rule disjI2, rule bexI[where x=16])
    apply simp
   apply fastforce
+  done
+
+lemma tcb_at_cte_at'_0: "tcb_at' a s \<Longrightarrow> cte_at' (cte_map (a, tcb_cnode_index 0)) s"
+  apply (clarsimp simp:  obj_at'_def projectKO_def fail_def return_def projectKO_tcb split: option.splits)
+  apply (rule_tac ptr'=a in cte_wp_at_tcbI'; simp add: objBitsKO_def)
+  apply (simp add: cte_map_def tcb_cnode_index_def cte_level_bits_def)
+  done
+
+lemma tcb_at_cte_at'_1: "tcb_at' a s \<Longrightarrow> cte_at' (cte_map (a, tcb_cnode_index (Suc 0))) s"
+  apply (clarsimp simp:  obj_at'_def projectKO_def fail_def return_def projectKO_tcb split: option.splits)
+  apply (rule_tac ptr'=a in cte_wp_at_tcbI'; simp add: objBitsKO_def)
+  apply (simp add: cte_map_def tcb_cnode_index_def cte_level_bits_def of_bl_def)
+  done
+
+lemma tcb_at_cte_at'_5: "tcb_at' a s \<Longrightarrow> cte_at' (cte_map (a, tcb_cnode_index 5)) s"
+  apply (clarsimp simp:  obj_at'_def projectKO_def fail_def return_def projectKO_tcb split: option.splits)
+  apply (rule_tac ptr'=a in cte_wp_at_tcbI'; simp add: objBitsKO_def)
+  apply (simp add: cte_map_def tcb_cnode_index_def cte_level_bits_def)
   done
 
 lemma get_tcb_cap_corres:

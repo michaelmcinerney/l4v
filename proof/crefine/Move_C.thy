@@ -536,7 +536,8 @@ lemma ran_tcb_cte_cases:
     (Structures_H.tcbVTable, tcbVTable_update),
     (Structures_H.tcbReply, tcbReply_update),
     (Structures_H.tcbCaller, tcbCaller_update),
-    (tcbIPCBufferFrame, tcbIPCBufferFrame_update)}"
+    (tcbIPCBufferFrame, tcbIPCBufferFrame_update),
+    (tcbFaultHandler, tcbFaultHandler_update)}"
   by (auto simp add: tcb_cte_cases_def cteSizeBits_def split: if_split_asm)
 
 lemma user_data_at_ko:
@@ -821,15 +822,15 @@ lemma cte_at_0' [dest!]:
   apply (clarsimp simp: cte_wp_at_obj_cases')
   by (auto simp: tcb_cte_cases_def is_aligned_def objBits_simps' dest!:tcb_aligned' split: if_split_asm)
 
-lemma getMessageInfo_le3:
-  "\<lbrace>\<top>\<rbrace> getMessageInfo sender \<lbrace>\<lambda>rv s. unat (msgExtraCaps rv) \<le> 3\<rbrace>"
+lemma getMessageInfo_le7:
+  "\<lbrace>\<top>\<rbrace> getMessageInfo sender \<lbrace>\<lambda>rv s. unat (msgExtraCaps rv) \<le> 7\<rbrace>"
   including no_pre
   apply (simp add: getMessageInfo_def)
   apply wp
   apply (rule_tac Q="\<lambda>_. \<top>" in hoare_strengthen_post)
    apply wp
   apply (simp add: messageInfoFromWord_def Let_def msgExtraCapBits_def)
-  apply (cut_tac y="r >> Types_H.msgLengthBits" in word_and_le1 [where a=3])
+  apply (cut_tac y="r >> Types_H.msgLengthBits" in word_and_le1 [where a=7])
   apply (simp add: word_le_nat_alt)
   done
 
@@ -1355,8 +1356,8 @@ lemma ctes_of_cte_at:
   by (simp add: cte_wp_at_ctes_of)
 
 lemmas tcbSlots =
-  tcbCTableSlot_def tcbVTableSlot_def
-  tcbReplySlot_def tcbCallerSlot_def tcbIPCBufferSlot_def
+  tcbCTableSlot_def tcbVTableSlot_def tcbReplySlot_def
+  tcbCallerSlot_def tcbIPCBufferSlot_def tcbFaultHandlerSlot_def
 
 lemma updateObject_cte_tcb:
   assumes tc: "tcb_cte_cases (ptr - ptr') = Some (accF, updF)"

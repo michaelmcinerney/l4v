@@ -20,7 +20,7 @@ lemma ccorres_pre_threadGet:
   apply (rule ccorres_guard_imp)
     apply (rule ccorres_symb_exec_l)
        defer
-       apply wp[1]
+       apply wp
       apply (rule tg_sp')
      apply simp
     apply assumption
@@ -33,6 +33,27 @@ lemma ccorres_pre_threadGet:
   apply assumption
   apply clarsimp
   apply (frule (1) obj_at_cslift_tcb)
+  apply clarsimp
+  done
+
+lemma ccorres_pre_threadGet_weak:
+  assumes cc: "\<And>rv. ccorres r xf (P (f rv)) (P' (f rv)) hs (g rv) c"
+  shows   "ccorres r xf
+           (\<lambda>s. \<forall>tcb. ko_at' tcb p s \<longrightarrow> P (f tcb) s)
+           ({s'. \<forall>rv s. (s, s') \<in> rf_sr \<and> (obj_at' (\<lambda>t'. t' = rv) p and (\<lambda>s. \<forall>tcb. ko_at' tcb p s \<longrightarrow> P (f tcb) s)) s \<longrightarrow> s' \<in> P' (f rv)})
+           hs (threadGet id p >>= (\<lambda>rv. g rv)) c"
+  apply (rule ccorres_guard_imp)
+    apply (rule ccorres_symb_exec_l)
+       defer
+       apply wp
+      apply (rule tg_sp')
+     apply simp
+    apply assumption
+   defer
+   apply (rule ccorres_guard_imp)
+     apply (rule cc)
+    apply clarsimp
+   apply assumption
   apply clarsimp
   done
 

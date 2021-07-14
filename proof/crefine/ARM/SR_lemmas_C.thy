@@ -297,9 +297,9 @@ lemma cmdbnode_relation_mdb_node_to_H [simp]:
   by (fastforce split: option.splits)
 
 definition
-  tcb_no_ctes_proj :: "tcb \<Rightarrow> Structures_H.thread_state \<times> word32 \<times> word32 \<times> arch_tcb \<times> bool \<times> word8 \<times> word8 \<times> word8 \<times> nat \<times> fault option \<times> word32 option"
+  tcb_no_ctes_proj :: "tcb \<Rightarrow> Structures_H.thread_state \<times> word32 \<times> arch_tcb \<times> bool \<times> word8 \<times> word8 \<times> word8 \<times> nat \<times> fault option \<times> word32 option"
   where
-  "tcb_no_ctes_proj t \<equiv> (tcbState t, tcbFaultHandler t, tcbIPCBuffer t, tcbArch t, tcbQueued t,
+  "tcb_no_ctes_proj t \<equiv> (tcbState t, tcbIPCBuffer t, tcbArch t, tcbQueued t,
                             tcbMCP t, tcbPriority t, tcbDomain t, tcbTimeSlice t, tcbFault t, tcbBoundNotification t)"
 
 lemma tcb_cte_cases_proj_eq [simp]:

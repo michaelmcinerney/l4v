@@ -37,6 +37,7 @@ lemma ps_clear_is_aligned_ctes_None:
   shows "ksPSpace s (p + 2*2^cteSizeBits) = None"
     and "ksPSpace s (p + 3*2^cteSizeBits) = None"
     and "ksPSpace s (p + 4*2^cteSizeBits) = None"
+    and "ksPSpace s (p + 5*2^cteSizeBits) = None"
   by (auto intro: assms ps_clear_is_aligned_ksPSpace_None
             simp: objBits_defs mask_def)+
 
