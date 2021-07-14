@@ -277,20 +277,22 @@ lemma arch_invoke_irq_control_silc_inv[FinalCaps_assms]:
 lemma invoke_tcb_silc_inv[FinalCaps_assms]:
   notes static_imp_wp [wp]
         static_imp_conj_wp [wp]
-  shows "\<lbrace>silc_inv aag st and einvs and simple_sched_action and pas_refined aag and tcb_inv_wf tinv
-                          and K (authorised_tcb_inv aag tinv)\<rbrace>
-         invoke_tcb tinv
-         \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
-  apply (case_tac tinv)
-         apply ((wp restart_silc_inv hoare_vcg_if_lift suspend_silc_inv mapM_x_wp[OF _ subset_refl]
-                    static_imp_wp
-                 | wpc
-                 | simp split del: if_split add: authorised_tcb_inv_def check_cap_at_def
-                 | clarsimp
-                 | strengthen invs_mdb
-                 | force intro: notE[rotated,OF idle_no_ex_cap,simplified])+)[3]
+  shows
+  "\<lbrace>silc_inv aag st and einvs and simple_sched_action and pas_refined aag
+                    and tcb_inv_wf tinv and K (authorised_tcb_inv aag tinv)\<rbrace>
+   invoke_tcb tinv
+   \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
+  apply(rule hoare_gen_asm)
+  apply(case_tac tinv)
+         apply((wp restart_silc_inv hoare_vcg_if_lift suspend_silc_inv mapM_x_wp[OF _ subset_refl]
+                   static_imp_wp
+             | wpc
+             | simp split del: if_split add: authorised_tcb_inv_def check_cap_at_def
+             | clarsimp
+             | strengthen invs_mdb
+             | force intro: notE[rotated,OF idle_no_ex_cap,simplified])+)[3]
       defer
-      apply ((wp suspend_silc_inv restart_silc_inv | simp add: authorised_tcb_inv_def | force)+)[2]
+      apply((wp suspend_silc_inv restart_silc_inv | simp add: authorised_tcb_inv_def | force)+)[2]
     (* NotificationControl *)
     apply (rename_tac option)
     apply (case_tac option; (wp | simp)+)
@@ -298,35 +300,23 @@ lemma invoke_tcb_silc_inv[FinalCaps_assms]:
    apply (wpsimp split: option.splits)
   (* just ThreadControl left *)
   apply (simp add: split_def cong: option.case_cong)
-  (* slow, ~2 mins *)
-  apply (simp only: conj_ac cong: conj_cong imp_cong |
-         wp checked_insert_pas_refined checked_cap_insert_silc_inv hoare_vcg_all_lift_R
-            hoare_vcg_all_lift hoare_vcg_const_imp_lift_R
-            cap_delete_silc_inv_not_transferable
-            cap_delete_pas_refined' cap_delete_deletes
-            cap_delete_valid_cap cap_delete_cte_at
-            check_cap_inv[where P="valid_cap c" for c]
-            check_cap_inv[where P="cte_at p0" for p0]
-            check_cap_inv[where P="\<lambda>s. \<not> tcb_at t s" for t]
-            check_cap_inv2[where Q="\<lambda>_. valid_list"]
-            check_cap_inv2[where Q="\<lambda>_. valid_sched"]
-            check_cap_inv2[where Q="\<lambda>_. simple_sched_action"]
-            checked_insert_no_cap_to
-            thread_set_tcb_fault_handler_update_invs
-            thread_set_pas_refined thread_set_emptyable thread_set_valid_cap
-            thread_set_not_state_valid_sched thread_set_cte_at
-            thread_set_no_cap_to_trivial
+  apply(clarsimp simp: emptyable_def cong: conj_cong
+        | wp install_tcb_cap_silc_inv install_tcb_frame_cap_silc_inv
+              install_tcb_cap_invs install_tcb_cap_valid_sched install_tcb_cap_pas_refined
+              install_tcb_cap_cte_at install_tcb_cap_cte_wp_at_ep thread_set_valid_cap
+              thread_set_invs_trivial[OF ball_tcb_cap_casesI]
+              thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
+              thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+              hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R hoare_vcg_all_lift
+        | strengthen tcb_cap_always_valid_strg
         | wpc
-        | simp add: emptyable_def tcb_cap_cases_def tcb_cap_valid_def st_tcb_at_triv
-                   option_update_thread_def
-        | strengthen use_no_cap_to_obj_asid_strg invs_mdb
-                    invs_psp_aligned invs_vspace_objs invs_arch_state
-        | wp (once) hoare_drop_imps)+
-  apply (clarsimp simp: authorised_tcb_inv_def emptyable_def)
-  (* also slow, ~15s *)
-  by (clarsimp simp: is_cap_simps is_cnode_or_valid_arch_def is_valid_vtable_root_def
-      | intro impI
-      | rule conjI)+
+        | simp add: set_mcpriority_def)+
+  apply (intro conjI impI allI)
+  (* slow, ~30s *)
+  by (clarsimp split: option.split
+      | fastforce simp: is_cnode_or_valid_arch_def is_valid_vtable_root_def is_cap_simps
+                        tcb_cap_valid_def tcb_at_st_tcb_at authorised_tcb_inv_def
+                 intro: tcb_ep_slot_cte_wp_at elim: cte_wp_at_weakenE)+
 
 end
 

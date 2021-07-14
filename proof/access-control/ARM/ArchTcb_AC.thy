@@ -23,76 +23,101 @@ lemma arch_post_modify_registers_respects[Tcb_AC_assms]:
    \<lbrace>\<lambda>_ s. integrity aag X st s\<rbrace>"
   by wpsimp
 
+lemma install_tcb_cap_valid_sched:
+  "\<lbrace>valid_sched and simple_sched_action\<rbrace> install_tcb_cap target slot n slot_opt \<lbrace>\<lambda>_. valid_sched\<rbrace>"
+  unfolding install_tcb_cap_def
+  by (wpsimp wp: check_cap_inv | intro conjI)+
+
+lemma install_tcb_frame_cap_valid_sched:
+  "\<lbrace>valid_sched and simple_sched_action\<rbrace> install_tcb_frame_cap target slot slot_opt \<lbrace>\<lambda>_. valid_sched\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  by (wpsimp wp: check_cap_inv reschedule_preserves_valid_sched thread_set_not_state_valid_sched hoare_drop_imp)
+
+lemma install_tcb_cap_pas_refined:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace>pas_refined aag and einvs and simple_sched_action
+                    and K ((n,slot_opt) \<in> {(0,croot),(1,vroot),(5,ep)})
+                    and K (case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) slot_opt)\<rbrace>
+    install_tcb_cap t sl n slot_opt
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
+  unfolding install_tcb_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_delete_pas_refined' cap_delete_invs
+      | fastforce simp: authorised_tcb_inv_def emptyable_def
+      | strengthen invs_strgs invs_arch_state_strg invs_vspace_objs | intro conjI)+
+
+lemma install_tcb_cap_integrity:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action
+                       and K ((n,slot_opt) \<in> {(0,croot),(1,vroot),(5,ep)})
+                       and K (case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) slot_opt)\<rbrace>
+    install_tcb_cap t sl n slot_opt
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
+  unfolding install_tcb_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined check_cap_inv cap_insert_integrity_autarch
+                 cap_delete_invs cap_delete_pas_refined' cap_delete_respects'
+      | fastforce simp: authorised_tcb_inv_def emptyable_def
+      | strengthen invs_strgs)+
+
+lemma install_tcb_frame_cap_pas_refined:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace> pas_refined aag and einvs and simple_sched_action
+                     and K (case_option True (\<lambda>(a,b). case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) b) buf)\<rbrace>
+    install_tcb_frame_cap t sl buf
+   \<lbrace>\<lambda>_.  pas_refined aag\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_delete_pas_refined' cap_delete_deletes
+                 cap_delete_invs thread_set_tcb_ipc_buffer_cap_cleared_invs thread_set_pas_refined
+      | rule_tac Q="\<lambda>_. invs and pas_refined aag" in hoare_post_imp
+      | strengthen invs_strgs invs_arch_state_strg invs_vspace_objs
+      | fastforce simp: authorised_tcb_inv_def emptyable_def)+
+
+lemma install_tcb_frame_cap_integrity:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace> integrity aag X st and pas_refined aag and einvs and simple_sched_action
+                        and K (case_option True (\<lambda>(a,b). case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) b) buf)\<rbrace>
+    install_tcb_frame_cap t sl buf
+   \<lbrace>\<lambda>_.  integrity aag X st\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_insert_integrity_autarch cap_delete_pas_refined'
+                 cap_delete_respects' cap_delete_deletes cap_delete_invs thread_set_pas_refined
+                 thread_set_integrity_autarch thread_set_tcb_ipc_buffer_cap_cleared_invs
+                 check_cap_inv hoare_vcg_const_imp_lift
+      | fastforce simp: authorised_tcb_inv_def emptyable_def)+
+
 lemma invoke_tcb_tc_respects_aag[Tcb_AC_assms]:
-  "\<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action
-                       and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)
-                       and K (authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf))\<rbrace>
-   invoke_tcb (ThreadControl t sl ep mcp priority croot vroot buf)
-   \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace>"
+  "\<lbrace> integrity aag X st and pas_refined aag
+         and einvs and simple_sched_action
+         and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)
+         and K (authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf))\<rbrace>
+     invoke_tcb (ThreadControl t sl ep mcp priority croot vroot buf)
+   \<lbrace>\<lambda>rv. integrity aag X st and pas_refined aag\<rbrace>"
   apply (rule hoare_gen_asm)+
   apply (subst invoke_tcb.simps)
-  apply (subst option_update_thread_def)
   apply (subst set_priority_extended.dxo_eq)
   apply (rule hoare_vcg_precond_imp)
-   apply (rule_tac P="case ep of Some v \<Rightarrow> length v = word_bits | _ \<Rightarrow> True"
-                 in hoare_gen_asm)
-   apply (simp only: split_def)
-   apply (((simp add: conj_comms del: hoare_True_E_R,
-           strengthen imp_consequent[where Q="x = None" for x], simp cong: conj_cong)
-          | strengthen invs_psp_aligned invs_vspace_objs invs_arch_state
-          | rule wp_split_const_if wp_split_const_if_R hoare_vcg_all_lift_R
-                 hoare_vcg_E_elim hoare_vcg_const_imp_lift_R hoare_vcg_R_conj
-          | wp restart_integrity_autarch set_mcpriority_integrity_autarch
-               as_user_integrity_autarch thread_set_integrity_autarch
-               option_update_thread_integrity_autarch
-               opt_update_thread_valid_sched static_imp_wp
-               cap_insert_integrity_autarch checked_insert_pas_refined
-               cap_delete_respects' cap_delete_pas_refined'
-               check_cap_inv2[where Q="\<lambda>_. integrity aag X st"]
-               as_user_pas_refined restart_pas_refined
-               thread_set_pas_refined
-               out_invs_trivial case_option_wpE cap_delete_deletes
-               cap_delete_valid_cap cap_insert_valid_cap out_cte_at
-               cap_insert_cte_at cap_delete_cte_at out_valid_cap out_tcb_valid
-               hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R
-               thread_set_tcb_ipc_buffer_cap_cleared_invs
+   apply (clarsimp simp: emptyable_def cong: conj_cong
+          | wp install_tcb_frame_cap_integrity install_tcb_frame_cap_pas_refined
+               install_tcb_cap_integrity install_tcb_cap_pas_refined
+               install_tcb_cap_invs install_tcb_cap_valid_sched
+               install_tcb_cap_cte_at install_tcb_cap_cte_wp_at_ep
+               set_mcpriority_integrity_autarch thread_set_valid_cap
                thread_set_invs_trivial[OF ball_tcb_cap_casesI]
-               hoare_vcg_all_lift thread_set_valid_cap out_emptyable
-               check_cap_inv[where P="valid_cap c" for c]
-               check_cap_inv[where P="tcb_cap_valid c p" for c p]
-               check_cap_inv[where P="cte_at p0" for p0]
-               check_cap_inv[where P="tcb_at p0" for p0]
-               check_cap_inv[where P="simple_sched_action"]
-               check_cap_inv[where P="valid_list"]
-               check_cap_inv[where P="valid_sched"]
-               check_cap_inv[where P="valid_arch_state"]
-               check_cap_inv[where P="valid_vspace_objs"]
-               check_cap_inv[where P="pspace_aligned"]
-               thread_set_not_state_valid_sched
-               thread_set_cte_at
                thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
                thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
-               checked_insert_no_cap_to
-               out_no_cap_to_trivial[OF ball_tcb_cap_casesI]
-               thread_set_ipc_tcb_cap_valid
-               cap_delete_pas_refined'[THEN valid_validE_E] thread_set_cte_wp_at_trivial
-          | simp add: ran_tcb_cap_cases dom_tcb_cap_cases[simplified]
-                      emptyable_def a_type_def partial_inv_def
-                 del: hoare_True_E_R
-          | wpc
-          | strengthen invs_mdb use_no_cap_to_obj_asid_strg
-                       tcb_cap_always_valid_strg[where p="tcb_cnode_index 0"]
-                       tcb_cap_always_valid_strg[where p="tcb_cnode_index (Suc 0)"]))+
-  apply (clarsimp simp: authorised_tcb_inv_def)
-  apply (clarsimp simp: tcb_at_cte_at_0 tcb_at_cte_at_1[simplified]
-                        is_cap_simps is_valid_vtable_root_def
-                        is_cnode_or_valid_arch_def tcb_cap_valid_def
-                        tcb_at_st_tcb_at[symmetric] invs_valid_objs
-                        cap_asid_def vs_cap_ref_def
-                        clas_no_asid cli_no_irqs
-                        emptyable_def
-         | rule conjI | erule pas_refined_refl)+
-  done
+               hoare_vcg_all_lift_R hoare_vcg_all_lift
+               hoare_vcg_const_imp_lift_R hoare_vcg_const_imp_lift
+          | strengthen tcb_cap_always_valid_strg | wpc
+          | simp add: set_mcpriority_def)+
+  apply (intro conjI impI allI)
+  (* slow: 60s *)
+  by (clarsimp split: option.split
+      | fastforce simp: is_cnode_or_valid_arch_def is_valid_vtable_root_def is_cap_simps
+                        tcb_cap_valid_def tcb_at_st_tcb_at authorised_tcb_inv_def
+                 intro: tcb_ep_slot_cte_wp_at elim: cte_wp_at_weakenE)+
 
 end
 

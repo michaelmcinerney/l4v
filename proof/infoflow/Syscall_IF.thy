@@ -602,7 +602,8 @@ lemma handle_invocation_reads_respects_g:
                        decode_invocation_authorised_extra lec_valid_fault
                        lookup_extra_caps_authorised lookup_extra_caps_auth
                        lookup_ipc_buffer_has_read_auth' lookup_cap_and_slot_valid_fault3
-                       lookup_cap_and_slot_authorised lookup_cap_and_slot_cur_auth as_user_silc_inv
+                       lookup_cap_and_slot_authorised lookup_cap_and_slot_cur_auth
+                       handle_fault_silc_inv as_user_silc_inv
                        reads_respects_f_g'[OF reads_respects_g[OF as_user_reads_respects], where Q=\<top> and st=st]
                        reads_respects_f_g'[OF get_message_info_reads_respects_g, where Q="\<top>" and st=st]
                        as_user_globals_equiv user_getreg_inv get_mi_inv get_mi_length get_mi_length'
@@ -706,7 +707,8 @@ lemma handle_recv_reads_respects_f:
          apply (clarsimp simp: silc_inv_not_subject[symmetric] invs_mdb invs_valid_objs)
          apply (auto intro: caps_of_state_valid reads_ep
                       simp: aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def)[1]
-        apply (wp reads_respects_f[OF handle_fault_reads_respects,where st=st])
+        apply (wp reads_respects_f[OF handle_fault_reads_respects,where st=st] handle_fault_silc_inv)
+        apply simp
        apply (wpsimp wp: get_simple_ko_wp get_cap_wp)+
         apply (rule VSpaceEntries_AI.hoare_vcg_all_liftE)
         apply (rule_tac Q="\<lambda>r s. silc_inv aag st s \<and> einvs s \<and> pas_refined aag s \<and>
@@ -897,7 +899,8 @@ lemma handle_event_reads_respects_f_g:
                                               doesnt_touch_globalsI]
                         handle_reply_reads_respects_g handle_reply_silc_inv[where st=st]
                      | simp add: invs_imps | rule equiv_valid_guard_imp | force)+)[8]
-     apply ((wp reads_respects_f_g'[OF handle_fault_reads_respects_g, where st=st]
+     apply ((wp reads_respects_f_g'[OF handle_fault_reads_respects_g, where st=st] handle_fault_silc_inv
+             | simp add: reads_equiv_f_g_conj
              | clarsimp simp: reads_equiv_f_g_conj requiv_g_cur_thread_eq schact_is_rct_simple
              | wpc | intro impI conjI allI)+)[3]
         apply (rule equiv_valid_guard_imp)
@@ -905,7 +908,7 @@ lemma handle_event_reads_respects_f_g:
                     handle_vm_fault_silc_inv
                  | simp)+)[1]
         prefer 2
-        apply ((wp reads_respects_f_g'[OF handle_fault_reads_respects_g, where st=st] | simp)+)[1]
+        apply ((wp reads_respects_f_g'[OF handle_fault_reads_respects_g, where st=st] handle_fault_silc_inv | simp)+)[1]
        prefer 2
        apply (simp add: validE_E_def)
        apply (rule_tac E="\<lambda>r s. invs s \<and> is_subject aag rv \<and> is_subject aag (cur_thread s)

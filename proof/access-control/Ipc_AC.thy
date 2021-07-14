@@ -1307,7 +1307,7 @@ lemma get_mi_valid':
   done
 
 lemma lookup_extra_caps_length:
-  "\<lbrace>K (valid_message_info mi)\<rbrace> lookup_extra_caps thread buf mi \<lbrace>\<lambda>rv _. length rv < 6\<rbrace>, -"
+  "\<lbrace>K (valid_message_info mi)\<rbrace> lookup_extra_caps thread buf mi \<lbrace>\<lambda>rv _. length rv < 8\<rbrace>, -"
   unfolding lookup_extra_caps_def
   apply (cases buf, simp_all)
    apply (wp mapME_length
@@ -1337,7 +1337,7 @@ lemma transfer_caps_integrity_autarch:
          (\<forall>x\<in>set caps. cte_wp_at (\<lambda>cp. fst x \<noteq> NullCap \<longrightarrow> cp = fst x) (snd x) s \<and>
                        real_cte_at (snd x) s)) and
     K (is_subject aag receiver \<and> ipc_buffer_has_auth aag receiver receive_buffer \<and>
-       (\<forall>x\<in>set caps. is_subject aag (fst (snd x))) \<and> length caps < 6)\<rbrace>
+       (\<forall>x\<in>set caps. is_subject aag (fst (snd x))) \<and> length caps < 8)\<rbrace>
    transfer_caps mi caps endpoint receiver receive_buffer
    \<lbrace>\<lambda>rv. integrity aag X st\<rbrace>"
   apply (rule hoare_gen_asm)
@@ -2006,7 +2006,7 @@ lemma transfer_caps_loop_respects_in_ipc_autarch:
        (\<forall>slot \<in> set slots. is_subject aag (fst slot)) \<and>
        (\<not> is_subject aag receiver
         \<longrightarrow> auth_ipc_buffers st receiver = ptr_range buffer msg_align_bits) \<and>
-            is_aligned buffer msg_align_bits \<and> n + length caps < 6 \<and> distinct slots)\<rbrace>
+            is_aligned buffer msg_align_bits \<and> n + length caps < 8 \<and> distinct slots)\<rbrace>
    transfer_caps_loop ep buffer n caps slots mi
    \<lbrace>\<lambda>_. integrity_tcb_in_ipc aag X receiver epptr TRContext st\<rbrace>"
   apply (rule hoare_gen_asm)
@@ -2022,7 +2022,7 @@ lemma transfer_caps_respects_in_ipc:
     (\<lambda>s. (\<forall>x \<in> set caps. s \<turnstile> fst x) \<and>
          (\<forall>x \<in> set caps. cte_wp_at (\<lambda>cp. fst x \<noteq> NullCap \<longrightarrow> cp = fst x) (snd x) s
                        \<and> real_cte_at (snd x) s)) and
-    K ((\<not> null caps \<longrightarrow> is_subject aag receiver) \<and> length caps < 6 \<and>
+    K ((\<not> null caps \<longrightarrow> is_subject aag receiver) \<and> length caps < 8 \<and>
                         (\<forall>cap \<in> set caps. is_subject aag (fst (snd cap))) \<and>
                         (\<not> is_subject aag receiver \<longrightarrow>
                          case_option True (\<lambda>buf'. auth_ipc_buffers st receiver =
@@ -2404,43 +2404,43 @@ lemma thread_set_fault_pas_refined:
 
 lemma send_fault_ipc_pas_refined:
   "\<lbrace>pas_refined aag and invs and is_subject aag \<circ> cur_thread
-                    and K (valid_fault fault) and K (is_subject aag thread)\<rbrace>
-   send_fault_ipc thread fault
+                    and cte_wp_at ((=) fh) (thread,tcb_cnode_index 5)
+                    and K (valid_fault fault) and K (valid_fault_handler fh)
+                    and K (is_subject aag thread)\<rbrace>
+   send_fault_ipc thread fh fault
    \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
   apply (rule hoare_gen_asm)+
   apply (simp add: send_fault_ipc_def Let_def lookup_cap_def split_def)
-  apply (wpsimp wp: send_ipc_pas_refined thread_set_fault_pas_refined thread_set_tcb_fault_set_invs
-                    thread_set_refs_trivial thread_set_obj_at_impossible get_cap_wp
-                    thread_set_valid_objs'' hoare_vcg_conj_lift hoare_vcg_ex_lift hoare_vcg_all_lift
-              simp: split_def)
-    apply (rule_tac Q'="\<lambda>rv s. pas_refined aag s \<and> is_subject aag (cur_thread s) \<and>
-                               invs s \<and> valid_fault fault \<and> is_subject aag (fst (fst rv))"
-                 in hoare_post_imp_R[rotated])
-     apply (fastforce dest!: cap_auth_caps_of_state
-                       simp: invs_valid_objs invs_sym_refs cte_wp_at_caps_of_state aag_cap_auth_def
-                             cap_auth_conferred_def cap_rights_to_auth_def AllowSend_def)
-    apply (wp get_cap_auth_wp[where aag=aag] lookup_slot_for_thread_authorised
-           | simp add: lookup_cap_def split_def)+
+  apply (wpsimp wp: send_ipc_pas_refined thread_set_fault_pas_refined thread_set_tcb_fault_set_invs)
+  apply (fastforce dest!: cap_auth_caps_of_state
+                    simp: Retype_AI.F[symmetric] valid_fault_handler_def has_handler_rights_def
+                          aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def AllowSend_def)
   done
+
+crunches send_fault_ipc
+  for pspace_aligned[wp]: pspace_aligned
+  and valid_vspace_objs[wp]: valid_vspace_objs
+  and valid_arch_state[wp]: valid_arch_state
+  (simp: crunch_simps wp: crunch_wps dxo_wp_weak ignore: possible_switch_to)
 
 lemma handle_fault_pas_refined:
   "\<lbrace>pas_refined aag and invs and is_subject aag \<circ> cur_thread
                     and K (valid_fault fault) and K (is_subject aag thread)\<rbrace>
    handle_fault thread fault
    \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
-  apply (wpsimp wp: set_thread_state_pas_refined simp: handle_fault_def handle_double_fault_def)
-    apply (rule hoare_vcg_E_elim)
-     apply (clarsimp simp: send_fault_ipc_def Let_def)
-     apply wp
-       apply wpsimp
-      apply (rule hoare_post_impErr[where E=E and F=E for E])
-        apply (rule valid_validE)
-        apply (wpsimp wp: send_fault_ipc_pas_refined)+
+  apply (simp add: handle_fault_def handle_no_fault_handler_def)
+  apply (wpsimp wp: set_thread_state_pas_refined send_fault_ipc_pas_refined
+                    weak_if_wp)
+  apply (simp cong: conj_cong)
+  apply (rule context_conjI)
+   apply (rule cte_wp_at_tcbI; simp add: get_tcb_def split: option.splits kernel_object.splits)
+  apply (drule cte_wp_at_eqD2)
+   apply (rule tcb_ep_slot_cte_wp_at)
+     apply (clarsimp simp: tcb_at_def)+
   apply fastforce
   done
 
 end
-
 
 lemma thread_set_tcb_fault_update_valid_mdb:
   "thread_set (tcb_fault_update (\<lambda>_. Some fault)) thread \<lbrace>valid_mdb\<rbrace>"
@@ -2459,43 +2459,39 @@ context Ipc_AC_2 begin
 
 lemma send_fault_ipc_integrity_autarch:
   "\<lbrace>pas_refined aag and invs and integrity aag X st and is_subject aag \<circ> cur_thread
-                    and K (valid_fault fault) and K (is_subject aag thread)\<rbrace>
-   send_fault_ipc thread fault
+                    and cte_wp_at ((=) fh) (thread,tcb_cnode_index 5)
+                    and K (valid_fault_handler fh) and K (valid_fault fault)
+                    and K (is_subject aag thread)\<rbrace>
+   send_fault_ipc thread fh fault
    \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
   apply (rule hoare_gen_asm)+
   apply (simp add: send_fault_ipc_def Let_def)
-  apply (wp send_ipc_integrity_autarch thread_set_integrity_autarch thread_set_fault_pas_refined
-            thread_set_valid_objs'' thread_set_refs_trivial thread_set_tcb_fault_update_valid_mdb
-            thread_set_tcb_fault_set_invs
-         | wpc | simp add: is_obj_defs)+
-  (* 14 subgoals *)
-  apply (rename_tac word1 word2 set)
-  apply (rule_tac R="\<lambda>rv s. ep_at word1 s" in hoare_post_add)
-  apply (simp only: obj_at_conj_distrib[symmetric] flip: conj_assoc)
-  apply (wp thread_set_obj_at_impossible thread_set_tcb_fault_set_invs
-            get_cap_auth_wp[where aag=aag]
-         | simp add: lookup_cap_def is_obj_defs split_def)+
-    (* down to 3 : normal indentation *)
-    apply (rule_tac Q'="\<lambda>rv s. integrity aag X st s \<and> pas_refined aag s
-                          \<and> invs s
-                          \<and> valid_fault fault
-                          \<and> is_subject aag (cur_thread s)
-                          \<and> is_subject aag (fst (fst rv))"
-               in hoare_post_imp_R[rotated])
-     apply (clarsimp simp: invs_valid_objs invs_sym_refs cte_wp_at_caps_of_state obj_at_def)
-
-     apply (frule(1) caps_of_state_valid)
-     apply (clarsimp simp: valid_cap_def  is_ep aag_cap_auth_def cap_auth_conferred_def
-                           cap_rights_to_auth_def AllowSend_def
-                    elim!: obj_atE)
-     apply (intro conjI; fastforce ?)
-     apply (clarsimp simp: ep_q_refs_of_def split: endpoint.splits)
-     apply (frule(1) pas_refined_ep_recv, simp add: obj_at_def,assumption)
-     apply (frule(1) aag_wellformed_grant_Control_to_recv[OF _ _ pas_refined_wellformed,rotated],
-            blast)
-     apply (simp add: aag_has_Control_iff_owns)
-    apply (wp lookup_slot_for_thread_authorised)+
-  apply simp
+  apply (wpsimp wp: send_ipc_integrity_autarch thread_set_integrity_autarch
+                    thread_set_fault_pas_refined thread_set_valid_objs''
+                    thread_set_refs_trivial thread_set_tcb_fault_update_valid_mdb
+                    thread_set_tcb_fault_set_invs)
+            apply (rename_tac word1 word2 set)
+            apply (rule_tac R="\<lambda>rv s. ep_at word1 s" in hoare_post_add)
+            apply (simp only: obj_at_conj_distrib[symmetric] flip: conj_assoc)
+            apply (wp thread_set_obj_at_impossible thread_set_tcb_fault_set_invs
+                      get_cap_auth_wp[where aag=aag]
+                  | simp add: lookup_cap_def is_obj_defs split_def)+
+  apply (clarsimp simp: invs_valid_objs invs_sym_refs cte_wp_at_caps_of_state obj_at_def)
+  apply (frule(1) caps_of_state_valid)
+  apply (prop_tac "pas_cap_cur_auth aag fh")
+   apply (rule cap_cur_auth_caps_of_state[rotated]; simp)
+  apply (clarsimp simp: valid_cap_def  is_ep aag_cap_auth_def cap_auth_conferred_def
+                        cap_rights_to_auth_def AllowSend_def
+                 elim!: obj_atE)
+  apply (intro conjI ; fastforce ?)
+    apply (clarsimp simp:ep_q_refs_of_def split:endpoint.splits)
+    apply (frule(1) pas_refined_ep_recv, simp add:obj_at_def,assumption)
+    apply (frule(1) aag_wellformed_grant_Control_to_recv[OF _ _ pas_refined_wellformed,rotated],
+           blast)
+    apply (simp add: aag_has_Control_iff_owns)
+   apply (fastforce dest!: cap_auth_caps_of_state
+                     simp: Retype_AI.F[symmetric] valid_fault_handler_def has_handler_rights_def
+                           aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def AllowSend_def)+
   done
 
 lemma handle_fault_integrity_autarch:
@@ -2505,7 +2501,13 @@ lemma handle_fault_integrity_autarch:
    \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
   apply (simp add: handle_fault_def)
   apply (wp set_thread_state_integrity_autarch send_fault_ipc_integrity_autarch
-         | simp add: handle_double_fault_def)+
+         | rule_tac Q'="\<lambda>_. integrity aag X st and K (is_subject aag thread)" in hoare_post_imp_R
+         | clarsimp simp: handle_no_fault_handler_def)+
+  apply (rule context_conjI)
+   apply (rule cte_wp_at_tcbI; simp add: get_tcb_def split: option.splits kernel_object.splits)
+  apply (drule cte_wp_at_eqD2)
+   apply (rule tcb_ep_slot_cte_wp_at)
+     apply (clarsimp simp: tcb_at_def)+
   done
 
 end

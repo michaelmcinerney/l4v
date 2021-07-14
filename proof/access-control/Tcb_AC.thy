@@ -14,9 +14,9 @@ definition authorised_tcb_inv :: "'a PAS \<Rightarrow> tcb_invocation \<Rightarr
  "authorised_tcb_inv aag ti \<equiv> case ti of
     Suspend t \<Rightarrow> is_subject aag t
   | Resume t \<Rightarrow> is_subject aag t
-  | ThreadControl t sl ep mcp priority croot vroot buf \<Rightarrow>
+  | ThreadControl t sl fh mcp priority croot vroot buf \<Rightarrow>
       is_subject aag t \<and>
-      (\<forall>(cap, slot) \<in> set_option croot \<union> set_option vroot \<union>
+      (\<forall>(cap, slot) \<in> set_option croot \<union> set_option vroot \<union> set_option fh \<union>
                       (case_option {} (set_option \<circ> snd) buf). pas_cap_cur_auth aag cap \<and>
                                                                is_subject aag (fst slot))
   | NotificationControl t ntfn \<Rightarrow>
@@ -223,6 +223,71 @@ lemma cap_insert_cdt_change_allowed[wp]:
   apply (drule(1) mdb_cte_atD[rotated])
   apply (simp add:cte_wp_at_caps_of_state)
   done
+
+lemma install_tcb_cap_valid_sched:
+  "\<lbrace>valid_sched and simple_sched_action\<rbrace> install_tcb_cap target slot n slot_opt \<lbrace>\<lambda>_. valid_sched\<rbrace>"
+  unfolding install_tcb_cap_def
+  by (wpsimp wp: check_cap_inv | intro conjI)+
+
+lemma install_tcb_frame_cap_valid_sched:
+  "\<lbrace>valid_sched and simple_sched_action\<rbrace> install_tcb_frame_cap target slot slot_opt \<lbrace>\<lambda>_. valid_sched\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  by (wpsimp wp: check_cap_inv reschedule_preserves_valid_sched thread_set_not_state_valid_sched hoare_drop_imp)
+
+lemma install_tcb_cap_pas_refined:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace>pas_refined aag and einvs and simple_sched_action
+                    and K ((n,slot_opt) \<in> {(0,croot),(1,vroot),(5,ep)})
+                    and K (case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) slot_opt)\<rbrace>
+    install_tcb_cap t sl n slot_opt
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
+  unfolding install_tcb_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_delete_pas_refined' cap_delete_invs
+      | fastforce simp: authorised_tcb_inv_def emptyable_def
+      | strengthen invs_strgs invs_arch_state_strg invs_vspace_objs | intro conjI)+
+
+lemma install_tcb_cap_integrity:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action
+                       and K ((n,slot_opt) \<in> {(0,croot),(1,vroot),(5,ep)})
+                       and K (case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) slot_opt)\<rbrace>
+    install_tcb_cap t sl n slot_opt
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
+  unfolding install_tcb_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined check_cap_inv cap_insert_integrity_autarch
+                 cap_delete_invs cap_delete_pas_refined' cap_delete_respects'
+      | fastforce simp: authorised_tcb_inv_def emptyable_def
+      | strengthen invs_strgs)+
+
+lemma install_tcb_frame_cap_pas_refined:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace> pas_refined aag and einvs and simple_sched_action
+                     and K (case_option True (\<lambda>(a,b). case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) b) buf)\<rbrace>
+    install_tcb_frame_cap t sl buf
+   \<lbrace>\<lambda>_.  pas_refined aag\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_delete_pas_refined' cap_delete_deletes
+                 cap_delete_invs thread_set_tcb_ipc_buffer_cap_cleared_invs thread_set_pas_refined
+      | rule_tac Q="\<lambda>_. invs and pas_refined aag" in hoare_post_imp
+      | strengthen invs_strgs invs_arch_state_strg invs_vspace_objs
+      | fastforce simp: authorised_tcb_inv_def emptyable_def)+
+
+lemma install_tcb_frame_cap_integrity:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace> integrity aag X st and pas_refined aag and einvs and simple_sched_action
+                        and K (case_option True (\<lambda>(a,b). case_option True (\<lambda>(a,b). \<not> is_master_reply_cap a) b) buf)\<rbrace>
+    install_tcb_frame_cap t sl buf
+   \<lbrace>\<lambda>_.  integrity aag X st\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  apply (rule hoare_gen_asm)+
+  by (wpsimp wp: checked_insert_pas_refined cap_insert_integrity_autarch cap_delete_pas_refined'
+                 cap_delete_respects' cap_delete_deletes cap_delete_invs thread_set_pas_refined
+                 thread_set_integrity_autarch thread_set_tcb_ipc_buffer_cap_cleared_invs
+                 check_cap_inv hoare_vcg_const_imp_lift
+      | fastforce simp: authorised_tcb_inv_def emptyable_def)+
 
 lemma invoke_tcb_unbind_notification_respects:
   "\<lbrace>integrity aag X st and pas_refined aag and simple_sched_action and einvs
@@ -434,7 +499,7 @@ lemma decode_set_space_authorised:
          | wp (once) derive_cap_obj_refs_auth derive_cap_untyped_range_subset derive_cap_clas
                      derive_cap_cli hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R
                      whenE_throwError_wp slot_long_running_inv)+
-  apply (clarsimp simp: not_less all_set_conv_all_nth dest!: P_0_1_spec)
+  apply (clarsimp simp: not_less all_set_conv_all_nth dest!: P_0_1_2_spec)
   apply (auto simp: aag_cap_auth_def update_cap_cli
              intro: update_cap_obj_refs_subset
              dest!: update_cap_cap_auth_conferred_subset)
@@ -458,12 +523,13 @@ lemma decode_tcb_configure_authorised_helper:
                 split: prod.split_asm split del: if_split)
   apply (cases "excaps!0")
   apply (cases "excaps!Suc 0")
+  apply (cases "excaps!2")
   apply (rule hoare_pre)
    apply (clarsimp simp: ball_Un split del: if_split split: prod.split
         | wp (once) derive_cap_obj_refs_auth derive_cap_untyped_range_subset derive_cap_clas derive_cap_cli
                   hoare_vcg_all_lift_R whenE_throwError_wp slot_long_running_inv)+
   apply (clarsimp cong: list.case_cong option.case_cong prod.case_cong split: prod.split_asm)
-  apply (clarsimp simp: not_less all_set_conv_all_nth dest!: P_0_1_spec)
+  apply (clarsimp simp: not_less all_set_conv_all_nth dest!: P_0_1_2_spec)
   apply (auto simp: aag_cap_auth_def update_cap_cli
              intro: update_cap_obj_refs_subset
              dest!: update_cap_cap_auth_conferred_subset)

@@ -239,7 +239,7 @@ lemma decode_tcb_invocation_reads_respects_f:
           | wpc
           | simp add: if_apply_def2 split del: if_split add: o_def split_def)+
   apply (simp add: get_tcb_ctable_ptr_def get_tcb_vtable_ptr_def)
-  apply (subgoal_tac "\<not>length excaps < 3 \<longrightarrow> is_subject aag (fst (snd (excaps ! 2)))")
+  apply (subgoal_tac "\<not>length excaps < 4 \<longrightarrow> is_subject aag (fst (snd (excaps ! 3)))")
    prefer 2
    apply (fastforce intro: nth_mem)
   apply (subgoal_tac "excaps \<noteq> [] \<longrightarrow> is_subject aag (fst (snd (excaps ! 0)))")

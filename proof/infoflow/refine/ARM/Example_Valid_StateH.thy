@@ -227,7 +227,7 @@ where
      \<comment> \<open>tcbQueued          =\<close> False
      \<comment> \<open>tcbFault           =\<close> None
      \<comment> \<open>tcbTimeSlice       =\<close> Low_time_slice
-     \<comment> \<open>tcbFaultHandler    =\<close> 0
+     \<comment> \<open>tcbFaultHandler    =\<close> (CTE NullCap Null_mdb)
      \<comment> \<open>tcbIPCBuffer       =\<close> 0
      \<comment> \<open>tcbBoundNotification        =\<close> None
      \<comment> \<open>tcbContext         =\<close> (ArchThread undefined)"
@@ -251,7 +251,7 @@ where
      \<comment> \<open>tcbQueued          =\<close> False
      \<comment> \<open>tcbFault           =\<close> None
      \<comment> \<open>tcbTimeSlice       =\<close> High_time_slice
-     \<comment> \<open>tcbFaultHandler    =\<close> 0
+     \<comment> \<open>tcbFaultHandler    =\<close> (CTE NullCap Null_mdb)
      \<comment> \<open>tcbIPCBuffer       =\<close> 0
      \<comment> \<open>tcbBoundNotification        =\<close> None
      \<comment> \<open>tcbContext         =\<close> (ArchThread undefined)"
@@ -275,7 +275,7 @@ where
      \<comment> \<open>tcbQueued          =\<close> False
      \<comment> \<open>tcbFault           =\<close> None
      \<comment> \<open>tcbTimeSlice       =\<close> timeSlice
-     \<comment> \<open>tcbFaultHandler    =\<close> 0
+     \<comment> \<open>tcbFaultHandler    =\<close> (CTE NullCap Null_mdb)
      \<comment> \<open>tcbIPCBuffer       =\<close> 0
      \<comment> \<open>tcbBoundNotification        =\<close> None
      \<comment> \<open>tcbContext         =\<close> (ArchThread empty_context)"
@@ -1116,7 +1116,8 @@ where
                   Low_tcb_ptr + 0x10 \<mapsto> tcbVTable Low_tcbH,
                   Low_tcb_ptr + 0x20 \<mapsto> tcbReply Low_tcbH,
                   Low_tcb_ptr + 0x30 \<mapsto> tcbCaller Low_tcbH,
-                  Low_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame Low_tcbH]"
+                  Low_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame Low_tcbH,
+                  Low_tcb_ptr + 0x50 \<mapsto> tcbFaultHandler Low_tcbH]"
 
 definition
   High_tcb_cte :: "word32 \<Rightarrow> cte option"
@@ -1125,7 +1126,8 @@ where
                    High_tcb_ptr + 0x10 \<mapsto> tcbVTable High_tcbH,
                    High_tcb_ptr + 0x20 \<mapsto> tcbReply High_tcbH,
                    High_tcb_ptr + 0x30 \<mapsto> tcbCaller High_tcbH,
-                   High_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame High_tcbH]"
+                   High_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame High_tcbH,
+                   High_tcb_ptr + 0x50 \<mapsto> tcbFaultHandler High_tcbH]"
 
 definition
   idle_tcb_cte :: "word32 \<Rightarrow> cte option"
@@ -1134,7 +1136,8 @@ where
                    idle_tcb_ptr + 0x10 \<mapsto> tcbVTable idle_tcbH,
                    idle_tcb_ptr + 0x20 \<mapsto> tcbReply idle_tcbH,
                    idle_tcb_ptr + 0x30 \<mapsto> tcbCaller idle_tcbH,
-                   idle_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame idle_tcbH]"
+                   idle_tcb_ptr + 0x40 \<mapsto> tcbIPCBufferFrame idle_tcbH,
+                   idle_tcb_ptr + 0x50 \<mapsto> tcbFaultHandler idle_tcbH]"
 
 lemma kh0H_dom_tcb:
   "kh0H x = Some (KOTCB tcb) \<Longrightarrow> x = Low_tcb_ptr \<or> x = High_tcb_ptr \<or> x = idle_tcb_ptr"
@@ -1537,16 +1540,19 @@ lemma map_to_ctes_kh0H_simps[simp]:
   "map_to_ctes kh0H (Low_tcb_ptr + 0x20) = Low_tcb_cte (Low_tcb_ptr + 0x20)"
   "map_to_ctes kh0H (Low_tcb_ptr + 0x30) = Low_tcb_cte (Low_tcb_ptr + 0x30)"
   "map_to_ctes kh0H (Low_tcb_ptr + 0x40) = Low_tcb_cte (Low_tcb_ptr + 0x40)"
+  "map_to_ctes kh0H (Low_tcb_ptr + 0x50) = Low_tcb_cte (Low_tcb_ptr + 0x50)"
   "map_to_ctes kh0H High_tcb_ptr = High_tcb_cte High_tcb_ptr"
   "map_to_ctes kh0H (High_tcb_ptr + 0x10) = High_tcb_cte (High_tcb_ptr + 0x10)"
   "map_to_ctes kh0H (High_tcb_ptr + 0x20) = High_tcb_cte (High_tcb_ptr + 0x20)"
   "map_to_ctes kh0H (High_tcb_ptr + 0x30) = High_tcb_cte (High_tcb_ptr + 0x30)"
   "map_to_ctes kh0H (High_tcb_ptr + 0x40) = High_tcb_cte (High_tcb_ptr + 0x40)"
+  "map_to_ctes kh0H (High_tcb_ptr + 0x50) = High_tcb_cte (High_tcb_ptr + 0x50)"
   "map_to_ctes kh0H idle_tcb_ptr = idle_tcb_cte idle_tcb_ptr"
   "map_to_ctes kh0H (idle_tcb_ptr + 0x10) = idle_tcb_cte (idle_tcb_ptr + 0x10)"
   "map_to_ctes kh0H (idle_tcb_ptr + 0x20) = idle_tcb_cte (idle_tcb_ptr + 0x20)"
   "map_to_ctes kh0H (idle_tcb_ptr + 0x30) = idle_tcb_cte (idle_tcb_ptr + 0x30)"
   "map_to_ctes kh0H (idle_tcb_ptr + 0x40) = idle_tcb_cte (idle_tcb_ptr + 0x40)"
+  "map_to_ctes kh0H (idle_tcb_ptr + 0x50) = idle_tcb_cte (idle_tcb_ptr + 0x50)"
   supply option.case_cong[cong] if_cong[cong]
      apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def)
      apply fastforce
@@ -1622,6 +1628,25 @@ lemma map_to_ctes_kh0H_simps[simp]:
          erule notE,
          rule kh0H_dom_sets_distinct)
   apply (cut_tac ptr="Low_tcb_ptr" and x="0x40" in tcb_offs_in_rangeI, simp add: s0_ptr_defs, simp add: s0_ptr_defs)
+  apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct kh0H_dom_distinct' not_in_range_cte_None split: option.splits)
+  apply ((simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD1] not_in_range_cte_None
+        | simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD2] not_in_range_cte_None)+)[1]
+  apply (intro conjI impI allI)
+     apply (simp add: s0_ptr_defs)
+    apply clarsimp
+    apply (drule not_disjointI,
+             rule irq_node_offs_in_range,
+            assumption,
+           erule notE,
+           rule kh0H_dom_sets_distinct)
+   apply (clarsimp simp: kh0H_dom_distinct)
+  apply clarsimp
+  apply (drule not_disjointI,
+           rule irq_node_offs_in_range,
+          assumption,
+         erule notE,
+         rule kh0H_dom_sets_distinct)
+  apply (cut_tac ptr="Low_tcb_ptr" and x="0x50" in tcb_offs_in_rangeI, simp add: s0_ptr_defs, simp add: s0_ptr_defs)
   apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct kh0H_dom_distinct' not_in_range_cte_None split: option.splits)
   apply ((simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD1] not_in_range_cte_None
         | simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD2] not_in_range_cte_None)+)[1]
@@ -1717,6 +1742,25 @@ lemma map_to_ctes_kh0H_simps[simp]:
           assumption,
          erule notE,
          rule kh0H_dom_sets_distinct)
+apply (cut_tac ptr="High_tcb_ptr" and x="0x50" in tcb_offs_in_rangeI, simp add: s0_ptr_defs, simp add: s0_ptr_defs)
+  apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct kh0H_dom_distinct' not_in_range_cte_None  split: option.splits)
+  apply ((simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD1] not_in_range_cte_None
+        | simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD2] not_in_range_cte_None)+)[1]
+  apply (intro conjI impI allI)
+     apply (simp add: s0_ptr_defs)
+    apply clarsimp
+    apply (drule not_disjointI,
+             rule irq_node_offs_in_range,
+            assumption,
+           erule notE,
+           rule kh0H_dom_sets_distinct)
+   apply (clarsimp simp: kh0H_dom_distinct)
+  apply clarsimp
+  apply (drule not_disjointI,
+           rule irq_node_offs_in_range,
+          assumption,
+         erule notE,
+         rule kh0H_dom_sets_distinct)
   apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct not_in_range_cte_None  split: option.splits)
   apply (cut_tac ptr="idle_tcb_ptr" and x="0x10" in tcb_offs_in_rangeI, simp add: s0_ptr_defs, simp add: s0_ptr_defs)
   apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct kh0H_dom_distinct' not_in_range_cte_None  split: option.splits)
@@ -1789,6 +1833,25 @@ lemma map_to_ctes_kh0H_simps[simp]:
            rule kh0H_dom_sets_distinct)
    apply (clarsimp simp: kh0H_dom_distinct)
   apply clarsimp
+  apply (drule not_disjointI,
+           rule irq_node_offs_in_range,
+          assumption,
+         erule notE,
+         rule kh0H_dom_sets_distinct)
+  apply (cut_tac ptr="idle_tcb_ptr" and x="0x50" in tcb_offs_in_rangeI, simp add: s0_ptr_defs, simp add: s0_ptr_defs)
+  apply (clarsimp simp: map_to_ctes_kh0H option_update_range_def kh0H_dom_distinct kh0H_dom_distinct' not_in_range_cte_None  split: option.splits)
+  apply ((simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD1] not_in_range_cte_None
+        | simp add: offs_in_range kh0H_dom_sets_distinct[THEN orthD2] not_in_range_cte_None)+)[1]
+  apply (intro conjI impI allI)
+     apply (simp add: s0_ptr_defs)
+    apply clarsimp
+    apply (drule not_disjointI,
+             rule irq_node_offs_in_range,
+            assumption,
+           erule notE,
+           rule kh0H_dom_sets_distinct)
+   apply (clarsimp simp: kh0H_dom_distinct)
+  apply clarsimp
   by (drule not_disjointI,
            rule irq_node_offs_in_range,
           assumption,
@@ -1798,11 +1861,11 @@ lemma map_to_ctes_kh0H_simps[simp]:
 lemma map_to_ctes_kh0H_dom:
   "dom (map_to_ctes kh0H) =
              {idle_tcb_ptr, idle_tcb_ptr + 0x10, idle_tcb_ptr + 0x20,
-              idle_tcb_ptr + 0x30, idle_tcb_ptr + 0x40,
+              idle_tcb_ptr + 0x30, idle_tcb_ptr + 0x40, idle_tcb_ptr + 0x50,
               Low_tcb_ptr, Low_tcb_ptr + 0x10, Low_tcb_ptr + 0x20,
-              Low_tcb_ptr + 0x30, Low_tcb_ptr + 0x40,
+              Low_tcb_ptr + 0x30, Low_tcb_ptr + 0x40, Low_tcb_ptr + 0x50,
               High_tcb_ptr, High_tcb_ptr + 0x10, High_tcb_ptr + 0x20,
-              High_tcb_ptr + 0x30, High_tcb_ptr + 0x40,
+              High_tcb_ptr + 0x30, High_tcb_ptr + 0x40,  High_tcb_ptr + 0x50,
               irq_cnode_ptr} \<union>
              irq_node_offs_range \<union>
              cnode_offs_range Silc_cnode_ptr \<union>
@@ -1846,16 +1909,19 @@ lemma map_to_ctes_kh0H_SomeD:
         x = idle_tcb_ptr + 0x20 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = idle_tcb_ptr + 0x30 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = idle_tcb_ptr + 0x40 \<and> y = (CTE NullCap Null_mdb) \<or>
+        x = idle_tcb_ptr + 0x50 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = Low_tcb_ptr \<and> y = (CTE (CNodeCap Low_cnode_ptr 10 2 10) (MDB (Low_cnode_ptr + 0x20) 0 False False)) \<or>
         x = Low_tcb_ptr + 0x10 \<and> y = (CTE (ArchObjectCap (PageDirectoryCap Low_pd_ptr (Some Low_asid))) (MDB (Low_cnode_ptr + 0x30) 0 False False)) \<or>
         x = Low_tcb_ptr + 0x20 \<and> y = (CTE (ReplyCap Low_tcb_ptr True True) (MDB 0 0 True True)) \<or>
         x = Low_tcb_ptr + 0x30 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = Low_tcb_ptr + 0x40 \<and> y = (CTE NullCap Null_mdb) \<or>
+        x = Low_tcb_ptr + 0x50 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = High_tcb_ptr \<and> y = (CTE (CNodeCap High_cnode_ptr 10 2 10) (MDB (High_cnode_ptr + 0x20) 0 False False)) \<or>
         x = High_tcb_ptr + 0x10 \<and> y = (CTE (ArchObjectCap (PageDirectoryCap High_pd_ptr (Some High_asid))) (MDB (High_cnode_ptr + 0x30) 0 False False)) \<or>
         x = High_tcb_ptr + 0x20 \<and> y = (CTE (ReplyCap High_tcb_ptr True True) (MDB 0 0 True True)) \<or>
         x = High_tcb_ptr + 0x30 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = High_tcb_ptr + 0x40 \<and> y = (CTE NullCap Null_mdb) \<or>
+        x = High_tcb_ptr + 0x50 \<and> y = (CTE NullCap Null_mdb) \<or>
         x = irq_cnode_ptr \<and> y = (CTE NullCap Null_mdb) \<or>
         x \<in> irq_node_offs_range \<and> y = (CTE NullCap Null_mdb) \<or>
         x \<in> cnode_offs_range Silc_cnode_ptr \<and> Silc_cte_cte Silc_cnode_ptr x \<noteq> None \<and> y = the (Silc_cte_cte Silc_cnode_ptr x) \<or>
@@ -2657,7 +2723,7 @@ lemma s0H_valid_pspace':
              apply (clarsimp simp: mdb_chain_0_def)
              apply (frule map_to_ctes_kh0H_SomeD)
              apply (elim disjE)
-                                apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[5]
+                                apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[6]
                            apply (rule r_r_into_trancl)
                             apply (erule next_fold)
                             apply simp
@@ -2670,7 +2736,7 @@ lemma s0H_valid_pspace':
                           apply (rule next_fold)
                            apply simp
                           apply simp
-                         apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[3]
+                         apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[4]
                       apply (rule r_r_into_trancl)
                        apply (erule next_fold)
                        apply simp
@@ -2683,7 +2749,7 @@ lemma s0H_valid_pspace':
                      apply (rule next_fold)
                       apply simp
                      apply simp
-                    apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[5]
+                    apply ((erule r_into_trancl[OF next_fold], clarsimp)+)[6]
                apply (clarsimp simp: Silc_cte_cte_def cnode_offs_range_def Silc_cte'_def Silc_capsH_def empty_cte_def split: if_split_asm)
                  apply (rule r_r_into_trancl)
                   apply (erule next_fold)

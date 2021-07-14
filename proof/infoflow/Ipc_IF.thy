@@ -1538,11 +1538,15 @@ subsection "Faults"
 lemma send_fault_ipc_reads_respects:
   assumes domains_distinct[wp]: "pas_domains_distinct aag"
   shows
-  "reads_respects aag (l :: 'a subject_label) (invs and pas_refined aag and pas_cur_domain aag
-         and is_subject aag \<circ> cur_thread and K (is_subject aag thread \<and> valid_fault fault))
-     (send_fault_ipc thread fault)"
-  apply (rule gen_asm_ev)
+  "reads_respects aag (l :: 'a subject_label)
+     (invs and pas_refined aag and pas_cur_domain aag
+           and is_subject aag \<circ> cur_thread
+           and cte_wp_at ((=) fh) (thread,tcb_cnode_index 5)
+           and K (is_subject aag thread \<and> valid_fault fault \<and> valid_fault_handler fh))
+     (send_fault_ipc thread fh fault)"
+  apply (rule gen_asm_ev)+
   apply (simp add: send_fault_ipc_def Let_def lookup_cap_def split_def)
+  apply (subst bind_return[symmetric, where t="case_cap _ _ _ _ _ _ _ _ _ _ _ _ _"])
   apply (wp send_ipc_reads_respects thread_set_reads_respects
             thread_set_refs_trivial thread_set_obj_at_impossible
             thread_set_valid_objs''
@@ -1555,20 +1559,11 @@ lemma send_fault_ipc_reads_respects:
        | wpc
        | simp add: split_def add: tcb_cap_cases_def
        | strengthen aag_can_read_self)+
-  (* clagged from Ipc_AC *)
-  apply (rule_tac Q'="\<lambda>rv s. pas_refined aag s
-                          \<and> is_subject aag (cur_thread s)
-                          \<and> invs s
-                          \<and> pas_cur_domain aag s
-                          \<and> valid_fault fault
-                          \<and> is_subject aag (fst (fst rv))"
-               in hoare_post_imp_R[rotated])
-       apply (fastforce simp: aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def)
-      apply (wp get_cap_auth_wp[where aag=aag] lookup_slot_for_thread_authorised
-                thread_get_reads_respects
-            | simp add: add: lookup_cap_def split_def)+
+  apply (simp only: Retype_AI.F[symmetric])
+  apply (fastforce dest!: cap_auth_caps_of_state
+                    simp: valid_fault_handler_def has_handler_rights_def
+                          aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def)
   done
-
 
 lemma handle_fault_reads_respects:
   assumes domains_distinct[wp]: "pas_domains_distinct aag"
@@ -1577,10 +1572,16 @@ lemma handle_fault_reads_respects:
         and is_subject aag \<circ> cur_thread
         and K (is_subject aag thread \<and> valid_fault fault))
      (handle_fault thread fault)"
-  unfolding handle_fault_def catch_def fun_app_def handle_double_fault_def
+  unfolding handle_fault_def catch_def fun_app_def handle_no_fault_handler_def unless_def
   apply (wp (once) hoare_drop_imps |
-        wp set_thread_state_reads_respects send_fault_ipc_reads_respects | wpc | simp)+
-  apply (fastforce intro: reads_affects_equiv_get_tcb_eq)
+         wp when_ev set_thread_state_reads_respects send_fault_ipc_reads_respects | wpc | simp)+
+  apply (rule conjI; clarsimp simp: )
+   apply fastforce
+  apply (rule context_conjI)
+   apply (rule cte_wp_at_tcbI; simp add: get_tcb_def split: option.splits kernel_object.splits)
+  apply (drule cte_wp_at_eqD2)
+   apply (rule tcb_ep_slot_cte_wp_at)
+     apply (clarsimp simp: tcb_at_def)+
   done
 
 end
@@ -1981,11 +1982,11 @@ lemma receive_signal_globals_equiv:
                      as_user_globals_equiv get_simple_ko_wp)+
   done
 
-lemma handle_double_fault_globals_equiv:
+lemma handle_no_fault_handler_globals_equiv:
   "\<lbrace>globals_equiv s and valid_arch_state\<rbrace>
-   handle_double_fault tptr ex1 ex2
+   handle_no_fault_handler tptr
    \<lbrace>\<lambda>_. globals_equiv s\<rbrace>"
-  unfolding handle_double_fault_def
+  unfolding handle_no_fault_handler_def
   by (wp set_thread_state_globals_equiv)
 
 lemma send_ipc_valid_global_objs:
@@ -1996,43 +1997,23 @@ lemma send_ipc_valid_global_objs:
   by (wp dxo_wp_weak hoare_drop_imps hoare_vcg_all_lift | simp | wpc | intro conjI impI)+
 
 lemma send_fault_ipc_valid_global_objs:
-  "send_fault_ipc tptr fault \<lbrace>valid_global_objs\<rbrace>"
+  "send_fault_ipc tptr fh fault \<lbrace>valid_global_objs\<rbrace>"
   unfolding send_fault_ipc_def
-  apply (wp)
-     apply (simp add: Let_def)
-     apply (wp send_ipc_valid_global_objs | wpc)+
-    apply (rule_tac Q'="\<lambda>_. valid_global_objs" in hoare_post_imp_R)
-     apply (wp | simp)+
-  done
-
+  by (wpsimp wp: send_ipc_valid_global_objs)
 
 context Ipc_IF_1 begin
 
 lemma send_fault_ipc_globals_equiv:
   "\<lbrace>globals_equiv st and valid_objs and valid_arch_state and valid_global_refs
-                    and pspace_distinct and pspace_aligned and valid_global_objs
-                    and valid_idle and (\<lambda>s. sym_refs (state_refs_of s)) and K (valid_fault fault)\<rbrace>
-   send_fault_ipc tptr fault
-   \<lbrace>\<lambda>_. globals_equiv st\<rbrace>"
+                     and pspace_distinct and pspace_aligned and valid_global_objs
+                     and valid_idle and (\<lambda>s. sym_refs (state_refs_of s)) and K (valid_fault fault)\<rbrace>
+    send_fault_ipc tptr fh fault
+    \<lbrace>\<lambda>_. globals_equiv st\<rbrace>"
   unfolding send_fault_ipc_def
-  apply (wp)
-     apply (simp add: Let_def)
-     apply (wp send_ipc_globals_equiv thread_set_globals_equiv thread_set_valid_objs''
-               thread_set_fault_valid_global_refs thread_set_valid_idle_trivial thread_set_refs_trivial
-            | wpc | simp)+
-    apply (rule_tac Q'="\<lambda>_. globals_equiv st and valid_objs and valid_arch_state and
-                            valid_global_refs and pspace_distinct and pspace_aligned and
-                            valid_global_objs and K (valid_fault fault) and valid_idle and
-                            (\<lambda>s. sym_refs (state_refs_of s))" in hoare_post_imp_R)
-     apply (wp | simp)+
-    apply (clarsimp)
-    apply (rule valid_tcb_fault_update)
-     apply (wp | simp)+
+  apply(wpsimp wp: thread_set_globals_equiv thread_set_valid_objs'' thread_set_valid_idle_trivial
+                   thread_set_fault_valid_global_refs thread_set_refs_trivial send_ipc_globals_equiv)
+  apply(clarsimp simp: valid_tcb_fault_update)
   done
-
-crunches send_fault_ipc
-  for valid_arch_state[wp]: valid_arch_state
-  (wp: dxo_wp_weak hoare_drop_imps simp: crunch_simps)
 
 lemma handle_fault_globals_equiv:
   "\<lbrace>globals_equiv st and valid_objs and valid_arch_state and valid_global_refs
@@ -2041,10 +2022,10 @@ lemma handle_fault_globals_equiv:
    handle_fault thread ex
    \<lbrace>\<lambda>_. globals_equiv st\<rbrace>"
   unfolding handle_fault_def
-  apply (wp handle_double_fault_globals_equiv)
-    apply (rule_tac Q="\<lambda>_. globals_equiv st and valid_arch_state" and
-                    E="\<lambda>_. globals_equiv st and valid_arch_state" in hoare_post_impErr)
-      apply (wp send_fault_ipc_globals_equiv | simp)+
+  apply(wpsimp wp: handle_no_fault_handler_globals_equiv)
+    apply(rule_tac Q="\<lambda>_. globals_equiv st and valid_arch_state" and
+                   E="\<lambda>_. globals_equiv st and valid_arch_state" in hoare_post_impErr)
+      apply(wpsimp wp: send_fault_ipc_globals_equiv)+
   done
 
 lemma handle_fault_reply_globals_equiv:
@@ -2175,19 +2156,6 @@ lemma receive_ipc_reads_respects_g:
   by fastforce
 
 subsection "Faults"
-
-lemma send_fault_ipc_reads_respects_g:
-  assumes domains_distinct: "pas_domains_distinct aag"
-  shows
-  "reads_respects_g aag l
-   (invs and pas_refined aag and pas_cur_domain aag
-         and is_subject aag \<circ> cur_thread and K (is_subject aag thread \<and> valid_fault fault))
-     (send_fault_ipc thread fault)"
-  apply (rule equiv_valid_guard_imp[OF reads_respects_g])
-    apply (rule send_fault_ipc_reads_respects[OF domains_distinct])
-   apply (rule doesnt_touch_globalsI)
-   apply (wp send_fault_ipc_globals_equiv | simp)+
-  by fastforce
 
 lemma handle_fault_reads_respects_g:
   assumes domains_distinct: "pas_domains_distinct aag"

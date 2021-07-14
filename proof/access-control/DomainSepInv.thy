@@ -583,27 +583,6 @@ lemma cte_wp_at_weak_derived_ReplyCap:
   apply auto
   done
 
-lemma thread_set_tcb_registers_caps_merge_default_tcb_neg_cte_wp_at[wp]:
-  "thread_set (tcb_registers_caps_merge default_tcb) word \<lbrace>\<lambda>s. \<not> cte_wp_at P slot s\<rbrace>"
-  unfolding thread_set_def
-  apply (wp set_object_wp | simp)+
-  apply (case_tac "word = fst slot")
-   apply (clarsimp split: kernel_object.splits)
-   apply (erule notE)
-   apply (erule cte_wp_atE)
-    apply (fastforce simp: obj_at_def)
-   apply (drule get_tcb_SomeD)
-   apply (rule cte_wp_at_tcbI)
-     apply simp
-    apply assumption
-   apply (clarsimp simp: tcb_cap_cases_def tcb_registers_caps_merge_def split: if_splits)
-  apply (fastforce elim: cte_wp_atE intro: cte_wp_at_cteI cte_wp_at_tcbI)
-  done
-
-lemma thread_set_tcb_registers_caps_merge_default_tcb_domain_sep_inv[wp]:
-  "thread_set (tcb_registers_caps_merge default_tcb) word \<lbrace>domain_sep_inv irqs st\<rbrace>"
-  by (wp domain_sep_inv_triv)
-
 lemma cancel_badged_sends_domain_sep_inv[wp]:
   "cancel_badged_sends epptr badge \<lbrace>domain_sep_inv irqs st\<rbrace>"
   apply (simp add: cancel_badged_sends_def)
@@ -911,16 +890,13 @@ lemma receive_ipc_domain_sep_inv:
 lemma send_fault_ipc_domain_sep_inv:
   "\<lbrace>domain_sep_inv irqs st and valid_objs and sym_refs \<circ> state_refs_of
                            and valid_mdb and K (valid_fault fault)\<rbrace>
-   send_fault_ipc thread fault
+   send_fault_ipc thread fh fault
    \<lbrace>\<lambda>_ s. domain_sep_inv irqs (st :: 'state_ext state) (s :: det_ext state)\<rbrace>"
   unfolding send_fault_ipc_def
   apply (rule hoare_gen_asm)+
   apply (wp send_ipc_domain_sep_inv thread_set_valid_objs thread_set_tcb_fault_update_valid_mdb
             thread_set_refs_trivial thread_set_obj_at_impossible hoare_vcg_ex_lift
          | wpc | simp add: Let_def split_def lookup_cap_def valid_tcb_fault_update)+
-     apply (wpe get_cap_inv[where P="domain_sep_inv irqs st and valid_objs and valid_mdb
-                                                            and sym_refs o state_refs_of"])
-     apply (wp | simp)+
   done
 
 crunches do_reply_transfer, handle_fault, reply_from_kernel, restart
@@ -951,27 +927,6 @@ lemma thread_set_tcb_ipc_buffer_update_neg_cte_wp_at[wp]:
 
 lemma thread_set_tcb_ipc_buffer_update_domain_sep_inv[wp]:
   "thread_set (tcb_ipc_buffer_update f) t \<lbrace>domain_sep_inv irqs st\<rbrace>"
-  by (rule domain_sep_inv_triv; wp)
-
-lemma thread_set_tcb_fault_handler_update_neg_cte_wp_at[wp]:
-  "thread_set (tcb_fault_handler_update f) t \<lbrace>\<lambda>s. \<not> cte_wp_at P slot s\<rbrace>"
-  unfolding thread_set_def
-  apply (wp set_object_wp | simp)+
-  apply (case_tac "t = fst slot")
-   apply (clarsimp split: kernel_object.splits)
-   apply (erule notE)
-   apply (erule cte_wp_atE)
-    apply (fastforce simp: obj_at_def)
-   apply (drule get_tcb_SomeD)
-   apply (rule cte_wp_at_tcbI)
-     apply simp
-    apply assumption
-   apply (fastforce simp: tcb_cap_cases_def split: if_splits)
-  apply (fastforce elim: cte_wp_atE intro: cte_wp_at_cteI cte_wp_at_tcbI)
-  done
-
-lemma thread_set_tcb_fault_handler_update_domain_sep_inv[wp]:
-  "thread_set (tcb_fault_handler_update f) t \<lbrace>domain_sep_inv irqs st\<rbrace>"
   by (rule domain_sep_inv_triv; wp)
 
 lemma thread_set_tcb_tcb_mcpriority_update_neg_cte_wp_at[wp]:
@@ -1046,6 +1001,7 @@ lemma invoke_tcb_domain_sep_inv:
            | wpc | strengthen
            | simp add: option_update_thread_def emptyable_def tcb_cap_cases_def
                        tcb_cap_valid_def tcb_at_st_tcb_at
+                       install_tcb_frame_cap_def install_tcb_cap_def
                   del: set_priority_extended.dxo_eq)+
   done
 

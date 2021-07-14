@@ -313,6 +313,7 @@ lemma invoke_tcb_irq_state_inv[ADT_IF_assms]:
     apply ((wp irq_state_inv_triv | simp)+)[2]
   (* just ThreadControl left *)
   apply (simp add: split_def cong: option.case_cong)
+  (* slow, ~45s *)
   by (wp hoare_vcg_all_lift_R hoare_vcg_all_lift hoare_vcg_const_imp_lift_R
          checked_cap_insert_domain_sep_inv cap_delete_deletes
          cap_delete_irq_state_inv[where st=st and sta=sta and irq=irq]
@@ -321,6 +322,7 @@ lemma invoke_tcb_irq_state_inv[ADT_IF_assms]:
       | wpc
       | simp add: emptyable_def tcb_cap_cases_def tcb_cap_valid_def
                   tcb_at_st_tcb_at option_update_thread_def
+                  install_tcb_frame_cap_def install_tcb_cap_def
       | strengthen use_no_cap_to_obj_asid_strg
       | wp (once) irq_state_inv_triv hoare_drop_imps
       | clarsimp split: option.splits | intro impI conjI allI)+

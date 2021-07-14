@@ -453,12 +453,6 @@ lemma set_mcpriority_only_timer_irq_inv:
   apply (wp only_timer_irq_pres | force)+
   done
 
-lemma thread_set_tcb_fault_handler_update_only_timer_irq_inv:
-  "thread_set (tcb_fault_handler_update blah) t \<lbrace>only_timer_irq_inv irq (st :: det_state)\<rbrace>"
-  apply (simp add: only_timer_irq_inv_def)
-  apply (wp only_timer_irq_pres | force)+
-  done
-
 lemma bind_notification_reads_respects:
   "reads_respects aag l
      (pas_refined aag and invs and
@@ -481,6 +475,59 @@ lemmas reschedule_required_reads_respects_f =
   reads_respects_f[OF reschedule_required_reads_respects, where Q="\<top>", simplified,
                    OF _ reschedule_required_ext_extended.silc_inv]
 
+lemma install_tcb_cap_reads_respects_f: "reads_respects_f aag l
+         (silc_inv aag st and only_timer_irq_inv irq st' and einvs
+                          and simple_sched_action and pas_refined aag
+                          and K (is_subject aag t \<and> is_subject aag (fst sl) \<and>
+                                 case_option True (is_subject aag \<circ> fst \<circ> snd) slo)
+                          and K (n \<in> {0,1,5})
+                          and K (pas_domains_distinct aag))
+         (install_tcb_cap t sl n slo)"
+  apply(subst bindE_returnOk[symmetric])
+  unfolding install_tcb_cap_def unlessE_def
+  apply(rule gen_asm_ev')
+  apply (wp | wpc | intro conjI impI)+
+      apply clarsimp
+      apply(rule conjI; clarsimp)
+       prefer 2
+       apply(wp reads_respects_f[OF checked_insert_reads_respects, where st=st])
+       apply(wp checked_cap_insert_silc_inv)
+      apply wp
+     apply(wp cap_delete_reads_respects)
+    apply(wp cap_delete_silc_inv_not_transferable)
+   apply wp
+  apply (clarsimp cong: conj_cong)
+  apply(intro conjI; assumption?)
+  apply(fastforce simp: emptyable_def)
+  done
+
+lemma install_tcb_frame_cap_reads_respects_f:
+  "reads_respects_f aag l
+         (silc_inv aag st and only_timer_irq_inv irq st' and einvs
+                          and simple_sched_action and pas_refined aag
+                          and K (is_subject aag t \<and> is_subject aag (fst sl) \<and>
+                                 case_option True (case_option True (is_subject aag \<circ> fst \<circ> snd) \<circ> snd) buf)
+                          and K (case_option True (case_option True ((\<lambda>c. pas_cap_cur_auth aag c \<and> \<not>is_master_reply_cap c) \<circ> fst) \<circ> snd) buf)
+                          and K (pas_domains_distinct aag))
+         (install_tcb_frame_cap t sl buf)"
+  apply (subst bindE_returnOk[symmetric])
+  apply (unfold install_tcb_frame_cap_def unlessE_def)
+  apply (rule gen_asm_ev')
+  apply (wp when_ev reschedule_required_reads_respects_f checked_insert_pas_refined
+            reads_respects_f[OF thread_set_reads_respects, where st=st and Q="\<top>"]
+            reads_respects_f[OF checked_insert_reads_respects, where st=st]
+            thread_set_pas_refined thread_set_mdb cap_delete_reads_respects
+            cap_delete_silc_inv cap_delete_pas_refined checked_cap_insert_silc_inv
+            hoare_vcg_all_lift hoare_vcg_const_imp_lift
+         | wpc | intro conjI impI | clarsimp
+         | strengthen invs_strgs invs_arch_state_strg invs_vspace_objs
+         | wp (once) hoare_drop_imps | fastforce simp: emptyable_def ran_tcb_cap_cases)+
+  done
+
+lemma install_tcb_cap_only_timer_irq_inv[wp]:
+  "\<lbrace>only_timer_irq_inv irq (st::det_ext state)\<rbrace> install_tcb_cap t sl n slo \<lbrace>\<lambda>_. only_timer_irq_inv irq st\<rbrace>"
+  unfolding install_tcb_cap_def fun_app_def
+  by (wpsimp wp: checked_cap_insert_only_timer_irq_inv cap_delete_only_timer_irq_inv | intro conjI)+
 
 context Tcb_IF_2 begin
 

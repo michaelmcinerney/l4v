@@ -78,7 +78,8 @@ definition
 
 definition
   "separate_tcb p cs \<equiv> case_option True (separate_cnode_cap cs) (cs (p, tcb_cnode_index 0))
-                       \<and> cs (p, tcb_cnode_index 3) = Some NullCap" \<comment> \<open>ctable and caller cap\<close>
+                       \<and> cs (p, tcb_cnode_index 3) = Some NullCap
+                       \<and> cs (p, tcb_cnode_index 5) = Some NullCap" \<comment> \<open>ctable and caller cap\<close>
 
 lemma separate_cnode_cap_rab:
   "\<lbrakk> separate_cnode_cap cs cap; length cref = word_bits \<rbrakk> \<Longrightarrow>
@@ -152,7 +153,7 @@ lemma caps_of_state_tcb_cap_cases:
 
 lemma separate_state_get_tcbD:
   "\<lbrakk>separate_state s; get_tcb p s = Some tcb \<rbrakk> \<Longrightarrow>
-  separate_cnode_cap (caps_of_state s) (tcb_ctable tcb) \<and> tcb_caller tcb = NullCap"
+  separate_cnode_cap (caps_of_state s) (tcb_ctable tcb) \<and> tcb_caller tcb = NullCap \<and> tcb_fault_handler tcb = NullCap"
   unfolding separate_state_def
   apply (drule spec [where x = p])
   apply (simp add: tcb_at_def separate_tcb_def caps_of_state_tcb_cap_cases dom_tcb_cap_cases)

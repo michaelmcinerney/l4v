@@ -274,29 +274,30 @@ lemma not_empty_gen_asm:
 lemmas bisim_refl' = bisim_refl [where P = \<top> and P' = \<top> and R = "(=)", OF refl]
 
 lemma send_fault_ipc_bisim:
-  "bisim (=) \<top> (tcb_at tcb and valid_objs and separate_state)
-   (set_thread_state tcb Inactive) (send_fault_ipc tcb flt' <catch> handle_double_fault tcb flt')"
+  "bisim (=) \<top> (tcb_at tcb and valid_objs and ko_at (TCB tcba) tcb and K (tcb_fault_handler tcba = NullCap))
+                (set_thread_state tcb Inactive)
+                (do has_fh <- send_fault_ipc tcb (tcb_fault_handler tcba) flt' <catch> (\<lambda>y. return False);
+                              unless has_fh (handle_no_fault_handler tcb)
+                 od)"
   unfolding send_fault_ipc_def
   apply (rule bisim_guard_imp)
-    apply (rule bisim_catch_faults_r [where S = "separate_state and valid_objs"])
-       apply (clarsimp simp: handle_double_fault_def)
+    apply (rule_tac Q'="\<lambda>rv s. True \<and> \<not>rv"
+                 in bisim_symb_exec_r[where Pe="\<lambda>_. (=) NullCap (tcb_fault_handler tcba)"
+                                        and Pd="\<top> and (\<lambda>_. (=) NullCap (tcb_fault_handler tcba))"])
+       apply (rule bisim_gen_asm_r[where P'=top, simplified K_def pred_conj_def])
+       apply (clarsimp simp: handle_no_fault_handler_def)
        apply (rule bisim_refl')
-      apply (simp add: Let_def)
-      apply (rule hoare_vcg_seqE)
-       apply (rule hoare_vcg_seqE)
-        apply (wpc; wp)
-       apply wp
-       apply simp
-       apply (rule hoare_post_imp_R [OF lc_sep])
-       apply (clarsimp simp: separate_cap_def)
-      apply (wp | simp add: Let_def)+
-        apply (rule_tac P = "separate_cap handler_cap" in hoare_gen_asmE')
-        apply (erule separate_capE, simp_all)[1]
-         apply (wp | simp)+
-       apply (wp not_empty_lc)
-      apply (rule_tac P = "separate_cap xa" in not_empty_gen_asm)
-      apply (erule separate_capE, simp_all)[1]
-       apply wpsimp+
+      apply (rule_tac P = "(=) NullCap (tcb_fault_handler tcba)" in hoare_gen_asm')
+      apply (rule_tac P=\<top> in hoare_triv)
+      apply wpsimp
+     apply (clarsimp simp: pred_conj_def)
+     apply (rule_tac P="NullCap = (tcb_fault_handler tcba)" in hoare_gen_asm'[simplified pred_conj_def conj_ac])
+     apply wpsimp
+    apply (rule not_empty_gen_asm)
+    apply (clarsimp simp: is_cap_simps)
+    apply (clarsimp simp: catch_def liftE_def not_empty_return)
+   apply clarsimp
+  apply clarsimp
   done
 
 lemma handle_fault_bisim:
@@ -307,7 +308,9 @@ lemma handle_fault_bisim:
        apply simp
        apply (rule send_fault_ipc_bisim)
       apply (wpsimp simp: gets_the_def tcb_at_def)+
+  apply (frule separate_state_get_tcbD; fastforce)
   done
+
 
 lemmas bisim_throwError_dc = bisim_throwError [where f = dc, OF dc_refl]
 

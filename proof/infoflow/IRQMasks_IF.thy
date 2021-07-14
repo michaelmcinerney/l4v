@@ -85,6 +85,15 @@ crunch irq_masks[wp]: set_extra_badge "\<lambda>s. P (irq_masks_of_state s)"
 crunch irq_masks[wp]: send_ipc "\<lambda>s. P (irq_masks_of_state s)"
   (wp: crunch_wps simp: crunch_simps ignore: const_on_failure rule: transfer_caps_loop_pres)
 
+lemma invoke_irq_control_irq_masks:
+  "\<lbrace>domain_sep_inv False (st :: 's state) and irq_control_inv_valid ivk\<rbrace>
+   invoke_irq_control ivk
+   \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
+  apply (cases ivk)
+   apply (clarsimp simp: irq_control_inv_valid_def domain_sep_inv_def valid_def)
+  apply (clarsimp simp: arch_invoke_irq_control_irq_masks)
+  done
+
 (* Clagged from re_del_domain_sep_inv' -- would Dan's annotations be good here? *)
 lemma rec_del_irq_masks':
   notes drop_spec_valid[wp_split del] drop_spec_validE[wp_split del] rec_del.simps[simp del]
@@ -155,15 +164,6 @@ lemma cap_delete_irq_masks:
    cap_delete blah
    \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>,\<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
   by (simp add: cap_delete_def) (wpsimp wp: rec_del_irq_masks)
-
-lemma invoke_irq_control_irq_masks:
-  "\<lbrace>domain_sep_inv False (st :: 's state) and irq_control_inv_valid ivk\<rbrace>
-   invoke_irq_control ivk
-   \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
-  apply (cases ivk)
-   apply (clarsimp simp: irq_control_inv_valid_def domain_sep_inv_def valid_def)
-  apply (clarsimp simp: arch_invoke_irq_control_irq_masks)
-  done
 
 end
 

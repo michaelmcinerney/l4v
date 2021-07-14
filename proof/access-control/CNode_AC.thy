@@ -537,79 +537,75 @@ lemma set_cap_integrity_deletion_aux:
     apply (wpc)
     apply (wp set_object_wp)
      apply wpc
-         apply wp+
-    apply (wp get_object_wp)
+         apply (wp get_object_wp)+
    apply wps
    apply (wp integrity_asids_set_cap_Nullcap hoare_vcg_all_lift)
   apply (safe ; clarsimp simp add: cte_wp_at_caps_of_state dest!: ko_atD)
-       (* cnode *)
-       subgoal for s obj addr cnode_size content cap'
-         apply (rule tro_cnode, simp, simp)
-         apply (rule cnode_integrityI)
-         apply simp
-         apply (intro impI disjI2)
-         apply (frule_tac addr=addr in caps_of_state_cnode, simp)
-         apply clarsimp
-         apply (erule is_transferable.cases, blast)
-          apply (fastforce intro: reply_cap_deletion_integrity_intros)
-         apply clarsimp
-         apply (rule reply_cap_deletion_integrityI2[OF refl refl])
-         apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
-          apply (drule reply_cap_no_grand_parent[where cs="caps_of_state s"]; fastforce?)
-          apply (fastforce simp: aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
-                           dest: cap_auth_caps_of_state pas_refined_Control)
-         apply (fastforce dest: tcb_states_of_state_kheapD descendant_of_caller_slot[OF _ _ tcb_atI]
-                                parent_of_rtrancl_no_descendant)
-         done
+        (* cnode *)
+        apply (rename_tac s obj addr cnode_size content cap')
+        apply (rule tro_cnode, simp, simp)
+        apply (rule cnode_integrityI)
+        apply simp
+        apply (intro impI disjI2)
+        apply (frule_tac addr=addr in caps_of_state_cnode, simp)
+        apply clarsimp
+        apply (erule is_transferable.cases, blast)
+         apply (fastforce intro: reply_cap_deletion_integrity_intros)
+        apply clarsimp
+        apply (rule reply_cap_deletion_integrityI2[OF refl refl])
+        apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
+         apply (drule_tac cs="caps_of_state s" in reply_cap_no_grand_parent; fastforce?)
+         apply (fastforce simp: aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
+                          dest: cap_auth_caps_of_state pas_refined_Control)
+        apply (fastforce dest: tcb_states_of_state_kheapD descendant_of_caller_slot[OF _ _ tcb_atI]
+                               parent_of_rtrancl_no_descendant)
        (* tcb_ctable *)
-       subgoal for s obj tcb
-         apply (rule_tac tro_tcb_empty_ctable, simp, simp, simp)
-         apply (frule_tac addr="tcb_cnode_index 0" in caps_of_state_tcb)
-         apply clarsimp
-         apply (elim is_transferable.cases, simp)
-          apply (fastforce intro: reply_cap_deletion_integrity_intros)
-         apply clarsimp
-         apply (rule reply_cap_deletion_integrityI2[OF refl refl])
-         apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
-          apply (force simp: aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
-                       dest: reply_cap_no_grand_parent cap_auth_caps_of_state pas_refined_Control)
-         apply (fastforce simp: direct_call_def
-                          dest: tcb_caller_slot_empty_on_recieve parent_of_rtrancl_no_descendant
-                                 descendant_of_caller_slot[OF _ _ tcb_atI] tcb_states_of_state_kheapD)
-         done
-     (* tcb_vtable *)
-     apply (rename_tac s obj tcb)
+       apply (rule_tac tro_tcb_empty_ctable, simp, simp, simp)
+       apply (frule_tac addr="tcb_cnode_index 0" in caps_of_state_tcb)
+       apply clarsimp
+       apply (elim is_transferable.cases, simp)
+        apply (fastforce intro: reply_cap_deletion_integrity_intros)
+       apply clarsimp
+       apply (rule reply_cap_deletion_integrityI2[OF refl refl])
+       apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
+        apply (force simp: aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
+                     dest: reply_cap_no_grand_parent cap_auth_caps_of_state pas_refined_Control)
+       apply (fastforce simp: direct_call_def
+                        dest: tcb_caller_slot_empty_on_recieve parent_of_rtrancl_no_descendant
+                               descendant_of_caller_slot[OF _ _ tcb_atI] tcb_states_of_state_kheapD)
+      (* tcb_vtable *)
+      apply (rule tro_orefl)
+      apply (fastforce simp: caps_of_state_tcb valid_obj_def valid_tcb_def ran_tcb_cap_cases
+                       elim:pspace_valid_objsE[OF _ invs_valid_objs] elim!: is_transferable.cases)
+     (* tcb_reply *)
      apply (rule tro_orefl)
-     apply (fastforce simp: caps_of_state_tcb valid_obj_def valid_tcb_def ran_tcb_cap_cases
-                      elim:pspace_valid_objsE[OF _ invs_valid_objs] elim!:is_transferable.cases)
-    (* tcb_reply *)
-    apply (rename_tac s obj tcb)
-    apply (rule tro_orefl)
-    apply (fastforce simp: is_cap_simps caps_of_state_tcb valid_obj_def valid_tcb_def
-                           ran_tcb_cap_cases
-                     elim: pspace_valid_objsE[OF _ invs_valid_objs] elim!:is_transferable.cases)
-   (* tcb_caller *)
-   subgoal for s obj tcb
-     apply (rule_tac tro_tcb_empty_caller, simp, simp, simp)
-     apply (frule_tac addr="tcb_cnode_index 3" in caps_of_state_tcb)
-     apply clarsimp
-     apply (elim is_transferable.cases, simp)
-      apply (fastforce intro: reply_cap_deletion_integrity_intros)
-     apply clarsimp
-     apply (rule reply_cap_deletion_integrityI2[OF refl refl])
-     apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
-      apply (force simp:aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
-                   dest: reply_cap_no_grand_parent cap_auth_caps_of_state pas_refined_Control)
-     apply (fastforce simp: direct_call_def
-                      dest: tcb_caller_slot_empty_on_recieve parent_of_rtrancl_no_descendant
-                            descendant_of_caller_slot[OF _ _ tcb_atI] tcb_states_of_state_kheapD)
-     done
-  (* tcb_ipcframe*)
-  apply (rename_tac s obj tcb)
+     apply (fastforce simp: is_cap_simps caps_of_state_tcb valid_obj_def valid_tcb_def
+                            ran_tcb_cap_cases
+                      elim: pspace_valid_objsE[OF _ invs_valid_objs] elim!: is_transferable.cases)
+    (* tcb_caller *)
+    apply (rule_tac tro_tcb_empty_caller, simp, simp, simp)
+    apply (frule_tac addr="tcb_cnode_index 3" in caps_of_state_tcb)
+    apply clarsimp
+    apply (elim is_transferable.cases, simp)
+     apply (fastforce intro: reply_cap_deletion_integrity_intros)
+    apply clarsimp
+    apply (rule reply_cap_deletion_integrityI2[OF refl refl])
+    apply (elim cdt_change_allowedE cdt_direct_change_allowed.cases)
+     apply (force simp:aag_cap_auth_def cap_auth_conferred_def reply_cap_rights_to_auth_def
+                  dest: reply_cap_no_grand_parent cap_auth_caps_of_state pas_refined_Control)
+    apply (fastforce simp: direct_call_def
+                     dest: tcb_caller_slot_empty_on_recieve parent_of_rtrancl_no_descendant
+                           descendant_of_caller_slot[OF _ _ tcb_atI] tcb_states_of_state_kheapD)
+   (* tcb_ipcframe*)
+   apply (rule tro_orefl)
+   apply (fastforce simp: is_nondevice_page_cap_simps caps_of_state_tcb
+                          valid_obj_def valid_tcb_def ran_tcb_cap_cases
+                   elim!: is_transferable.cases)
+  (* tcb_fault_handler*)
   apply (rule tro_orefl)
   apply (fastforce simp: is_nondevice_page_cap_simps caps_of_state_tcb
                          valid_obj_def valid_tcb_def ran_tcb_cap_cases
-                   elim: pspace_valid_objsE[OF _ invs_valid_objs] elim!:is_transferable.cases)
+                  elim!: is_transferable.cases)
   done
 
 lemma set_cap_integrity_deletion[wp_transferable]:
@@ -1728,8 +1724,8 @@ lemma update_cap_untyped_range_subset:
   "x \<in> untyped_range (update_cap_data P dt cap) \<Longrightarrow> x \<in> untyped_range cap"
   by (cases cap; simp add: update_cap_data_closedform split: if_split_asm)
 
-lemma P_0_1_spec:
-  "\<lbrakk> (\<forall>x < length xs. P x); 2 \<le> length xs \<rbrakk> \<Longrightarrow> P 0 \<and> P 1"
+lemma P_0_1_2_spec:
+  "\<lbrakk> (\<forall>x < length xs. P x); 3 \<le> length xs \<rbrakk> \<Longrightarrow> P 0 \<and> P 1 \<and> P 2"
   by fastforce
 
 lemma clas_update_cap_data [simp]:

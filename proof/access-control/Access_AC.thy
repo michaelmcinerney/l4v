@@ -1103,6 +1103,7 @@ lemma tcb_cnode_map_simps[simp]:
   "tcb_cnode_map tcb (tcb_cnode_index 2) = Some (tcb_reply tcb)"
   "tcb_cnode_map tcb (tcb_cnode_index 3) = Some (tcb_caller tcb)"
   "tcb_cnode_map tcb (tcb_cnode_index 4) = Some (tcb_ipcframe tcb)"
+  "tcb_cnode_map tcb (tcb_cnode_index 5) = Some (tcb_fault_handler tcb)"
   by (simp_all add: tcb_cnode_map_def)
 
 (* FIXME MOVE *)

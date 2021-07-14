@@ -669,15 +669,15 @@ lemma set_cap_slots_holding_overlapping_caps_other:
                    split: kernel_object.splits if_splits option.splits)
   apply (subgoal_tac "fst x \<noteq> fst slot")
    apply (intro allI impI conjI)
-        apply (clarsimp simp: slots_holding_overlapping_caps_def)
-        apply (rule_tac x=cap' in exI)
-        apply clarsimp
-        apply (subst get_cap_cte_wp_at')
-        apply (rule upd_other_cte_wp_at)
-         apply (simp add: cte_wp_at_def)
-        apply assumption
+         apply (clarsimp simp: slots_holding_overlapping_caps_def)
+         apply (rule_tac x=cap' in exI)
+         apply clarsimp
+         apply (subst get_cap_cte_wp_at')
+         apply (rule upd_other_cte_wp_at)
+          apply (simp add: cte_wp_at_def)
+         apply assumption
         apply (clarsimp simp: get_cap_caps_of_state)
-       apply ((drule set_cap_slots_holding_overlapping_caps_helper[where slot=slot], simp+)+)[5]
+        apply ((drule set_cap_slots_holding_overlapping_caps_helper[where slot=slot], simp+)+)[6]
   apply clarsimp
   done
 
@@ -1696,12 +1696,6 @@ crunches preemption_point
   and pas_refined[wp]: "pas_refined aag"
   (wp: crunch_wps OR_choiceE_weak_wp ignore_del: preemption_point)
 
-lemma thread_set_tcb_registers_caps_merge_default_tcb_silc_inv[wp]:
-  "\<lbrace>silc_inv aag st\<rbrace>
-   thread_set (tcb_registers_caps_merge default_tcb) word
-   \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
-  by (rule thread_set_silc_inv; simp add: tcb_cap_cases_def tcb_registers_caps_merge_def)
-
 crunch silc_inv[wp]: cancel_badged_sends "silc_inv aag st"
   (  wp: crunch_wps hoare_unless_wp simp: crunch_simps ignore: filterM set_object thread_set
    simp: filterM_mapM)
@@ -2591,8 +2585,10 @@ lemma receive_ipc_silc_inv:
 
 lemma send_fault_ipc_silc_inv:
   "\<lbrace>pas_refined aag and invs and is_subject aag \<circ> cur_thread and silc_inv aag st
-                    and K (valid_fault fault \<and> is_subject aag thread)\<rbrace>
-   send_fault_ipc thread fault
+                    and cte_wp_at ((=) fh) (thread,tcb_cnode_index 5)
+                    and K (valid_fault fault \<and> valid_fault_handler fh
+                                             \<and>is_subject aag thread)\<rbrace>
+   send_fault_ipc thread fh fault
    \<lbrace>\<lambda>rv. silc_inv aag st\<rbrace>"
   apply (rule hoare_gen_asm)+
   unfolding send_fault_ipc_def
@@ -2601,20 +2597,30 @@ lemma send_fault_ipc_silc_inv:
             hoare_vcg_ex_lift get_cap_wp hoare_vcg_conj_lift hoare_vcg_ex_lift hoare_vcg_all_lift
          | wpc
          | simp add: Let_def split_def lookup_cap_def valid_tcb_fault_update)+
-    apply (rule_tac Q'="\<lambda>rv s. silc_inv aag st s \<and> pas_refined aag s
-                             \<and> is_subject aag (cur_thread s)
-                             \<and> invs s
-                             \<and> valid_fault fault
-                             \<and> is_subject aag (fst (fst rv))"
-                 in hoare_post_imp_R[rotated])
-     apply (force dest!: cap_auth_caps_of_state
-                   simp: invs_valid_objs invs_sym_refs cte_wp_at_caps_of_state aag_cap_auth_def
-                         cap_auth_conferred_def cap_rights_to_auth_def)
-   apply (wp get_cap_auth_wp[where aag=aag] lookup_slot_for_thread_authorised
-          | simp add: add: lookup_cap_def split_def)+
+  apply clarsimp
+  apply (simp only: Retype_AI.F[symmetric])
+  apply (frule caps_of_state_valid)
+   apply assumption
+  apply (prop_tac "pas_cap_cur_auth aag fh"; simp)
+   apply (rule cap_cur_auth_caps_of_state[rotated]; simp)
+  apply (fastforce dest!: cap_auth_caps_of_state
+                    simp: valid_fault_handler_def has_handler_rights_def
+                          aag_cap_auth_def cap_auth_conferred_def cap_rights_to_auth_def)
   done
 
-crunch silc_inv[wp]: handle_fault "silc_inv aag st"
+lemma handle_fault_silc_inv:
+  "\<lbrace>silc_inv aag st and invs and pas_refined aag and is_subject aag \<circ> cur_thread
+                    and K (valid_fault ex \<and> is_subject aag thread)\<rbrace>
+   handle_fault thread ex
+   \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
+  unfolding handle_fault_def
+  apply (wpsimp wp: send_fault_ipc_silc_inv simp: handle_no_fault_handler_def)
+  apply (rule context_conjI)
+   apply (rule cte_wp_at_tcbI; simp add: get_tcb_def split: option.splits kernel_object.splits)
+  apply (drule cte_wp_at_eqD2)
+   apply (rule tcb_ep_slot_cte_wp_at)
+     apply (clarsimp simp: tcb_at_def)+
+  done
 
 crunch silc_inv[wp]: do_reply_transfer "silc_inv aag st"
   (wp: thread_set_tcb_fault_update_silc_inv crunch_wps  ignore: set_object thread_set)
@@ -2691,20 +2697,6 @@ lemma thread_set_tcb_ipc_buffer_update_silc_inv[wp]:
    \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
   by (rule thread_set_silc_inv; simp add: tcb_cap_cases_def)
 
-lemma thread_set_tcb_fault_handler_update_silc_inv[wp]:
-  "\<lbrace>silc_inv aag st\<rbrace>
-   thread_set (tcb_fault_handler_update blah) t
-   \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
-  by (rule thread_set_silc_inv; simp add: tcb_cap_cases_def)
-
-lemma thread_set_tcb_fault_handler_update_invs:
-  "\<lbrace>invs and K (length a = word_bits)\<rbrace>
-   thread_set (tcb_fault_handler_update (\<lambda>y. a)) word
-   \<lbrace>\<lambda>_ s. invs s\<rbrace>"
-  apply (rule hoare_gen_asm)
-  apply (wp itr_wps | simp)+
-  done
-
 lemma set_mcpriority_silc_inv[wp]:
   "set_mcpriority t mcp \<lbrace>silc_inv aag st\<rbrace>"
   unfolding set_mcpriority_def
@@ -2725,6 +2717,31 @@ lemma st_tcb_at_triv:
 lemma cap_insert_no_tcb_at[wp]:
  "cap_insert cap src dest \<lbrace>\<lambda>s. \<not> tcb_at t s\<rbrace>"
   unfolding tcb_at_st_tcb_at by (wp cap_insert_no_pred_tcb_at)
+
+context FinalCaps_1 begin
+
+lemma install_tcb_cap_silc_inv:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+   \<lbrace>silc_inv aag st and einvs and simple_sched_action and pas_refined aag
+                    and K ((n,slot_opt) \<in> {(0,croot),(1,vroot),(5,ep)})\<rbrace>
+   install_tcb_cap t slot n slot_opt
+   \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
+  unfolding install_tcb_cap_def fun_app_def
+  apply (wpsimp wp: checked_cap_insert_silc_inv cap_delete_silc_inv_not_transferable | intro conjI)+
+  by (fastforce simp: emptyable_def authorised_tcb_inv_def)+
+
+lemma install_tcb_frame_cap_silc_inv:
+  "authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow>
+  \<lbrace>silc_inv aag st and einvs and simple_sched_action and pas_refined aag\<rbrace>
+  install_tcb_frame_cap t slot buf
+  \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
+  unfolding install_tcb_frame_cap_def fun_app_def
+  apply (wpsimp wp: checked_cap_insert_silc_inv cap_delete_silc_inv_not_transferable
+                    thread_set_tcb_ipc_buffer_update_silc_inv static_imp_wp hoare_vcg_all_lift
+         | intro conjI)+
+  by (fastforce simp: emptyable_def authorised_tcb_inv_def)+
+
+end
 
 lemma intra_label_cap_cur_thread[simp]:
   "intra_label_cap aag slot (s\<lparr>cur_thread := X\<rparr>) = intra_label_cap aag slot s"
@@ -2768,17 +2785,17 @@ lemma handle_invocation_silc_inv:
                    liftE_liftM_liftME liftME_def bindE_assoc
               split del: if_split)
   apply (wp syscall_valid perform_invocation_silc_inv set_thread_state_runnable_valid_sched
-            set_thread_state_pas_refined decode_invocation_authorised
+            set_thread_state_pas_refined decode_invocation_authorised handle_fault_silc_inv
          | simp split del: if_split)+
-       apply (rule_tac E="\<lambda>ft. silc_inv aag st and pas_refined aag and
-                               is_subject aag \<circ> cur_thread and invs and
-                               (\<lambda>_. valid_fault ft \<and> is_subject aag thread)"
-                   and R="Q" and Q=Q for Q in hoare_post_impErr)
-         apply (wp lookup_extra_caps_authorised lookup_extra_caps_auth | simp)+
-     apply (rule_tac E="\<lambda>ft. silc_inv aag st and pas_refined aag and
-                             is_subject aag \<circ> cur_thread and invs and
-                             (\<lambda>_. valid_fault (CapFault x False ft) \<and> is_subject aag thread)"
-                 and R="Q" and Q=Q for Q in hoare_post_impErr)
+        apply (rule_tac E="\<lambda>ft. silc_inv aag st and pas_refined aag and
+                                is_subject aag \<circ> cur_thread and invs and
+                                (\<lambda>_. valid_fault ft \<and> is_subject aag thread)"
+                    and R="Q" and Q=Q for Q in hoare_post_impErr)
+          apply (wp lookup_extra_caps_authorised lookup_extra_caps_auth | simp)+
+      apply (rule_tac E="\<lambda>ft. silc_inv aag st and pas_refined aag and
+                              is_subject aag \<circ> cur_thread and invs and
+                              (\<lambda>_. valid_fault (CapFault x False ft) \<and> is_subject aag thread)"
+                  and R="Q" and Q=Q for Q in hoare_post_impErr)
         apply (wp lookup_cap_and_slot_authorised lookup_cap_and_slot_cur_auth | simp)+
   apply (auto intro: st_tcb_ex_cap simp: ct_in_state_def runnable_eq_active)
   done
@@ -2812,23 +2829,23 @@ lemma handle_recv_silc_inv:
    \<lbrace>\<lambda>_. silc_inv aag st\<rbrace>"
   apply (simp add: handle_recv_def Let_def lookup_cap_def split_def)
   apply (wp hoare_vcg_all_lift get_simple_ko_wp delete_caller_cap_silc_inv
-            receive_ipc_silc_inv lookup_slot_for_thread_authorised
+            receive_ipc_silc_inv handle_fault_silc_inv lookup_slot_for_thread_authorised
             lookup_slot_for_thread_cap_fault get_cap_auth_wp[where aag=aag]
          | wpc | simp
          | rule_tac Q="\<lambda>rv s. invs s \<and> pas_refined aag s \<and> is_subject aag thread \<and>
                               (pasSubject aag, Receive, pasObjectAbs aag x31) \<in> pasPolicy aag"
                  in hoare_strengthen_post, wp, clarsimp simp: invs_valid_objs invs_sym_refs)+
-    apply (rule_tac Q'="\<lambda>r s. silc_inv aag st s \<and> invs s \<and> pas_refined aag s \<and>
-                              is_subject aag thread \<and> tcb_at thread s \<and> cur_thread s = thread"
-                 in hoare_post_imp_R)
-     apply wp
-    apply ((clarsimp simp add: invs_valid_objs invs_sym_refs
-            | intro impI allI conjI
-            | rule cte_wp_valid_cap caps_of_state_cteD
-            | fastforce simp: aag_cap_auth_def cap_auth_conferred_def
-                              cap_rights_to_auth_def valid_fault_def
-                        dest: silc_inv_not_subject)+)[1]
-   apply (wp delete_caller_cap_silc_inv | simp add: split_def cong: conj_cong)+
+     apply (rule_tac Q'="\<lambda>r s. silc_inv aag st s \<and> invs s \<and> pas_refined aag s \<and>
+                               is_subject aag thread \<and> tcb_at thread s \<and> cur_thread s = thread"
+                  in hoare_post_imp_R)
+      apply wp
+     apply ((clarsimp simp add: invs_valid_objs invs_sym_refs
+             | intro impI allI conjI
+             | rule cte_wp_valid_cap caps_of_state_cteD
+             | fastforce simp: aag_cap_auth_def cap_auth_conferred_def
+                               cap_rights_to_auth_def valid_fault_def
+                         dest: silc_inv_not_subject)+)[1]
+    apply (wp delete_caller_cap_silc_inv | simp add: split_def cong: conj_cong)+
   apply fastforce
   done
 
@@ -2846,11 +2863,9 @@ lemma handle_event_silc_inv:
   apply (case_tac ev; simp_all)
   by (wpsimp wp: handle_send_silc_inv[where st'=st']
                  handle_call_silc_inv[where st'=st']
-                 handle_recv_silc_inv
-                 handle_reply_silc_inv
-                 handle_interrupt_silc_inv
-                 handle_vm_fault_silc_inv hy_inv
-                 handle_hypervisor_fault_silc_inv
+                 handle_recv_silc_inv handle_fault_silc_inv
+                 handle_reply_silc_inv handle_interrupt_silc_inv
+                 handle_vm_fault_silc_inv hy_inv handle_hypervisor_fault_silc_inv
            simp: invs_valid_objs invs_mdb invs_sym_refs)+
 
 crunch silc_inv[wp]: activate_thread "silc_inv aag st"

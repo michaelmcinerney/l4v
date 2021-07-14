@@ -112,44 +112,60 @@ crunch irq_masks[IRQMasks_IF_assms, wp]: arch_perform_invocation "\<lambda>s. P 
   (wp: dmo_wp crunch_wps no_irq
    simp: no_irq_cleanByVA_PoU no_irq_invalidateLocalTLB_ASID no_irq_do_flush)
 
-(* FIXME: remove duplication in this proof -- requires getting the wp automation
-          to do the right thing with dropping imps in validE goals *)
+lemma install_tcb_cap_irq_masks:
+  "\<lbrace>(\<lambda>s. P (irq_masks_of_state s)) and domain_sep_inv False st\<rbrace>
+   install_tcb_cap target slot n slot_opt
+   \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
+  unfolding install_tcb_cap_def
+  apply (simp add: split_def cong: option.case_cong)
+  apply (wpsimp wp: cap_delete_irq_masks)
+  apply assumption
+  done
+
+lemma install_tcb_cap_domain_sep_inv[wp]:
+  "install_tcb_cap target slot n slot_opt
+   \<lbrace>domain_sep_inv False st :: det_ext state \<Rightarrow> bool\<rbrace>"
+  unfolding install_tcb_cap_def
+  by (wpsimp wp: checked_cap_insert_domain_sep_inv)
+
+lemma install_tcb_frame_cap_irq_masks:
+  "\<lbrace>(\<lambda>s. P (irq_masks_of_state s)) and domain_sep_inv False st\<rbrace>
+   install_tcb_frame_cap target slot buffer
+   \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  apply (wpsimp wp: hoare_drop_imps hoare_vcg_all_lift cap_delete_irq_masks)
+  apply assumption
+  done
+
+lemma install_tcb_frame_cap_domain_sep_inv[wp]:
+  "install_tcb_frame_cap target slot buffer
+   \<lbrace>domain_sep_inv False st :: det_ext state \<Rightarrow> bool\<rbrace>"
+  unfolding install_tcb_frame_cap_def
+  by (wpsimp wp: hoare_drop_imps hoare_vcg_all_lift checked_cap_insert_domain_sep_inv)
+
 lemma invoke_tcb_irq_masks[IRQMasks_IF_assms]:
-  "\<lbrace>(\<lambda>s. P (irq_masks_of_state s)) and domain_sep_inv False st and tcb_inv_wf tinv\<rbrace>
+  "\<lbrace>(\<lambda>s. P (irq_masks_of_state s)) and domain_sep_inv False st and
+    Tcb_AI.tcb_inv_wf tinv\<rbrace>
    invoke_tcb tinv
    \<lbrace>\<lambda>_ s. P (irq_masks_of_state s)\<rbrace>"
-  apply (case_tac tinv)
+  apply(case_tac tinv)
          apply((wp restart_irq_masks hoare_vcg_if_lift  mapM_x_wp[OF _ subset_refl]
-                | wpc
-                | simp split del: if_split add: check_cap_at_def
-                | clarsimp)+)[3]
+              | wpc
+              | simp split del: if_split add: check_cap_at_def
+              | clarsimp)+)[3]
       defer
-      apply ((wp | simp )+)[2]
+      apply((wp | simp )+)[2]
     (* NotificationControl *)
     apply (rename_tac option)
     apply (case_tac option)
      apply ((wp | simp)+)[2]
-   (* just ThreadControl left *)
-   apply (simp add: split_def cong: option.case_cong)
-   apply wpsimp+
-       apply (rule hoare_post_impErr[OF cap_delete_irq_masks[where P=P]])
-        apply blast
-       apply blast
-      apply (wpsimp wp: hoare_vcg_all_lift_R hoare_vcg_const_imp_lift_R
-                        checked_cap_insert_domain_sep_inv)+
-      apply (rule_tac Q="\<lambda> r s. domain_sep_inv False st s \<and> P (irq_masks_of_state s)"
-                  and E="\<lambda>_ s. P (irq_masks_of_state s)" in hoare_post_impErr)
-        apply (wp hoare_vcg_conj_liftE1 cap_delete_irq_masks)
-       apply fastforce
-      apply blast
-     apply (wpsimp wp: static_imp_wp hoare_vcg_all_lift checked_cap_insert_domain_sep_inv)+
-     apply (rule_tac Q="\<lambda> r s. domain_sep_inv False st s \<and> P (irq_masks_of_state s)"
-                 and E="\<lambda>_ s. P (irq_masks_of_state s)" in hoare_post_impErr)
-       apply (wp hoare_vcg_conj_liftE1 cap_delete_irq_masks)
-      apply fastforce
-     apply blast
-    apply (simp add: option_update_thread_def | wp static_imp_wp hoare_vcg_all_lift | wpc)+
-  by fastforce+
+    (* SetTLSBase *)
+   apply ((wp | simp)+)[1]
+    (* just ThreadControl left *)
+  apply (simp add: split_def cong: option.case_cong)
+  apply (wp install_tcb_frame_cap_irq_masks[where st=st] install_tcb_cap_irq_masks[where st=st] | wpc)+
+  apply clarsimp
+  done
 
 end
 

@@ -86,60 +86,46 @@ lemma invoke_tcb_thread_preservation[Tcb_IF_assms]:
   assumes cap_insert_P: "\<And>new_cap src dest. \<lbrace>invs and P\<rbrace> cap_insert new_cap src dest \<lbrace>\<lambda>_. P\<rbrace>"
   assumes thread_set_P: "\<And>f ptr. \<lbrace>invs and P\<rbrace> thread_set (tcb_ipc_buffer_update f) ptr \<lbrace>\<lambda>_. P\<rbrace>"
   assumes thread_set_P': "\<And>f ptr. \<lbrace>invs and P\<rbrace> thread_set (tcb_fault_handler_update f) ptr \<lbrace>\<lambda>_. P\<rbrace>"
-  assumes set_mcpriority_P: "\<And>mcp ptr. \<lbrace>invs and P\<rbrace> set_mcpriority ptr mcp \<lbrace>\<lambda>_.P\<rbrace>"
+  assumes set_mcpriority_P: "\<And>mcp ptr. \<lbrace>invs and P\<rbrace> set_mcpriority ptr mcp \<lbrace>\<lambda>_. P\<rbrace>"
   assumes P_trans[simp]: "\<And>f s. P (trans_state f s) = P s"
   shows
     "\<lbrace>P and invs and tcb_inv_wf (tcb_invocation.ThreadControl t sl ep mcp prio croot vroot buf)\<rbrace>
      invoke_tcb (tcb_invocation.ThreadControl t sl ep mcp prio croot vroot buf)
      \<lbrace>\<lambda>rv s :: det_state. P s\<rbrace>"
   supply set_priority_extended.dxo_eq[simp del]
-         reschedule_required_ext_extended.dxo_eq[simp del]
-  apply (simp add: split_def cong: option.case_cong)
-  apply (rule hoare_vcg_precond_imp)
-   apply (rule_tac P="case ep of Some v \<Rightarrow> length v = word_bits | _ \<Rightarrow> True"
-                in hoare_gen_asm)
-   apply wp
-        apply ((simp add: conj_comms(1, 2) del: hoare_True_E_R
-                | rule wp_split_const_if wp_split_const_if_R hoare_vcg_all_lift_R
-                       hoare_vcg_E_elim hoare_vcg_const_imp_lift_R hoare_vcg_R_conj
-                | (wp check_cap_inv2[where Q="\<lambda>_. pas_refined aag"]
-                      check_cap_inv2[where Q="\<lambda>_ s. t \<noteq> idle_thread s"]
-                      out_invs_trivial case_option_wpE cap_delete_deletes
-                      cap_delete_valid_cap cap_insert_valid_cap out_cte_at
-                      cap_insert_cte_at cap_delete_cte_at out_valid_cap out_tcb_valid
-                      hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R
-                      thread_set_tcb_ipc_buffer_cap_cleared_invs
-                      thread_set_invs_trivial[OF ball_tcb_cap_casesI]
-                      hoare_vcg_all_lift thread_set_valid_cap out_emptyable
-                      check_cap_inv [where P="valid_cap c" for c]
-                      check_cap_inv [where P="tcb_cap_valid c p" for c p]
-                      check_cap_inv[where P="cte_at p0" for p0]
-                      check_cap_inv[where P="tcb_at p0" for p0]
-                      thread_set_cte_at thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
-                      checked_insert_no_cap_to
-                      thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
-                      out_no_cap_to_trivial[OF ball_tcb_cap_casesI] thread_set_ipc_tcb_cap_valid
-                      check_cap_inv2[where Q="\<lambda>_. P"] cap_delete_P cap_insert_P
-                      thread_set_P thread_set_P' set_mcpriority_P set_mcpriority_idle_thread
-                      dxo_wp_weak static_imp_wp)
-                | simp add: ran_tcb_cap_cases dom_tcb_cap_cases[simplified] emptyable_def
-                       del: hoare_True_E_R
-                | wpc
-                | strengthen use_no_cap_to_obj_asid_strg
-                             tcb_cap_always_valid_strg[where p="tcb_cnode_index 0"]
-                             tcb_cap_always_valid_strg[where p="tcb_cnode_index (Suc 0)"])+)
-  apply (unfold option_update_thread_def)
-  apply (wp itr_wps thread_set_P thread_set_P'
-         | simp add: emptyable_def | wpc)+ (*slow*)
-  apply (clarsimp simp: tcb_at_cte_at_0 tcb_at_cte_at_1[simplified]
-                        is_cap_simps is_valid_vtable_root_def
-                        is_cnode_or_valid_arch_def tcb_cap_valid_def
-                        tcb_at_st_tcb_at[symmetric] invs_valid_objs
-                        cap_asid_def vs_cap_ref_def
-                        clas_no_asid cli_no_irqs no_cap_to_idle_thread
-                 split: option.split_asm
-         | rule conjI)+ (* also slow *)
-  done
+proof -
+  have install_tcb_cap_preservation:
+    "\<And>t sl n slo. \<lbrace>invs and K (n \<in> {0,1,5}) and P\<rbrace> install_tcb_cap t sl n slo \<lbrace>\<lambda>_. P\<rbrace>"
+    unfolding install_tcb_cap_def
+    by (wpsimp wp: check_cap_inv2 cap_insert_P cap_delete_P
+        | rule conjI impI | fastforce simp: emptyable_def)+
+  have install_tcb_frame_cap_preservation:
+    "\<And>t sl buf. \<lbrace>invs and P\<rbrace> install_tcb_frame_cap t sl buf \<lbrace>\<lambda>_. P\<rbrace>"
+    unfolding install_tcb_frame_cap_def
+    by (wpsimp wp: check_cap_inv2 cap_insert_P cap_delete_P cap_delete_deletes hoare_vcg_const_imp_lift_R
+                      hoare_vcg_const_imp_lift dxo_wp_weak thread_set_P thread_set_tcb_ipc_buffer_cap_cleared_invs
+        | fastforce simp: emptyable_def)+
+  show ?thesis
+    apply (simp add: split_def cong: option.case_cong)
+    apply (rule hoare_vcg_precond_imp)
+     apply (clarsimp simp: emptyable_def cong: conj_cong
+            | wpsimp wp: dxo_wp_weak hoare_vcg_const_imp_lift_R hoare_vcg_const_imp_lift
+                         hoare_vcg_all_lift_R hoare_vcg_all_lift thread_set_valid_cap
+                         install_tcb_frame_cap_preservation install_tcb_cap_preservation
+                         install_tcb_cap_invs install_tcb_cap_cte_at install_tcb_cap_cte_wp_at_ep
+                         set_mcpriority_P thread_set_invs_trivial[OF ball_tcb_cap_casesI]
+                         thread_set_cte_at
+                         thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
+                         thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+            | simp add: set_mcpriority_def
+            | strengthen tcb_cap_always_valid_strg)+
+    apply(intro conjI impI allI)
+    (* slow, ~30s *)
+    by (clarsimp split: option.split
+        | fastforce simp: is_cnode_or_valid_arch_def is_valid_vtable_root_def is_cap_simps
+                          tcb_cap_valid_def tcb_at_st_tcb_at authorised_tcb_inv_def
+                   intro: tcb_ep_slot_cte_wp_at elim: cte_wp_at_weakenE)+
+qed
 
 lemma tc_reads_respects_f[Tcb_IF_assms]:
   assumes domains_distinct[wp]: "pas_domains_distinct aag"
@@ -153,87 +139,34 @@ lemma tc_reads_respects_f[Tcb_IF_assms]:
                         and K (authorised_tcb_inv aag ti \<and> authorised_tcb_inv_extra aag ti))
        (invoke_tcb ti)"
   apply (simp add: split_def cong: option.case_cong)
-  apply (wpsimp wp: set_priority_reads_respects[THEN reads_respects_f[where  st=st and Q=\<top>]])
-                    apply (wpsimp wp: hoare_vcg_const_imp_lift_R simp: when_def | wpc)+
-                    apply (rule conjI)
-                     apply ((wpsimp wp: reschedule_required_reads_respects_f)+)[4]
-                 apply ((wp reads_respects_f[OF cap_insert_reads_respects, where st=st]
-                           reads_respects_f[OF thread_set_reads_respects, where st=st and Q="\<top>"]
-                           set_priority_reads_respects[THEN
-                                               reads_respects_f[where aag=aag and st=st and Q=\<top>]]
-                           set_mcpriority_reads_respects[THEN
-                                               reads_respects_f[where aag=aag and st=st and Q=\<top>]]
-                           check_cap_inv[OF check_cap_inv[OF cap_insert_valid_list]]
-                           check_cap_inv[OF check_cap_inv[OF cap_insert_valid_sched]]
-                           check_cap_inv[OF check_cap_inv[OF cap_insert_schedact]]
-                           check_cap_inv[OF check_cap_inv[OF cap_insert_cur_domain]]
-                           check_cap_inv[OF check_cap_inv[OF cap_insert_ct]]
-                           get_thread_state_rev[THEN
-                                               reads_respects_f[where aag=aag and st=st and Q=\<top>]]
-                           hoare_vcg_all_lift_R hoare_vcg_all_lift
-                           cap_delete_reads_respects[where st=st] checked_insert_pas_refined
-                           thread_set_pas_refined
-                           reads_respects_f[OF checked_insert_reads_respects, where st=st]
-                           checked_cap_insert_silc_inv[where st=st]
-                           cap_delete_silc_inv_not_transferable[where st=st]
-                           checked_cap_insert_only_timer_irq_inv[where st=st' and irq=irq]
-                           cap_delete_only_timer_irq_inv[where st=st' and irq=irq]
-                           set_priority_only_timer_irq_inv[where st=st' and irq=irq]
-                           set_mcpriority_only_timer_irq_inv[where st=st' and irq=irq]
-                           cap_delete_deletes cap_delete_valid_cap cap_delete_cte_at
-                           cap_delete_pas_refined' itr_wps(12) itr_wps(14) cap_insert_cte_at
-                           checked_insert_no_cap_to hoare_vcg_const_imp_lift_R hoare_vcg_conj_lift
-                           as_user_reads_respects_f thread_set_mdb cap_delete_invs
-                      | wpc
-                      | simp add: emptyable_def tcb_cap_cases_def tcb_cap_valid_def
-                                  tcb_at_st_tcb_at when_def
-                      | strengthen use_no_cap_to_obj_asid_strg invs_mdb
-                                   invs_psp_aligned invs_vspace_objs invs_arch_state
-                      | solves auto)+)[7]
-          apply ((simp add: conj_comms, strengthen imp_consequent[where Q="x = None" for x]
-                                      , simp cong: conj_cong)
-                 | wp reads_respects_f[OF cap_insert_reads_respects, where st=st]
-                      reads_respects_f[OF thread_set_reads_respects, where st=st and Q="\<top>"]
-                      set_priority_reads_respects[THEN reads_respects_f[where st=st and Q=\<top>]]
-                      set_mcpriority_reads_respects[THEN reads_respects_f[where st=st and Q=\<top>]]
-                      check_cap_inv[OF check_cap_inv[OF cap_insert_valid_list]]
-                      check_cap_inv[OF check_cap_inv[OF cap_insert_valid_sched]]
-                      check_cap_inv[OF check_cap_inv[OF cap_insert_schedact]]
-                      check_cap_inv[OF check_cap_inv[OF cap_insert_cur_domain]]
-                      check_cap_inv[OF check_cap_inv[OF cap_insert_ct]]
-                      get_thread_state_rev[THEN reads_respects_f[where st=st and Q=\<top>]]
-                      hoare_vcg_all_lift_R hoare_vcg_all_lift
-                      cap_delete_reads_respects[where st=st] checked_insert_pas_refined
-                      thread_set_pas_refined reads_respects_f[OF checked_insert_reads_respects]
-                      checked_cap_insert_silc_inv[where st=st]
-                      cap_delete_silc_inv_not_transferable[where st=st]
-                      checked_cap_insert_only_timer_irq_inv[where st=st' and irq=irq]
-                      cap_delete_only_timer_irq_inv[where st=st' and irq=irq]
-                      set_priority_only_timer_irq_inv[where st=st' and irq=irq]
-                      set_mcpriority_only_timer_irq_inv[where st=st' and irq=irq]
-                      cap_delete_deletes cap_delete_valid_cap cap_delete_cte_at
-                      cap_delete_pas_refined' itr_wps(12) itr_wps(14) cap_insert_cte_at
-                      checked_insert_no_cap_to hoare_vcg_const_imp_lift_R
-                      as_user_reads_respects_f cap_delete_invs
-                 | wpc
-                 | simp add: emptyable_def tcb_cap_cases_def tcb_cap_valid_def when_def st_tcb_at_triv
-                 | strengthen use_no_cap_to_obj_asid_strg invs_mdb
-                              invs_psp_aligned invs_vspace_objs invs_arch_state
-                 | wp (once) hoare_drop_imp)+
-    apply (simp add: option_update_thread_def tcb_cap_cases_def
-           | wp static_imp_wp static_imp_conj_wp thread_set_pas_refined
-                reads_respects_f[OF thread_set_reads_respects, where st=st and Q="\<top>"]
-           | wpc)+
-   apply (wp hoare_vcg_all_lift thread_set_tcb_fault_handler_update_invs
-             thread_set_tcb_fault_handler_update_silc_inv
-             thread_set_not_state_valid_sched
-             thread_set_pas_refined thread_set_emptyable thread_set_valid_cap
-             thread_set_cte_at thread_set_no_cap_to_trivial
-             thread_set_tcb_fault_handler_update_only_timer_irq_inv
-          | simp add: tcb_cap_cases_def | wpc | wp (once) hoare_drop_imp)+
-  apply (clarsimp simp: authorised_tcb_inv_def  authorised_tcb_inv_extra_def emptyable_def)
-  by (clarsimp simp: is_cap_simps is_cnode_or_valid_arch_def is_valid_vtable_root_def det_setRegister
-      | intro impI conjI)+
+  apply (rule gen_asm_ev)
+  apply (clarsimp simp: emptyable_def cong: conj_cong imp_cong
+         | wp set_priority_reads_respects[THEN reads_respects_f[where aag=aag and st=st and Q=\<top>]]
+              install_tcb_frame_cap_reads_respects_f
+              install_tcb_frame_cap_silc_inv
+              install_tcb_frame_cap_pas_refined
+              install_tcb_cap_reads_respects_f
+              install_tcb_cap_silc_inv
+              install_tcb_cap_invs
+              install_tcb_cap_valid_sched
+              install_tcb_cap_pas_refined
+              hoare_vcg_all_lift_R hoare_vcg_all_lift
+              hoare_vcg_const_imp_lift_R hoare_vcg_const_imp_lift
+              install_tcb_cap_cte_at install_tcb_cap_cte_wp_at_ep
+              set_mcpriority_reads_respects[THEN reads_respects_f[where aag=aag and st=st and Q=\<top>]]
+              set_mcpriority_only_timer_irq_inv[where st=st' and irq=irq]
+              thread_set_cte_at
+              thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
+              thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+         | wpc | assumption | simp add: set_mcpriority_def
+         | strengthen tcb_cap_always_valid_strg invs_strgs)+
+  using assms
+  apply(intro conjI impI allI; assumption?)
+  (* slow, ~90s *)
+  by (clarsimp split: option.split
+      | fastforce simp: is_cnode_or_valid_arch_def is_valid_vtable_root_def is_cap_simps tcb_cap_valid_def
+                        tcb_at_st_tcb_at authorised_tcb_inv_def authorised_tcb_inv_extra_def
+                 intro: tcb_ep_slot_cte_wp_at elim: cte_wp_at_weakenE)+
 
 end
 
