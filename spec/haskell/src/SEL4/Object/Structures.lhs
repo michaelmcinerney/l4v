@@ -260,7 +260,7 @@ The TCB is used to store various data about the thread's current state:
 
 \item a capability pointer to the fault handler endpoint, which receives an IPC from the kernel whenever this thread generates a fault;
 
->         tcbFaultHandler :: CPtr,
+>         tcbFaultHandler :: CTE,
 
 \item the virtual address of the thread's IPC buffer, which is readable at user level as thread-local data (by an architecture-defined mechanism), and is also used by the kernel to determine the buffer's offset within its frame;
 
@@ -293,6 +293,9 @@ Each TCB contains four CTE entries. The following constants define the slot numb
 
 > tcbIPCBufferSlot :: Word
 > tcbIPCBufferSlot = 4
+
+> tcbFaultHandlerSlot :: Word
+> tcbFaultHandlerSlot = 5
 
 > minPriority :: Priority
 > minPriority = 0

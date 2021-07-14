@@ -39,6 +39,7 @@ This module uses the C preprocessor to select a target architecture.
 > import SEL4.API.Failures
 > import SEL4.API.Invocation
 > import SEL4.API.InvocationLabels
+> import {-# SOURCE #-} SEL4.Kernel.FaultHandler
 > import SEL4.Machine
 > import SEL4.Model
 > import SEL4.Object.Structures
@@ -173,12 +174,12 @@ The "Configure" call is a batched call to "SetIPCParams" and "SetSpace".
 > decodeTCBConfigure :: [Word] -> Capability -> PPtr CTE ->
 >         [(Capability, PPtr CTE)] -> KernelF SyscallError TCBInvocation
 > decodeTCBConfigure
->     (faultEP:cRootData:vRootData:buffer:_)
->     cap slot (cRoot:vRoot:bufferFrame:_)
+>     (cRootData:vRootData:buffer:_)
+>     cap slot (faultHandler:cRoot:vRoot:bufferFrame:_)
 >   = do
 >     setIPCParams <- decodeSetIPCBuffer [buffer] cap slot [bufferFrame]
->     setSpace <- decodeSetSpace [faultEP, cRootData, vRootData]
->         cap slot [cRoot, vRoot]
+>     setSpace <- decodeSetSpace [cRootData, vRootData]
+>         cap slot [faultHandler, cRoot, vRoot]
 >     return $ ThreadControl {
 >         tcThread = capTCBPtr cap,
 >         tcThreadCapSlot = tcThreadCapSlot setSpace,
@@ -296,7 +297,7 @@ This is to ensure that the source capability is not made invalid by the deletion
 
 > decodeSetSpace :: [Word] -> Capability -> PPtr CTE ->
 >         [(Capability, PPtr CTE)] -> KernelF SyscallError TCBInvocation
-> decodeSetSpace (faultEP:cRootData:vRootData:_) cap slot (cRootArg:vRootArg:_)
+> decodeSetSpace (cRootData:vRootData:_) cap slot (fhArg:cRootArg:vRootArg:_)
 >         = do
 >     canChangeCRoot <- withoutFailure $ liftM not $
 >         slotCapLongRunningDelete =<< getThreadCSpaceRoot (capTCBPtr cap)
@@ -318,10 +319,13 @@ This is to ensure that the source capability is not made invalid by the deletion
 >     vRoot <- if isValidVTableRoot vRootCap'
 >         then return (vRootCap', vRootSlot)
 >         else throw IllegalOperation
+>     unless (isValidFaultHandler $ fst fhArg) $
+>         throw $ InvalidCapability 1
+>     faultHandler <- return fhArg
 >     return $ ThreadControl {
 >         tcThread = capTCBPtr cap,
 >         tcThreadCapSlot = slot,
->         tcNewFaultEP = Just $ CPtr faultEP,
+>         tcNewFaultEP = Just faultHandler,
 >         tcNewMCPriority = Nothing,
 >         tcNewPriority = Nothing,
 >         tcNewCRoot = Just cRoot,
@@ -378,6 +382,45 @@ This is to ensure that the source capability is not made invalid by the deletion
 > decodeSetTLSBase _ _ = throw TruncatedMessage
 
 
+> installTCBCap :: PPtr TCB -> PPtr CTE -> Int -> Maybe (Capability, PPtr CTE) -> KernelP ()
+> installTCBCap target slot n slot_opt =
+>     maybe (return ()) (\(newCap, srcSlot) -> do
+>         let tCap = ThreadCap { capTCBPtr = target }
+>         rootSlot <-
+>             if n == 0
+>                 then withoutPreemption $ getThreadCSpaceRoot target
+>                 else if n == 1
+>                      then withoutPreemption $ getThreadVSpaceRoot target
+>                      else if n == 5
+>                           then withoutPreemption $ getThreadFaultHandlerSlot target
+>                           else fail "installTCBCap: improper index"
+>         cteDelete rootSlot True
+>         unless (isNullCap newCap) $ withoutPreemption
+>             $ checkCapAt newCap srcSlot
+>             $ checkCapAt tCap slot
+>             $ assertDerived srcSlot newCap
+>             $ cteInsert newCap srcSlot rootSlot)
+>       slot_opt
+
+> installTCBFrameCap :: PPtr TCB -> PPtr CTE -> Maybe (VPtr, Maybe (Capability, PPtr CTE)) -> KernelP ()
+> installTCBFrameCap target slot buffer =
+>     maybe (return ()) (\(ptr, frame) -> do
+>         let tCap = ThreadCap { capTCBPtr = target }
+>         bufferSlot <- withoutPreemption $ getThreadBufferSlot target
+>         cteDelete bufferSlot True
+>         withoutPreemption $ threadSet
+>             (\t -> t {tcbIPCBuffer = ptr}) target
+>         withoutPreemption $ case frame of
+>             Just (newCap, srcSlot) ->
+>                 checkCapAt newCap srcSlot
+>                     $ checkCapAt tCap slot
+>                     $ assertDerived srcSlot newCap
+>                     $ cteInsert newCap srcSlot bufferSlot
+>             Nothing -> return ()
+>         thread <- withoutPreemption $ getCurThread
+>         withoutPreemption $ when (target == thread) $ rescheduleRequired)
+>       buffer
+
 \subsection[invoke]{Performing TCB Invocations}
 
 > invokeTCB :: TCBInvocation -> KernelP [Word]
@@ -401,47 +444,13 @@ The "ThreadControl" operation is used to implement the "SetSpace", "SetPriority"
 
 The use of "checkCapAt" addresses a corner case in which the only capability to a certain thread is in its own CSpace, which is otherwise unreachable. Replacement of the CSpace root results in "cteDelete" cleaning up both CSpace and thread, after which "cteInsert" should not be called. Error reporting in this case is unimportant, as the requesting thread cannot continue to execute.
 
-> invokeTCB (ThreadControl target slot faultep mcp priority cRoot vRoot buffer)
+> invokeTCB (ThreadControl target slot faultHandler mcp priority cRoot vRoot buffer)
 >   = do
->         let tCap = ThreadCap { capTCBPtr = target }
->         withoutPreemption $ maybe (return ())
->             (\ep -> threadSet (\t -> t {tcbFaultHandler = ep}) target)
->             faultep
 >         withoutPreemption $ maybe (return ()) (setMCPriority target) (mapMaybe fst mcp)
->         maybe (return ()) (\(newCap, srcSlot) -> do
->             rootSlot <- withoutPreemption $ getThreadCSpaceRoot target
->             cteDelete rootSlot True
->             withoutPreemption
->                 $ checkCapAt newCap srcSlot
->                 $ checkCapAt tCap slot
->                 $ assertDerived srcSlot newCap
->                 $ cteInsert newCap srcSlot rootSlot)
->           cRoot
->         maybe (return ()) (\(newCap, srcSlot) -> do
->             rootSlot <- withoutPreemption $ getThreadVSpaceRoot target
->             cteDelete rootSlot True
->             withoutPreemption
->                 $ checkCapAt newCap srcSlot
->                 $ checkCapAt tCap slot
->                 $ assertDerived srcSlot newCap
->                 $ cteInsert newCap srcSlot rootSlot)
->           vRoot
->         maybe (return ())
->             (\(ptr, frame) -> do
->                 bufferSlot <- withoutPreemption $ getThreadBufferSlot target
->                 cteDelete bufferSlot True
->                 withoutPreemption $ threadSet
->                     (\t -> t {tcbIPCBuffer = ptr}) target
->                 withoutPreemption $ case frame of
->                     Just (newCap, srcSlot) ->
->                         checkCapAt newCap srcSlot
->                             $ checkCapAt tCap slot
->                             $ assertDerived srcSlot newCap
->                             $ cteInsert newCap srcSlot bufferSlot
->                     Nothing -> return ()
->                 thread <- withoutPreemption $ getCurThread
->                 withoutPreemption $ when (target == thread) $ rescheduleRequired)
->             buffer
+>         installTCBCap target slot 5 faultHandler
+>         installTCBCap target slot 0 cRoot
+>         installTCBCap target slot 1 vRoot
+>         installTCBFrameCap target slot buffer
 >         withoutPreemption $ maybe (return ()) (setPriority target) (mapMaybe fst priority)
 >         return []
 
@@ -753,6 +762,9 @@ This function will return a physical pointer to a thread's page table root, give
 
 > getThreadVSpaceRoot :: PPtr TCB -> Kernel (PPtr CTE)
 > getThreadVSpaceRoot thread = locateSlotTCB thread tcbVTableSlot
+
+> getThreadFaultHandlerSlot :: PPtr TCB -> Kernel (PPtr CTE)
+> getThreadFaultHandlerSlot thread = locateSlotTCB thread tcbFaultHandlerSlot
 
 This function will return a physical pointer to a thread's reply slot, which is used when creating or revoking its reply capability.
 

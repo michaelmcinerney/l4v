@@ -56,10 +56,11 @@ The following data type defines the set of possible TCB invocation operations. T
 >         | ThreadControl {
 >             tcThread :: PPtr TCB,
 >             tcThreadCapSlot :: PPtr CTE,
->             tcNewFaultEP :: Maybe CPtr,
+>             tcNewFaultEP :: Maybe (Capability, PPtr CTE),
 >             tcNewMCPriority :: Maybe (Priority, PPtr TCB),
 >             tcNewPriority :: Maybe (Priority, PPtr TCB),
->             tcNewCRoot, tcNewVRoot :: Maybe (Capability, PPtr CTE),
+>             tcNewCRoot :: Maybe (Capability, PPtr CTE),
+>             tcNewVRoot :: Maybe (Capability, PPtr CTE),
 >             tcNewIPCBuffer :: Maybe (VPtr, Maybe (Capability, PPtr CTE)) }
 >         | NotificationControl {
 >             notificationTCB :: PPtr TCB,

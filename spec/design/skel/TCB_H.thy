@@ -12,6 +12,7 @@ imports
   TCBDecls_H
   CNode_H
   VSpace_H
+  FaultHandlerDecls_H
   ArchTCB_H
 begin
 

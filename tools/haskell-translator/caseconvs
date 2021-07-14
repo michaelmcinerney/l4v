@@ -2025,6 +2025,13 @@ case \x of EndpointCap { capEPCanSend = True, capEPCanGrant = canGrant, capEPCan
      else ->2
   | _ => ->2
 
+case \x of EndpointCap { capEPCanGrant = canGrant, capEPCanGrantReply = canGrantReply } -> NullCap -> _ ->  ---> case \x of
+  EndpointCap epptr _ True _ canGrant canGrantReply =>
+     if canGrant \<or> canGrantReply then ->1
+     else ->3
+  | NullCap => ->2
+  | _ => ->3
+
 case \x of 0 -> level ->  ---> case \x of
     0 => \1
   | Suc level' => (%level. \2) (Suc level')

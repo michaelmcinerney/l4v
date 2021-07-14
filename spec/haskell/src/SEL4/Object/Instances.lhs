@@ -87,6 +87,8 @@ As mentioned in the documentation for the type class "PSpaceStorable", there is 
 >                 | x == toOffset tcbCallerSlot = return $ tcbCaller tcb
 >                 | x == toOffset tcbIPCBufferSlot =
 >                     return $ tcbIPCBufferFrame tcb
+>                 | x == toOffset tcbFaultHandlerSlot =
+>                     return $ tcbFaultHandler tcb
 >                 | otherwise = fail "incorrect CTE offset into TCB"
 
 >     updateObject cte oldObj ptr ptr' next = case oldObj of
@@ -113,6 +115,8 @@ As mentioned in the documentation for the type class "PSpaceStorable", there is 
 >                     = return $ KOTCB (tcb { tcbCaller = cte })
 >                 | x == toOffset tcbIPCBufferSlot
 >                     = return $ KOTCB (tcb { tcbIPCBufferFrame = cte })
+>                 | x == toOffset tcbFaultHandlerSlot
+>                     = return $ KOTCB (tcb { tcbFaultHandler = cte })
 >                 | otherwise = fail "incorrect CTE offset into TCB"
 
 \subsubsection{Thread Control Block}
@@ -135,7 +139,7 @@ By default, new threads are unable to change the security domains of other threa
 >         tcbQueued = False,
 >         tcbFault = Nothing,
 >         tcbTimeSlice = timeSlice,
->         tcbFaultHandler = CPtr 0,
+>         tcbFaultHandler = makeObject,
 >         tcbIPCBuffer = VPtr 0,
 >         tcbBoundNotification = Nothing,
 >         tcbArch = newArchTCB }

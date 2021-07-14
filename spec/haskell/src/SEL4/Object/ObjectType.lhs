@@ -153,7 +153,7 @@ Threads are treated as special capability nodes; they also become zombies when t
 >     unbindNotification tcb
 >     suspend tcb
 >     Arch.prepareThreadDelete tcb
->     return (Zombie cte_ptr ZombieTCB 5, NullCap)
+>     return (Zombie cte_ptr ZombieTCB 6, NullCap)
 
 Zombies have already been finalised.
 
