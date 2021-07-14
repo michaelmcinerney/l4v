@@ -26,7 +26,7 @@ datatype cdl_tcb_invocation =
   | ReadRegisters cdl_object_id bool word32 nat
   | CopyRegisters cdl_object_id cdl_object_id bool bool bool bool nat
   | ThreadControl cdl_object_id cdl_cap_ref
-        "cdl_cptr option"
+        "(cdl_cap \<times> cdl_cap_ref) option"
         "(cdl_cap \<times> cdl_cap_ref) option"
         "(cdl_cap \<times> cdl_cap_ref) option"
         "(cdl_cap \<times> cdl_cap_ref) option"

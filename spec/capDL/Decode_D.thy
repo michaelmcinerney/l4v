@@ -130,7 +130,7 @@ where
        \<comment> \<open>
          For other operations, we only perform the user's intent
          if it matches up with the cap.
-        
+
          Note that this does not currently match the current
          implementation: instead, the user's message will be
          decoded into a new (undefined) intent for what the

@@ -160,7 +160,6 @@ translations
 (* Kernel objects *)
 record cdl_tcb =
   cdl_tcb_caps           :: cdl_cap_map
-  cdl_tcb_fault_endpoint :: cdl_cptr
   cdl_tcb_intent         :: cdl_full_intent
   cdl_tcb_has_fault      :: bool
   cdl_tcb_domain         :: word8
@@ -283,13 +282,14 @@ definition
  * Each TCB contains a number of cap slots, each with a specific
  * purpose. These constants define the purpose of each slot.
  *)
-definition "tcb_cspace_slot     = (0 :: cdl_cnode_index)"
-definition "tcb_vspace_slot     = (1 :: cdl_cnode_index)"
-definition "tcb_replycap_slot   = (2 :: cdl_cnode_index)"
-definition "tcb_caller_slot     = (3 :: cdl_cnode_index)"
-definition "tcb_ipcbuffer_slot  = (4 :: cdl_cnode_index)"
-definition "tcb_pending_op_slot = (5 :: cdl_cnode_index)"
-definition "tcb_boundntfn_slot  = (6 :: cdl_cnode_index)"
+definition "tcb_cspace_slot        = (0 :: cdl_cnode_index)"
+definition "tcb_vspace_slot        = (1 :: cdl_cnode_index)"
+definition "tcb_replycap_slot      = (2 :: cdl_cnode_index)"
+definition "tcb_caller_slot        = (3 :: cdl_cnode_index)"
+definition "tcb_ipcbuffer_slot     = (4 :: cdl_cnode_index)"
+definition "tcb_fault_handler_slot = (5 :: cdl_cnode_index)"
+definition "tcb_pending_op_slot    = (6 :: cdl_cnode_index)"
+definition "tcb_boundntfn_slot     = (7 :: cdl_cnode_index)"
 
 lemmas tcb_slot_defs =
   tcb_cspace_slot_def
@@ -297,6 +297,7 @@ lemmas tcb_slot_defs =
   tcb_replycap_slot_def
   tcb_caller_slot_def
   tcb_ipcbuffer_slot_def
+  tcb_fault_handler_slot_def
   tcb_pending_op_slot_def
   tcb_boundntfn_slot_def
 
@@ -610,7 +611,6 @@ definition
 where
   "default_tcb current_domain = \<lparr>
     cdl_tcb_caps = \<lambda>n. if n \<le> tcb_boundntfn_slot then Some NullCap else None,
-    cdl_tcb_fault_endpoint = 0,
     cdl_tcb_intent = \<lparr>
       cdl_intent_op = None,
       cdl_intent_error = False,

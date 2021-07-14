@@ -436,25 +436,18 @@ where
  * Send a fault IPC to the given thread's fault handler.
  *)
 definition
-  send_fault_ipc :: "cdl_object_id \<Rightarrow> unit fault_monad"
+  send_fault_ipc :: "cdl_object_id \<Rightarrow> cdl_cap \<Rightarrow> bool fault_monad"
   where
-  "send_fault_ipc tcb_id \<equiv>
-    doE
-      \<comment> \<open>Lookup where we should send the fault IPC to.\<close>
-      tcb \<leftarrow> liftE $ get_thread tcb_id;
-      target_ep_cptr \<leftarrow> returnOk $ cdl_tcb_fault_endpoint tcb;
-      handler_cap \<leftarrow> lookup_cap tcb_id target_ep_cptr;
+  "send_fault_ipc tcb_id handler_cap \<equiv>
       (case handler_cap of
           EndpointCap ref badge rights \<Rightarrow>
-            if Write \<in> rights \<and> (Grant \<in> rights \<or> GrantReply \<in> rights) then
               liftE $ do
                 update_thread_fault tcb_id (\<lambda>_. True);
-                send_ipc True True badge (Grant \<in> rights) True tcb_id ref
+                send_ipc True True badge (Grant \<in> rights) (GrantReply \<in> rights) tcb_id ref;
+              return True
               od
-            else
-               throw
-        | _ \<Rightarrow> throw)
-    odE"
+        | NullCap \<Rightarrow> liftE $ return False
+        | _ \<Rightarrow> throw)"
 
 (*
  * Handle a fault caused by the current thread.
@@ -471,8 +464,9 @@ definition
 where
   "handle_fault \<equiv> do
     tcb_id \<leftarrow> gets_the cdl_current_thread;
-    (send_fault_ipc tcb_id
-      <catch> (\<lambda>_. KHeap_D.set_cap (tcb_id,tcb_pending_op_slot) cdl_cap.NullCap))
+    handler_cap \<leftarrow> get_cap (tcb_id, tcb_fault_handler_slot);
+    has_fh \<leftarrow> (send_fault_ipc tcb_id handler_cap <catch> (\<lambda>_. return False));
+    unless has_fh $ KHeap_D.set_cap (tcb_id,tcb_pending_op_slot) cdl_cap.NullCap
   od"
 
 end

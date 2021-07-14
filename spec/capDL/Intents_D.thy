@@ -102,8 +102,8 @@ datatype cdl_tcb_intent =
  |  TcbSuspendIntent
     (* Resume: (target) *)
  |  TcbResumeIntent
-    (* Configure: (target), fault_ep, (cspace_root), cspace_root_data, (vspace_root), vspace_root_data, buffer, (bufferFrame) *)
- |  TcbConfigureIntent cdl_cptr cdl_raw_capdata cdl_raw_capdata word32
+    (* Configure: (target), (fault_ep), (cspace_root), cspace_root_data, (vspace_root), vspace_root_data, buffer, (bufferFrame) *)
+ |  TcbConfigureIntent cdl_raw_capdata cdl_raw_capdata word32
     (* SetMCPriority: (target), mcp *)
  |  TcbSetMCPriorityIntent word8
     (* SetPriority: (target), priority *)
@@ -112,8 +112,8 @@ datatype cdl_tcb_intent =
  |  TcbSetSchedParamsIntent word8 word8
     (* SetIPCBuffer: (target), buffer, (bufferFrame) *)
  |  TcbSetIPCBufferIntent word32
-    (* SetSpace: (target), fault_ep, (cspace_root), cspace_root_data, (vspace_root), vspace_root_data *)
- |  TcbSetSpaceIntent word32 cdl_raw_capdata cdl_raw_capdata
+    (* SetSpace: (target), (fault_ep), (cspace_root), cspace_root_data, (vspace_root), vspace_root_data *)
+ |  TcbSetSpaceIntent cdl_raw_capdata cdl_raw_capdata
     (* BindNTFN: (target), (ntfn) *)
  |  TcbBindNTFNIntent
     (* UnbindNTFN: (target) *)

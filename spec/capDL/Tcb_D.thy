@@ -75,15 +75,17 @@ where
          returnOk (Resume (cap_object target)) \<sqinter> throw
 
        \<comment> \<open>Configure: target, fault_ep, mcp, priority, cspace_root_data, vspace_root_data, buffer\<close>
-     | TcbConfigureIntent fault_ep cspace_root_data vspace_root_data buffer \<Rightarrow>
+     | TcbConfigureIntent cspace_root_data vspace_root_data buffer \<Rightarrow>
          doE
-           cspace_root \<leftarrow> throw_on_none $ get_index caps 0;
-           vspace_root \<leftarrow> throw_on_none $ get_index caps 1;
-           buffer_frame \<leftarrow> throw_on_none $ get_index caps 2;
+           fault_ep \<leftarrow> throw_on_none $ get_index caps 0;
+           cspace_root \<leftarrow> throw_on_none $ get_index caps 1;
+           vspace_root \<leftarrow> throw_on_none $ get_index caps 2;
+           buffer_frame \<leftarrow> throw_on_none $ get_index caps 3;
            cspace_root_cap_ref \<leftarrow> returnOk $ (cdl_update_cnode_cap_data (fst cspace_root) cspace_root_data,snd cspace_root);
            vspace_root_cap_ref \<leftarrow> returnOk $ vspace_root;
+           fault_ep_cap_ref \<leftarrow> returnOk $ fault_ep;
            buffer_frame_opt \<leftarrow> returnOk $ (if (buffer \<noteq> 0) then Some (reset_mem_mapping (fst buffer_frame), snd buffer_frame) else None);
-           returnOk (ThreadControl (cap_object target) slot (Some fault_ep)
+           returnOk (ThreadControl (cap_object target) slot (Some fault_ep_cap_ref)
                (Some cspace_root_cap_ref) (Some vspace_root_cap_ref) (buffer_frame_opt))
          odE \<sqinter> throw
 
@@ -117,12 +119,14 @@ where
          odE \<sqinter> throw
 
        \<comment> \<open>Update the various spaces (CSpace/VSpace) of a thread.\<close>
-     | TcbSetSpaceIntent fault_ep cspace_root_data vspace_root_data \<Rightarrow>
+     | TcbSetSpaceIntent cspace_root_data vspace_root_data \<Rightarrow>
          doE
-           cspace_root \<leftarrow> throw_on_none $ get_index caps 0;
-           vspace_root \<leftarrow> throw_on_none $ get_index caps 1;
+           fault_ep \<leftarrow> throw_on_none $ get_index caps 0;
+           cspace_root \<leftarrow> throw_on_none $ get_index caps 1;
+           vspace_root \<leftarrow> throw_on_none $ get_index caps 2;
            cspace_root_cap_ref \<leftarrow> returnOk $ (cdl_update_cnode_cap_data (fst cspace_root) cspace_root_data,snd cspace_root);
            vspace_root_cap_ref \<leftarrow> returnOk $ vspace_root;
+           fault_ep_cap_ref \<leftarrow> returnOk $ fault_ep;
            returnOk (ThreadControl (cap_object target) slot (Some fault_ep)
                (Some cspace_root_cap_ref) (Some vspace_root_cap_ref) None)
         odE \<sqinter> throw
@@ -184,7 +188,19 @@ where
        $ tcb_update_thread_slot target_tcb tcb_cap_ref tcb_vspace_slot vroot
   odE"
 
-
+(* Update a thread's Fault Endpoint. *)
+definition
+  tcb_update_faultep :: "cdl_object_id \<Rightarrow> cdl_cap_ref \<Rightarrow> (cdl_cap \<times> cdl_cap_ref) \<Rightarrow> unit preempt_monad"
+where
+  "tcb_update_faultep target_tcb tcb_cap_ref fh \<equiv>
+  doE
+     tcb_empty_thread_slot target_tcb tcb_fault_handler_slot;
+     whenE (fst fh \<noteq> NullCap) (doE
+       src_cap \<leftarrow> liftE $ get_cap (snd fh);
+       whenE (is_ep_cap src_cap \<and> (cap_object src_cap = cap_object (fst fh)))
+         $ tcb_update_thread_slot target_tcb tcb_cap_ref tcb_fault_handler_slot fh
+     odE)
+  odE"
 
 (* Modify the TCB's intent to indicate an error during decode. *)
 definition
@@ -272,8 +288,9 @@ where
     \<comment> \<open>Update a thread's options.\<close>
     | ThreadControl target_tcb tcb_cap_slot faultep croot vroot ipc_buffer \<Rightarrow>
         doE
+          \<comment> \<open>Possibly update Fault Endpoint\<close>
           case faultep of
-              Some x \<Rightarrow> liftE $ update_thread target_tcb (\<lambda>tcb. tcb\<lparr>cdl_tcb_fault_endpoint := x\<rparr>)
+              Some x \<Rightarrow> tcb_update_faultep target_tcb tcb_cap_slot x
             | None \<Rightarrow> returnOk ();
 
           \<comment> \<open>Possibly update CSpace\<close>
