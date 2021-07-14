@@ -279,18 +279,27 @@ where
     ThreadControl (obj_ref_of cap) slot None None None None None (Some (buffer, newbuf))
 odE"
 
+definition
+  has_handler_rights :: "cap \<Rightarrow> bool" where
+  "has_handler_rights cap \<equiv>
+    AllowSend \<in> cap_rights cap \<and> (AllowGrant \<in> cap_rights cap \<or> AllowGrantReply \<in> cap_rights cap)"
+
+definition
+  valid_fault_handler :: "cap \<Rightarrow> bool" where
+  "valid_fault_handler \<equiv>
+    is_ep_cap and has_handler_rights or (=) NullCap"
 
 definition
   decode_set_space
   :: "data list \<Rightarrow> cap \<Rightarrow> cslot_ptr \<Rightarrow> (cap \<times> cslot_ptr) list \<Rightarrow> (tcb_invocation,'z::state_ext) se_monad"
 where
   "decode_set_space args cap slot excaps \<equiv> doE
-   whenE (length args < 3 \<or> length excaps < 2) $ throwError TruncatedMessage;
-   fault_ep \<leftarrow> returnOk $ args ! 0;
-   croot_data  \<leftarrow> returnOk $ args ! 1;
-   vroot_data  \<leftarrow> returnOk $ args ! 2;
-   croot_arg  \<leftarrow> returnOk $ excaps ! 0;
-   vroot_arg  \<leftarrow> returnOk $ excaps ! 1;
+   whenE (length args < 2 \<or> length excaps < 3) $ throwError TruncatedMessage;
+   croot_data  \<leftarrow> returnOk $ args ! 0;
+   vroot_data  \<leftarrow> returnOk $ args ! 1;
+   fh_arg \<leftarrow> returnOk $ excaps ! 0;
+   croot_arg  \<leftarrow> returnOk $ excaps ! 1;
+   vroot_arg  \<leftarrow> returnOk $ excaps ! 2;
    can_chg_cr \<leftarrow> liftE $ liftM Not $ slot_cap_long_running_delete
                       $ get_tcb_ctable_ptr $ obj_ref_of cap;
    can_chg_vr \<leftarrow> liftE $ liftM Not $ slot_cap_long_running_delete
@@ -313,7 +322,10 @@ where
    unlessE (is_valid_vtable_root vroot_cap') $ throwError IllegalOperation;
    vroot \<leftarrow> returnOk (vroot_cap', vroot_slot);
 
-   returnOk $ ThreadControl (obj_ref_of cap) slot (Some (to_bl fault_ep)) None None
+   unlessE (valid_fault_handler $ fst fh_arg) $ throwError $ InvalidCapability 1;
+   fault_handler \<leftarrow> returnOk fh_arg;
+
+   returnOk $ ThreadControl (obj_ref_of cap) slot (Some fault_handler) None None
                             (Some croot) (Some vroot) None
  odE"
 
@@ -323,16 +335,15 @@ definition
   "data list \<Rightarrow> cap \<Rightarrow> cslot_ptr \<Rightarrow> (cap \<times> cslot_ptr) list \<Rightarrow> (tcb_invocation,'z::state_ext) se_monad"
 where
   "decode_tcb_configure args cap slot extra_caps \<equiv> doE
-     whenE (length args < 4) $ throwError TruncatedMessage;
-     whenE (length extra_caps < 3) $ throwError TruncatedMessage;
-     fault_ep \<leftarrow> returnOk $ args ! 0;
-     croot_data \<leftarrow> returnOk $ args ! 1;
-     vroot_data \<leftarrow> returnOk $ args ! 2;
-     crootvroot \<leftarrow> returnOk $ take 2 extra_caps;
-     buffer_cap \<leftarrow> returnOk $ extra_caps ! 2;
-     buffer \<leftarrow> returnOk $ args ! 3;
+     whenE (length args < 3) $ throwError TruncatedMessage;
+     whenE (length extra_caps < 4) $ throwError TruncatedMessage;
+     croot_data \<leftarrow> returnOk $ args ! 0;
+     vroot_data \<leftarrow> returnOk $ args ! 1;
+     buffer \<leftarrow> returnOk $ args ! 2;
+     fh_croot_vroot \<leftarrow> returnOk $ take 3 extra_caps;
+     buffer_cap \<leftarrow> returnOk $ extra_caps ! 3;
      set_params \<leftarrow> decode_set_ipc_buffer [buffer] cap slot [buffer_cap];
-     set_space \<leftarrow> decode_set_space [fault_ep, croot_data, vroot_data] cap slot crootvroot;
+     set_space \<leftarrow> decode_set_space [croot_data, vroot_data] cap slot fh_croot_vroot;
      returnOk $ ThreadControl (obj_ref_of cap) slot (tc_new_fault_ep set_space)
                               None None
                               (tc_new_croot set_space) (tc_new_vroot set_space)

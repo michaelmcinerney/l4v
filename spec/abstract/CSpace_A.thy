@@ -449,7 +449,7 @@ where
          when final $ unbind_notification r;
          when final $ suspend r;
          when final $ prepare_thread_delete r;
-         return (if final then (Zombie r None 5) else NullCap, NullCap)
+         return (if final then (Zombie r None 6) else NullCap, NullCap)
       od"
 | "finalise_cap DomainCap                final = return (NullCap, NullCap)"
 | "finalise_cap (Zombie r b n)           final =

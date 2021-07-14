@@ -60,6 +60,8 @@ where
                        return $ TCB $ tcb \<lparr> tcb_caller := cap \<rparr>
                    else if cref = tcb_cnode_index 4 then
                        return $ TCB $ tcb \<lparr> tcb_ipcframe := cap \<rparr>
+                   else if cref = tcb_cnode_index 5 then
+                       return $ TCB $ tcb \<lparr> tcb_fault_handler := cap \<rparr>
                    else
                        fail
              | _ \<Rightarrow> fail;

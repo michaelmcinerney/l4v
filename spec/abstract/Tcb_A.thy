@@ -141,6 +141,39 @@ where
      set_bound_notification tcbptr $ Some ntfnptr
    od"
 
+definition
+  install_tcb_cap :: "obj_ref \<Rightarrow> cslot_ptr \<Rightarrow> nat \<Rightarrow> (cap \<times> cslot_ptr) option \<Rightarrow> (unit, 'z::state_ext) p_monad"
+where
+  "install_tcb_cap target slot n slot_opt \<equiv>
+     case slot_opt of None \<Rightarrow> returnOk ()
+     | Some (new_cap, src_slot) \<Rightarrow> doE
+      cap_delete (target, tcb_cnode_index n);
+      unlessE (new_cap = NullCap) $
+              liftE $ check_cap_at new_cap src_slot
+                    $ check_cap_at (ThreadCap target) slot
+                    $ cap_insert new_cap src_slot (target, tcb_cnode_index n)
+    odE"
+
+definition
+  install_tcb_frame_cap :: "obj_ref \<Rightarrow> cslot_ptr \<Rightarrow> (vspace_ref \<times> (cap \<times> cslot_ptr) option) option \<Rightarrow> (unit, 'z::state_ext) p_monad"
+where
+  "install_tcb_frame_cap target slot buffer \<equiv>
+     case buffer of
+       None \<Rightarrow> returnOk ()
+     | Some (ptr, frame)
+         \<Rightarrow> doE
+              cap_delete (target, tcb_cnode_index 4);
+              liftE $ thread_set (\<lambda>t. t \<lparr> tcb_ipc_buffer := ptr \<rparr>) target;
+              liftE $ case frame of
+                        None \<Rightarrow> return ()
+                      | Some (new_cap, src_slot)
+                          \<Rightarrow>  check_cap_at new_cap src_slot
+                              $ check_cap_at (ThreadCap target) slot
+                              $ cap_insert new_cap src_slot (target, tcb_cnode_index 4);
+              cur \<leftarrow> liftE $ gets cur_thread;
+              liftE $ when (target = cur) (do_extended_op reschedule_required)
+            odE"
+
 text \<open>TCB capabilities confer authority to perform seven actions. A thread can
 request to yield its timeslice to another, to suspend or resume another, to
 reconfigure another thread, or to copy register sets into, out of or between
@@ -151,37 +184,14 @@ where
   "invoke_tcb (Suspend thread) = liftE (do suspend thread; return [] od)"
 | "invoke_tcb (Resume thread) = liftE (do restart thread; return [] od)"
 
-| "invoke_tcb (ThreadControl target slot faultep mcp priority croot vroot buffer)
+| "invoke_tcb (ThreadControl target slot fault_handler mcp priority croot vroot buffer)
    = doE
-    liftE $ option_update_thread target (tcb_fault_handler_update o K) faultep;
-    liftE $  case mcp of None \<Rightarrow> return()
+    liftE $ case mcp of None \<Rightarrow> return()
      | Some (newmcp, _) \<Rightarrow> set_mcpriority target newmcp;
-    (case croot of None \<Rightarrow> returnOk ()
-     | Some (new_cap, src_slot) \<Rightarrow> doE
-      cap_delete (target, tcb_cnode_index 0);
-      liftE $ check_cap_at new_cap src_slot
-            $ check_cap_at (ThreadCap target) slot
-            $ cap_insert new_cap src_slot (target, tcb_cnode_index 0)
-    odE);
-    (case vroot of None \<Rightarrow> returnOk ()
-     | Some (new_cap, src_slot) \<Rightarrow> doE
-      cap_delete (target, tcb_cnode_index 1);
-      liftE $ check_cap_at new_cap src_slot
-            $ check_cap_at (ThreadCap target) slot
-            $ cap_insert new_cap src_slot (target, tcb_cnode_index 1)
-    odE);
-    (case buffer of None \<Rightarrow> returnOk ()
-     | Some (ptr, frame) \<Rightarrow> doE
-      cap_delete (target, tcb_cnode_index 4);
-      liftE $ thread_set (\<lambda>t. t \<lparr> tcb_ipc_buffer := ptr \<rparr>) target;
-      liftE $ case frame of None \<Rightarrow> return ()
-       | Some (new_cap, src_slot) \<Rightarrow>
-            check_cap_at new_cap src_slot
-          $ check_cap_at (ThreadCap target) slot
-          $ cap_insert new_cap src_slot (target, tcb_cnode_index 4);
-      cur \<leftarrow> liftE $ gets cur_thread;
-      liftE $ when (target = cur) (do_extended_op reschedule_required)
-    odE);
+    install_tcb_cap target slot 5 fault_handler;
+    install_tcb_cap target slot 0 croot;
+    install_tcb_cap target slot 1 vroot;
+    install_tcb_frame_cap target slot buffer;
     liftE $ case priority
               of None \<Rightarrow> return()
                | Some (prio, _) \<Rightarrow> do_extended_op (set_priority target prio);

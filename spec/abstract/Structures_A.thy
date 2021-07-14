@@ -275,8 +275,8 @@ where
   "message_info_to_data (MI len exc unw mlabel) =
    (let
         extra = exc << 7;
-        unwrapped = unw << 9;
-        label = mlabel << 12
+        unwrapped = unw << 10;
+        label = mlabel << 17
     in
        label || extra || unwrapped || len)"
 
@@ -284,10 +284,10 @@ definition
   data_to_message_info :: "data \<Rightarrow> message_info"
 where
   "data_to_message_info w \<equiv>
-   MI (let v = w && mask 7 in if v > 120 then 120 else v)
-      ((w >> 7) && mask 2)
-      ((w >> 9) && mask 3)
-      ((w >> 12) && mask msg_label_bits)"
+   MI (let v = w && mask 7 in if v > 116 then 116 else v)
+      ((w >> 7) && mask 3)
+      ((w >> 10) && mask 7)
+      ((w >> 17) && mask msg_label_bits)"
 
 section \<open>Kernel Objects\<close>
 
@@ -384,7 +384,7 @@ record tcb =
  tcb_caller        :: cap
  tcb_ipcframe      :: cap
  tcb_state         :: thread_state
- tcb_fault_handler :: cap_ref
+ tcb_fault_handler :: cap
  tcb_ipc_buffer    :: vspace_ref
  tcb_fault         :: "fault option"
  tcb_bound_notification     :: "obj_ref option"
@@ -405,6 +405,17 @@ where
 | "runnable (IdleThreadState)       = False"
 | "runnable (BlockedOnReply)        = False"
 
+\<comment> \<open>Determines whether a thread is in a notification or endpoint queue\<close>
+primrec ipc_queued_thread_state :: "thread_state \<Rightarrow> bool" where
+  "ipc_queued_thread_state (Running)                 = False"
+| "ipc_queued_thread_state (Inactive)                = False"
+| "ipc_queued_thread_state (Restart)                 = False"
+| "ipc_queued_thread_state (BlockedOnReceive _ _)    = True"
+| "ipc_queued_thread_state (BlockedOnSend _ _)       = True"
+| "ipc_queued_thread_state (BlockedOnNotification _) = True"
+| "ipc_queued_thread_state (IdleThreadState)         = False"
+| "ipc_queued_thread_state (BlockedOnReply)          = True"
+
 
 definition
   default_tcb :: tcb where
@@ -415,7 +426,7 @@ definition
       tcb_caller   = NullCap,
       tcb_ipcframe = NullCap,
       tcb_state    = Inactive,
-      tcb_fault_handler = to_bl (0::machine_word),
+      tcb_fault_handler = NullCap,
       tcb_ipc_buffer = 0,
       tcb_fault      = None,
       tcb_bound_notification  = None,
@@ -639,7 +650,8 @@ definition tcb_cnode_map :: "tcb \<Rightarrow> cnode_index \<Rightarrow> cap opt
     tcb_cnode_index 1 \<mapsto> tcb_vtable tcb,
     tcb_cnode_index 2 \<mapsto> tcb_reply tcb,
     tcb_cnode_index 3 \<mapsto> tcb_caller tcb,
-    tcb_cnode_index 4 \<mapsto> tcb_ipcframe tcb]"
+    tcb_cnode_index 4 \<mapsto> tcb_ipcframe tcb,
+    tcb_cnode_index 5 \<mapsto> tcb_fault_handler tcb]"
 
 definition cap_of :: "kernel_object \<Rightarrow> cnode_index \<Rightarrow> cap option"
   where
@@ -667,11 +679,11 @@ definition cap_transfer_data_size :: nat
 
 definition msg_max_length :: nat
   where
-  "msg_max_length \<equiv> 120"
+  "msg_max_length \<equiv> 116"
 
 definition msg_max_extra_caps :: nat
   where
-  "msg_max_extra_caps \<equiv> 3"
+  "msg_max_extra_caps \<equiv> 7"
 
 definition max_ipc_length :: nat
   where
