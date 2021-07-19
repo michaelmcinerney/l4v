@@ -113,9 +113,8 @@ definition
   transform_intent_tcb_configure :: "word32 list \<Rightarrow> cdl_tcb_intent option"
 where
   "transform_intent_tcb_configure args =
-  (case args of fault_ep#croot_data#vroot_data#buffer#_ \<Rightarrow>
-    Some (TcbConfigureIntent fault_ep
-                             croot_data vroot_data buffer)
+  (case args of croot_data#vroot_data#buffer#_ \<Rightarrow>
+    Some (TcbConfigureIntent croot_data vroot_data buffer)
    | _ \<Rightarrow> None)"
 
 definition
@@ -155,8 +154,8 @@ definition
   transform_intent_tcb_set_space :: "word32 list \<Rightarrow> cdl_tcb_intent option"
 where
   "transform_intent_tcb_set_space args =
-  (case args of fault_ep#croot_data#vroot_data#_ \<Rightarrow>
-    Some (TcbSetSpaceIntent fault_ep croot_data vroot_data)
+  (case args of croot_data#vroot_data#_ \<Rightarrow>
+    Some (TcbSetSpaceIntent croot_data vroot_data)
    | _ \<Rightarrow> None)"
 
 definition
@@ -387,11 +386,11 @@ lemma transform_tcb_intent_invocation:
    ((label = GenInvocationLabel TCBReadRegisters) = (ti = (TcbReadRegistersIntent ((args ! 0)!!0) 0 (args ! 1)) \<and> length args \<ge> 2)) \<and>
    ((label = GenInvocationLabel TCBWriteRegisters) = (ti = (TcbWriteRegistersIntent ((args ! 0)!!0) 0 (args ! 1) (drop 2 args)) \<and> length args \<ge> 2)) \<and>
    ((label = GenInvocationLabel TCBCopyRegisters) = (ti = (TcbCopyRegistersIntent ((args ! 0)!!0) ((args ! 0)!!1) ((args ! 0)!!2) ((args ! 0)!!3) 0) \<and> length args \<ge> 1)) \<and>
-   ((label = GenInvocationLabel TCBConfigure) = (ti = (TcbConfigureIntent (args ! 0) (args ! 1) (args ! 2) (args ! 3)) \<and> length args \<ge> 4)) \<and>
+   ((label = GenInvocationLabel TCBConfigure) = (ti = (TcbConfigureIntent (args ! 0) (args ! 1) (args ! 2)) \<and> length args \<ge> 3)) \<and>
    ((label = GenInvocationLabel TCBSetPriority) = (ti = (TcbSetPriorityIntent (prio_from_arg (args ! 0))) \<and> length args \<ge> 1)) \<and>
    ((label = GenInvocationLabel TCBSetMCPriority) = (ti = (TcbSetMCPriorityIntent (prio_from_arg (args ! 0))) \<and> length args \<ge> 1)) \<and>
    ((label = GenInvocationLabel TCBSetSchedParams) = (ti = (TcbSetSchedParamsIntent (prio_from_arg (args ! 0)) (prio_from_arg (args ! 1))) \<and> length args \<ge> 2)) \<and>
-   ((label = GenInvocationLabel TCBSetSpace) = (ti = (TcbSetSpaceIntent (args ! 0) (args ! 1) (args ! 2)) \<and> length args \<ge> 3)) \<and>
+   ((label = GenInvocationLabel TCBSetSpace) = (ti = (TcbSetSpaceIntent (args ! 0) (args ! 1)) \<and> length args \<ge> 2)) \<and>
    ((label = GenInvocationLabel TCBSuspend) = (ti = TcbSuspendIntent)) \<and>
    ((label = GenInvocationLabel TCBResume) = (ti = TcbResumeIntent)) \<and>
    ((label = GenInvocationLabel TCBBindNotification) = (ti = TcbBindNTFNIntent)) \<and>
@@ -524,12 +523,12 @@ lemma transform_intent_isnot_TcbIntent:
        = ((label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and>
           (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and>
           (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and>
-          (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and>
+          (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 3) \<and>
           (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and>
           (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and>
           (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and>
           (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and>
-          (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and>
+          (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 2) \<and>
           (label \<noteq> GenInvocationLabel TCBSuspend) \<and>
           (label \<noteq> GenInvocationLabel TCBResume) \<and>
           (label \<noteq> GenInvocationLabel TCBBindNotification) \<and>
@@ -807,11 +806,10 @@ where
                    tcb_replycap_slot \<mapsto> (transform_cap $ tcb_reply tcb),
                    tcb_caller_slot \<mapsto> (transform_cap $ tcb_caller tcb),
                    tcb_ipcbuffer_slot \<mapsto> (transform_cap $ tcb_ipcframe tcb),
+                   tcb_fault_handler_slot \<mapsto> (transform_cap $ tcb_fault_handler tcb),
                    tcb_pending_op_slot \<mapsto> (infer_tcb_pending_op ptr (tcb_state tcb)),
                    tcb_boundntfn_slot \<mapsto> (infer_tcb_bound_notification (tcb_bound_notification tcb))
                  ],
-
-                 cdl_tcb_fault_endpoint = (of_bl (tcb_fault_handler tcb)),
 
                  \<comment> \<open>Decode the thread's intent.\<close>
                  cdl_tcb_intent = transform_full_intent ms ptr tcb,

@@ -382,8 +382,10 @@ lemma finalise_cancel_ipc:
                          tcb_caller_slot_def tcb_cspace_slot_def tcb_ipcbuffer_slot_def
                          tcb_replycap_slot_def tcb_vspace_slot_def assert_opt_def)
    apply (case_tac "tcb_state obj'")
-          apply (simp_all add:not_idle_thread_def infer_tcb_pending_op_def
-            tcb_pending_op_slot_def[symmetric] tcb_replycap_slot_def[symmetric])
+          apply (simp_all add: not_idle_thread_def infer_tcb_pending_op_def
+                               tcb_pending_op_slot_def
+                               tcb_replycap_slot_def
+                               tcb_fault_handler_slot_def)
       apply (simp add:blocked_cancel_ipc_def)
       apply (rule corres_guard_imp)
         apply (rule corres_symb_exec_r)
@@ -426,7 +428,7 @@ lemma finalise_cancel_ipc:
            valid_state_def valid_pspace_def infer_tcb_pending_op_def
            st_tcb_at_def generates_pending_def obj_at_def dest!:get_tcb_SomeD)
      apply (rule tcb_at_cte_at_2,clarsimp simp:tcb_at_def dest!:get_tcb_rev,simp)
-    apply (simp add:reply_cancel_ipc_def)
+    apply (clarsimp simp: reply_cancel_ipc_def split: cdl_cap.split)
     apply (rule corres_guard_imp)
       apply (rule corres_split_deprecated[OF _ thread_set_fault_corres])
          apply (rule corres_symb_exec_r)
@@ -437,7 +439,7 @@ lemma finalise_cancel_ipc:
                      thread_set_cte_at|clarsimp)+
     apply (clarsimp simp: not_idle_thread_def
       tcb_at_cte_at_2[unfolded tcb_at_def])
-   apply (simp add:cancel_signal_def)
+   apply (clarsimp simp: cancel_signal_def)
    apply (rule corres_guard_imp)
      apply (rule_tac Q'="\<lambda>r. valid_ntfn r and (=) s'" in corres_symb_exec_r)
         apply (rule corres_symb_exec_r)
@@ -463,7 +465,7 @@ lemma finalise_cancel_ipc:
    apply (clarsimp simp:valid_tcb_def tcb_at_cte_at_2 valid_tcb_state_def invs_def valid_state_def valid_pspace_def
         st_tcb_at_def generates_pending_def obj_at_def dest!:get_tcb_SomeD)
   apply (clarsimp, frule(1) valid_etcbs_get_tcb_get_etcb)
-  apply (clarsimp simp:opt_object_tcb opt_cap_tcb)
+  apply (clarsimp simp: opt_object_tcb opt_cap_tcb tcb_pending_op_slot_def)
   done
 
 lemma dcorres_get_irq_slot:
@@ -2669,7 +2671,7 @@ lemma get_cap_weak_wp:
 definition remainder_cap :: "bool \<Rightarrow> cap \<Rightarrow> cap"
 where "remainder_cap final c\<equiv> case c of
   cap.CNodeCap r bits g \<Rightarrow> if final then cap.Zombie r (Some bits) (2 ^ bits) else cap.NullCap
-| cap.ThreadCap r \<Rightarrow> if final then cap.Zombie r None 5 else cap.NullCap
+| cap.ThreadCap r \<Rightarrow> if final then cap.Zombie r None 6 else cap.NullCap
 | cap.Zombie r b n \<Rightarrow> cap.Zombie r b n
 | cap.ArchObjectCap a \<Rightarrow> cap.NullCap
 | _ \<Rightarrow> cap.NullCap"
@@ -2683,10 +2685,7 @@ lemma finalise_cap_remainder:
           apply (wp|clarsimp|rule conjI)+
   apply (simp add:arch_finalise_cap_def)
   apply (cases final)
-
    apply (rename_tac arch_cap)
-
-
    apply (case_tac arch_cap)
        apply (simp_all)
        apply (wp|clarsimp)+

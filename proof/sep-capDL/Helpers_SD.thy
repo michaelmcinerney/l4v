@@ -156,20 +156,14 @@ lemma all_capsE [elim!]:
 
 
 lemma default_tcb_slots:
- "[0 ..< tcb_pending_op_slot] = [0,1,2,3,4]"
+ "[0 ..< tcb_pending_op_slot] = [0,1,2,3,4,5]"
  "[0 ..< 5] = [0,1,2,3,4]"
- "[0 .e. tcb_pending_op_slot] = [0,1,2,3,4,5]"
+ "[0 .e. tcb_pending_op_slot] = [0,1,2,3,4,5,6]"
  "[0 .e. (5::nat)] = [0,1,2,3,4,5]"
  "[0..< 6] = [0,1,2,3,4,5]"
  "[0..< 7] = [0,1,2,3,4,5,6]"
+ "[0..< 8] = [0,1,2,3,4,5,6,7]"
   by (clarsimp simp: tcb_pending_op_slot_def upt_rec)+
-
-definition "update_tcb_fault_endpoint fault_ep = cdl_tcb_fault_endpoint_update (\<lambda>_. fault_ep)"
-
-lemma update_tcb_fault_endpoint_id [simp]:
-  "cdl_tcb_fault_endpoint tcb = fault_ep
-  \<Longrightarrow> update_tcb_fault_endpoint fault_ep tcb = tcb"
-  by (clarsimp simp: update_tcb_fault_endpoint_def)
 
 definition tcb_has_fault :: "cdl_object \<Rightarrow> bool"
 where

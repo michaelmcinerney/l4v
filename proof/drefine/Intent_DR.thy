@@ -29,8 +29,10 @@ lemma cte_wp_at_zombie_not_idle:
   "\<lbrakk>cte_wp_at ((=) (cap.Zombie ptr' zbits n)) ptr s; invs s\<rbrakk> \<Longrightarrow> not_idle_thread ptr' s"
   by (auto dest!: zombie_cap_two_nonidles simp: cte_wp_at_caps_of_state not_idle_thread_def)
 
-lemmas tcb_slots = Types_D.tcb_caller_slot_def Types_D.tcb_cspace_slot_def Types_D.tcb_ipcbuffer_slot_def
-  Types_D.tcb_pending_op_slot_def Types_D.tcb_replycap_slot_def Types_D.tcb_vspace_slot_def Types_D.tcb_boundntfn_slot_def
+lemmas tcb_slots = Types_D.tcb_caller_slot_def Types_D.tcb_cspace_slot_def
+                   Types_D.tcb_ipcbuffer_slot_def Types_D.tcb_fault_handler_slot_def
+                   Types_D.tcb_pending_op_slot_def Types_D.tcb_replycap_slot_def
+                   Types_D.tcb_vspace_slot_def Types_D.tcb_boundntfn_slot_def
 
 (* FIXME: MOVE *)
 lemma tcb_cap_casesE:
@@ -49,6 +51,8 @@ lemma tcb_cap_casesE:
                                      | _ \<Rightarrow> is_reply_cap or ((=) cap.NullCap)) \<rbrakk> \<Longrightarrow> R"
               "\<lbrakk> p = tcb_cnode_index 4; gf = tcb_ipcframe; sf = tcb_ipcframe_update; restr =
                                      (\<lambda>_ _. is_nondevice_page_cap or ((=) cap.NullCap)) \<rbrakk> \<Longrightarrow> R"
+              "\<lbrakk> p = tcb_cnode_index 5; gf = tcb_fault_handler; sf = tcb_fault_handler_update;
+                 restr = (\<lambda>_ _. valid_fault_handler) \<rbrakk> \<Longrightarrow> R"
   shows "R"
   using cs
   unfolding tcb_cap_cases_def
@@ -87,12 +91,15 @@ lemma opt_object_tcb:
   by (clarsimp simp: transform_def transform_objects_tcb dest!: get_tcb_SomeD)
 
 abbreviation
-  "tcb_abstract_slots \<equiv> {tcb_caller_slot, tcb_cspace_slot, tcb_ipcbuffer_slot, tcb_replycap_slot, tcb_vspace_slot}"
+  "tcb_abstract_slots \<equiv> {tcb_caller_slot, tcb_cspace_slot, tcb_ipcbuffer_slot,
+                          tcb_fault_handler_slot, tcb_replycap_slot, tcb_vspace_slot}"
 
 lemma tcb_cap_cases_slot_simps[simp]:
   "tcb_cap_cases (tcb_cnode_index tcb_cspace_slot) = Some (tcb_ctable, tcb_ctable_update, (\<lambda>_ _. \<top>))"
   "tcb_cap_cases (tcb_cnode_index tcb_vspace_slot) =
       Some (tcb_vtable, tcb_vtable_update, (\<lambda>_ _. is_valid_vtable_root or ((=) cap.NullCap)))"
+  "tcb_cap_cases (tcb_cnode_index tcb_fault_handler_slot) =
+       Some (tcb_fault_handler, tcb_fault_handler_update, (\<lambda>_ _. valid_fault_handler))"
   "tcb_cap_cases (tcb_cnode_index tcb_replycap_slot) =
       Some (tcb_reply, tcb_reply_update,
             (\<lambda>t st c. (is_master_reply_cap c \<and> obj_ref_of c = t \<and> AllowGrant \<in> cap_rights c)
@@ -1546,8 +1553,9 @@ lemma store_word_corres_helper:
                  clarsimp simp:restrict_map_def transform_object_def transform_tcb_def
                           split:cdl_object.split_asm Structures_A.kernel_object.split_asm if_split_asm)+
    defer
-   apply (simp add:tcb_ipcframe_id_def tcb_boundntfn_slot_def tcb_ipcbuffer_slot_def split:if_split_asm)
-    apply (simp add:tcb_ipcbuffer_slot_def tcb_pending_op_slot_def)
+   apply (simp add: tcb_ipcframe_id_def tcb_boundntfn_slot_def tcb_ipcbuffer_slot_def split: if_split_asm)
+     apply (simp add: tcb_ipcbuffer_slot_def tcb_pending_op_slot_def)
+    apply (simp add: tcb_fault_handler_slot_def)
    apply (frule_tac thread = thread in valid_tcb_objs)
     apply (simp add: get_tcb_rev)
    apply (clarsimp simp:valid_tcb_def tcb_cap_cases_def)
@@ -1562,8 +1570,8 @@ lemma store_word_corres_helper:
             and ms = "machine_state s" and tcb_type = tcb and b = b and s_id = s_id
             and xs = "[Suc (length msg_registers)..<Suc msg_max_length]"
             in get_ipc_buffer_words_separate_frame)
-               apply (erule get_tcb_rev)
-              apply ((simp add:ipc_frame_wp_at_def obj_at_def)+)[8]
+              apply (erule get_tcb_rev)
+             apply ((simp add:ipc_frame_wp_at_def obj_at_def)+)[8]
      apply (clarsimp simp del:upt.simps)
      apply (rule_tac y = thread in within_page_ipc_buf)
            apply (simp add:ipc_frame_wp_at_def obj_at_def ipc_buffer_wp_at_def)+
@@ -1575,8 +1583,8 @@ lemma store_word_corres_helper:
             tcb_type = tcb and b = b and s_id = s_id
             and xs = "[buffer_cptr_index..<buffer_cptr_index + unat (mi_extra_caps (get_tcb_message_info tcb))]"
             in get_ipc_buffer_words_separate_frame)
-                apply (erule get_tcb_rev)
-               apply ((simp add:ipc_frame_wp_at_def obj_at_def)+)[8]
+               apply (erule get_tcb_rev)
+              apply ((simp add:ipc_frame_wp_at_def obj_at_def)+)[8]
       apply (clarsimp simp del:upt.simps)
       apply (rule_tac sz = vmpage_size and y = thread in within_page_ipc_buf)
             apply (simp add:ipc_frame_wp_at_def obj_at_def ipc_buffer_wp_at_def)+
@@ -1585,9 +1593,9 @@ lemma store_word_corres_helper:
       apply (clarsimp simp add: get_tcb_message_info_def data_to_message_info_def)
       apply (erule order_less_le_trans)
       apply (simp add: mask_def)
-      apply (rule iffD1[OF word_le_nat_alt[where b = "0x6::word32",simplified]])
+      apply (rule iffD1[OF word_le_nat_alt[where b = "0xA::word32",simplified]])
       apply (rule order_trans)
-       apply (rule  word_and_le1[where a = 3])
+       apply (rule  word_and_le1[where a = 7])
       apply ((clarsimp simp:ipc_frame_wp_at_def obj_at_def)+)[4]
    apply (frule_tac thread = thread and ptr = ptr and sz = sz and ms = "machine_state s" and
            tcb_type = tcb and b = b and s_id = s_id
@@ -1720,9 +1728,9 @@ lemma dcorres_store_word_safe:
          apply (clarsimp simp add: get_tcb_message_info_def data_to_message_info_def)
          apply (erule order_less_le_trans)
          apply (simp add: mask_def)
-         apply (rule iffD1[OF word_le_nat_alt[where b = "0x6::word32",simplified]])
+         apply (rule iffD1[OF word_le_nat_alt[where b = "0xA::word32",simplified]])
          apply (rule order_trans)
-          apply (rule word_and_le1[where a = 3])
+          apply (rule word_and_le1[where a = 7])
          apply simp
         apply (subgoal_tac "ipc_frame_ptr_at word thread s'")
          apply (drule_tac x = word in spec)
@@ -2038,7 +2046,7 @@ lemma copy_mrs_corres:
                apply simp+
          apply (clarsimp simp:msg_align_bits valid_message_info_def msg_max_length_def)
          apply (erule less_trans)
-         apply (rule le_less_trans[where y =  "Suc (unat (0x78))"])
+         apply (rule le_less_trans[where y =  "Suc (unat (0x74))"])
           apply (rule iffD2[OF Suc_le_mono])
           apply (erule iffD1[OF word_le_nat_alt])
          apply simp
@@ -2093,11 +2101,12 @@ lemma corrupt_frame_include_self:
   apply (case_tac xa)
   apply (clarsimp simp:not_idle_thread_def tcb_ipcframe_id_def restrict_map_def transform_objects_def
                   split: if_split)
-  apply (clarsimp dest!:get_tcb_rev simp: transform_objects_tcb tcb_ipcbuffer_slot_def
-                        tcb_pending_op_slot_def tcb_boundntfn_slot_def)
+  apply (clarsimp simp: transform_objects_tcb tcb_ipcbuffer_slot_def tcb_fault_handler_slot_def
+                        tcb_pending_op_slot_def tcb_boundntfn_slot_def dest!: get_tcb_rev)
   apply (clarsimp simp: tcb_ipcbuffer_slot_def tcb_ipcframe_id_def | rule conjI)+
-  apply (clarsimp simp:transform_def transform_object_def transform_tcb_def tcb_ipcframe_id_def
-        tcb_ipcbuffer_slot_def tcb_pending_op_slot_def tcb_boundntfn_slot_def dest!:get_tcb_SomeD)
+  apply (clarsimp simp: transform_def transform_object_def transform_tcb_def tcb_ipcframe_id_def
+                        tcb_ipcbuffer_slot_def tcb_fault_handler_slot_def tcb_pending_op_slot_def
+                        tcb_boundntfn_slot_def dest!: get_tcb_SomeD)
   done
 
 lemma corrupt_frame_include_self':
@@ -2129,7 +2138,7 @@ shows "dcorres dc \<top> P (corrupt_frame buf) g"
    apply (clarsimp split:cap.splits arch_cap.splits)
    apply (drule(1) valid_etcbs_tcb_etcb)
   by (fastforce simp: transform_tcb_def tcb_ipcframe_id_def tcb_pending_op_slot_def
-                      tcb_ipcbuffer_slot_def tcb_boundntfn_slot_def)+
+                      tcb_ipcbuffer_slot_def tcb_fault_handler_slot_def tcb_boundntfn_slot_def)+
 
 lemma dcorres_set_mrs:
   "dcorres dc \<top>

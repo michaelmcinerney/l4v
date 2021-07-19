@@ -61,10 +61,18 @@ lemma transform_tcb_slot_4:
   apply (simp add:bl_to_bin_def)
   done
 
+lemma transform_tcb_slot_5:
+  "transform_cslot_ptr (a,tcb_cnode_index 5) = (a,tcb_fault_handler_slot)"
+  apply (clarsimp simp:transform_cslot_ptr_def)
+  apply (unfold tcb_fault_handler_slot_def)
+  apply (simp add: tcb_cnode_index_def)
+  apply (simp add:bl_to_bin_def)
+  done
+
 lemmas transform_tcb_slot_simp =
   transform_tcb_slot_0 transform_tcb_slot_1
   transform_tcb_slot_2 transform_tcb_slot_3
-  transform_tcb_slot_4
+  transform_tcb_slot_4 transform_tcb_slot_5
 
 lemma cap_table_at_cte_wp_at_length:
   "\<lbrakk> cap_table_at n p s; cte_wp_at P (p, p') s \<rbrakk>
@@ -395,8 +403,11 @@ shows "\<lbrakk>opt_cap_wp_at P slot (transform s);valid_objs s; valid_etcbs s\<
                              tcb_pending_op_slot_def tcb_boundntfn_slot_def
                        split: Structures_A.kernel_object.splits nat.splits if_splits
               | drule(1) valid_etcbs_tcb_etcb)+
-         apply (clarsimp simp: cap_counts_def infer_tcb_bound_notification_def split:option.splits)
-             apply (clarsimp simp:cap_counts_def infer_tcb_pending_op_def split:Structures_A.thread_state.splits nat.splits)
+               apply (clarsimp simp: cap_counts_def infer_tcb_bound_notification_def split:option.splits)
+              apply (clarsimp simp:cap_counts_def infer_tcb_pending_op_def split:Structures_A.thread_state.splits nat.splits)
+             using transform_tcb_slot_simp[simplified,symmetric]
+             apply (rule_tac x= "tcb_cnode_index 5" in exI)
+             apply (clarsimp)
             using transform_tcb_slot_simp[simplified,symmetric]
             apply (rule_tac x= "tcb_cnode_index 4" in exI)
             apply (clarsimp)
@@ -634,21 +645,21 @@ lemma caps_of_state_cnode:
 
 
 lemma cdl_objects_tcb:
-  "\<lbrakk>kheap s' p = Some (TCB tcb); ekheap s' p = Some etcb; p \<noteq> idle_thread s'\<rbrakk>
-\<Longrightarrow> cdl_objects (transform s') p =
-   Some (Tcb \<lparr>cdl_tcb_caps =
-              [tcb_cspace_slot \<mapsto> transform_cap (tcb_ctable tcb),
-               tcb_vspace_slot \<mapsto> transform_cap (tcb_vtable tcb),
-               tcb_replycap_slot \<mapsto> transform_cap (tcb_reply tcb),
-               tcb_caller_slot \<mapsto> transform_cap (tcb_caller tcb),
-               tcb_ipcbuffer_slot \<mapsto> transform_cap (tcb_ipcframe tcb),
-               tcb_pending_op_slot \<mapsto> infer_tcb_pending_op p (tcb_state tcb),
-               tcb_boundntfn_slot \<mapsto> infer_tcb_bound_notification (tcb_bound_notification tcb)],
-              cdl_tcb_fault_endpoint = of_bl (tcb_fault_handler tcb),
-              cdl_tcb_intent = transform_full_intent (machine_state s') p tcb,
-              cdl_tcb_has_fault = (tcb_has_fault tcb),
-              cdl_tcb_domain = tcb_domain etcb
-            \<rparr>)"
+  "\<lbrakk> kheap s' p = Some (TCB tcb); ekheap s' p = Some etcb; p \<noteq> idle_thread s' \<rbrakk> \<Longrightarrow>
+     cdl_objects (transform s') p =
+     Some (Tcb \<lparr>cdl_tcb_caps =
+                [tcb_cspace_slot \<mapsto> transform_cap (tcb_ctable tcb),
+                 tcb_vspace_slot \<mapsto> transform_cap (tcb_vtable tcb),
+                 tcb_replycap_slot \<mapsto> transform_cap (tcb_reply tcb),
+                 tcb_caller_slot \<mapsto> transform_cap (tcb_caller tcb),
+                 tcb_ipcbuffer_slot \<mapsto> transform_cap (tcb_ipcframe tcb),
+                 tcb_fault_handler_slot \<mapsto> transform_cap (tcb_fault_handler tcb),
+                 tcb_pending_op_slot \<mapsto> infer_tcb_pending_op p (tcb_state tcb),
+                 tcb_boundntfn_slot \<mapsto> infer_tcb_bound_notification (tcb_bound_notification tcb)],
+                cdl_tcb_intent = transform_full_intent (machine_state s') p tcb,
+                cdl_tcb_has_fault = (tcb_has_fault tcb),
+                cdl_tcb_domain = tcb_domain etcb
+               \<rparr>)"
   apply (simp add: transform_def transform_objects_def)
   apply (clarsimp simp: transform_tcb_def)
   done
@@ -775,13 +786,12 @@ proof -
       apply simp
      apply simp
     apply ((clarsimp simp: bl_to_bin_tcb_cnode_index corres_free_fail|rule conjI)+)[2] (* sseefried: brittle. Try changing number on end *)
-  apply (simp add: bl_to_bin_tcb_cnode_index tcb_slot_defs)
-  apply (rule conjI)
-   apply (clarsimp simp: bl_to_bin_tcb_cnode_index)
-  by (rule conjI ext dcorres_set_object_tcb|simp|
-         clarsimp simp: transform_tcb_def tcb_slot_defs corres_free_fail
-                  cong: transform_full_intent_caps_cong_weak)+
-qed
+    apply (simp add: bl_to_bin_tcb_cnode_index tcb_slot_defs)
+    apply(rule conjI ext dcorres_set_object_tcb|simp|
+             clarsimp simp: transform_tcb_def tcb_slot_defs corres_free_fail bl_to_bin_tcb_cnode_index
+                      cong: transform_full_intent_caps_cong_weak)+
+    done
+  qed
 
 lemma tcb_slot_pending_ipc_neq [simp]:
   "tcb_pending_op_slot \<noteq> tcb_ipcbuffer_slot"

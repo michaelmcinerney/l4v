@@ -158,11 +158,12 @@ lemma caps_of_state_update_same_caps:
 
 lemma caps_of_state_update_tcb:
   "\<lbrakk> kh thread = Some (TCB tcb);
-     (tcb_ctable tcb) =  (tcb_ctable (f tcb));
-     (tcb_vtable tcb) =  (tcb_vtable (f tcb));
-     (tcb_reply tcb) =  (tcb_reply (f tcb));
-     (tcb_caller tcb) =  (tcb_caller (f tcb));
-     (tcb_ipcframe tcb) =  (tcb_ipcframe (f tcb)) \<rbrakk>
+     (tcb_ctable tcb) = (tcb_ctable (f tcb));
+     (tcb_vtable tcb) = (tcb_vtable (f tcb));
+     (tcb_reply tcb) = (tcb_reply (f tcb));
+     (tcb_caller tcb) = (tcb_caller (f tcb));
+     (tcb_ipcframe tcb) = (tcb_ipcframe (f tcb));
+     (tcb_fault_handler tcb) = (tcb_fault_handler (f tcb)) \<rbrakk>
     \<Longrightarrow>
       caps_of_state (update_kheap (kh(thread \<mapsto> (TCB (f tcb)))) s) =
       caps_of_state (update_kheap kh s)"

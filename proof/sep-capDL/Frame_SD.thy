@@ -376,19 +376,6 @@ lemma set_cdl_tcb_intent_wp:
   apply simp
   done
 
-lemma set_cdl_tcb_fault_endpoint_wp:
-  "\<lbrace>\<lambda>s. <obj_id \<mapsto>f Tcb tcb \<and>* R> s\<rbrace>
-    update_thread obj_id (\<lambda>tcb. tcb\<lparr>cdl_tcb_fault_endpoint := x\<rparr>)
-   \<lbrace>\<lambda>rv s. <obj_id \<mapsto>f Tcb (tcb\<lparr>cdl_tcb_fault_endpoint := x\<rparr>) \<and>* R> s\<rbrace>"
-  apply (rule hoare_weaken_pre)
-   apply (wp set_cdl_tcb_field_wp)
-    apply (clarsimp simp: object_wipe_slots_def asid_reset_def update_slots_def
-                          object_clean_def object_slots_def intent_reset_def)
-    apply (case_tac tcb,case_tac tcb',simp)
-   apply (clarsimp simp:object_slots_def)
-  apply simp
-  done
-
 lemma sep_map_o_conj:
   "(ptr \<mapsto>o obj \<and>* R) s = (( (sep_heap s) |` ({ptr} \<times> UNIV)
   = object_to_sep_state ptr obj UNIV)

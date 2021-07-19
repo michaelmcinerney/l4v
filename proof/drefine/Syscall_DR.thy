@@ -776,20 +776,21 @@ lemma perform_invocation_corres:
 done (* invoke_tcb_corres *)
 
 lemma sfi_generate_pending:
-  "\<lbrace>st_tcb_at(\<lambda>st. \<not>(generates_pending st)) thread\<rbrace> Ipc_A.send_fault_ipc thread ft
-  \<lbrace>\<lambda>t. \<top>\<rbrace>, \<lbrace>\<lambda>rv. st_tcb_at (\<lambda>st. \<not> (generates_pending st)) thread\<rbrace>"
-   apply (clarsimp simp:send_fault_ipc_def Let_def lookup_cap_def)
-   apply (wp hoare_drop_imps hoare_allI|wpc|clarsimp|rule hoare_conjI)+
-   done
+  "\<lbrace>st_tcb_at(\<lambda>st. \<not>(generates_pending st)) thread\<rbrace>
+   Ipc_A.send_fault_ipc thread fh ft
+   \<lbrace>\<lambda>t. \<top>\<rbrace>, \<lbrace>\<lambda>rv. st_tcb_at (\<lambda>st. \<not> (generates_pending st)) thread\<rbrace>"
+  apply (clarsimp simp:send_fault_ipc_def Let_def lookup_cap_def)
+  apply (wp hoare_drop_imps hoare_allI|wpc|clarsimp|rule hoare_conjI)+
+  done
 
-lemma dcorres_handle_double_fault:
+lemma dcorres_handle_no_fault_handler:
   "dcorres dc \<top> (valid_mdb and not_idle_thread thread and valid_idle and valid_etcbs)
     (KHeap_D.set_cap (thread, tcb_pending_op_slot) cdl_cap.NullCap)
-    (handle_double_fault thread ft' ft'a)"
-  apply (simp add:handle_double_fault_def  )
+    (handle_no_fault_handler thread)"
+  apply (simp add:handle_no_fault_handler_def)
   apply (rule corres_guard_imp)
-    apply (rule set_thread_state_corres )
-    apply simp+
+    apply (rule set_thread_state_corres)
+   apply simp+
   done
 
 lemma handle_fault_corres:
@@ -799,35 +800,34 @@ lemma handle_fault_corres:
           invs s \<and> valid_irq_node s \<and> valid_etcbs s)
      Endpoint_D.handle_fault
      (Ipc_A.handle_fault thread ft')"
-  apply (simp add:Endpoint_D.handle_fault_def Ipc_A.handle_fault_def)
+  apply (simp add: Endpoint_D.handle_fault_def Ipc_A.handle_fault_def)
   apply (rule dcorres_gets_the)
-   apply (clarsimp dest!:get_tcb_SomeD)
-   apply (frule(1) valid_etcbs_tcb_etcb, clarsimp)
-   apply (rule corres_guard_imp)
-     apply (rule corres_split_catch[where r=dc and f = dc])
-        apply (rule_tac F = "obj = cur_thread s'" in corres_gen_asm2)
-        apply simp
-        apply (rule dcorres_handle_double_fault)
-       apply (rule_tac tcb = obj' and etcb=etcb in send_fault_ipc_corres)
-       apply (clarsimp simp:transform_def transform_current_thread_def
-                            not_idle_thread_def)
-      apply (wp)
-      apply (simp add:send_fault_ipc_def not_idle_thread_def Let_def)
-      apply (wp hoare_drop_imps hoare_vcg_ball_lift | wpc)+
-      apply (rule_tac Q'="\<lambda>r s. invs s \<and> valid_etcbs s \<and> obj\<noteq> idle_thread s \<and> obj = cur_thread s'"
-        in hoare_post_imp_R)
-       apply wp
-      apply (clarsimp simp:invs_mdb invs_valid_idle)
-     apply wp
-    apply simp
-   apply (clarsimp simp:obj_at_def transform_def
-     invs_mdb invs_valid_idle
-     transform_current_thread_def not_idle_thread_def)
-  apply (clarsimp dest!:get_tcb_SomeD
-    simp: generates_pending_def not_idle_thread_def st_tcb_at_def obj_at_def)+
-  apply (auto simp:transform_def transform_current_thread_def
-    not_idle_thread_def  split:Structures_A.thread_state.splits)
-   done
+   apply (rule_tac Q="\<lambda>fh. (=) s and (\<lambda>_. fh = transform_cap (tcb_fault_handler obj'))"
+                in corres_symb_exec_l)
+      apply (rule corres_gen_asm)
+      apply (prop_tac "cdl_current_thread s = Some (cur_thread s')")
+       apply (clarsimp simp: transform_def transform_current_thread_def not_idle_thread_def)
+      apply simp
+      apply (rule corres_guard_imp)
+        apply (rule_tac r'="(=)" in corres_split_deprecated)
+           apply (rule dcorres_unless_r; simp)
+           apply (rule dcorres_handle_no_fault_handler)
+          apply (rule corres_split_catch[OF _ send_fault_ipc_corres]; simp)
+           apply (wpsimp simp: send_fault_ipc_def)+
+      apply (frule valid_etcbs_get_tcb_get_etcb, assumption)
+      apply (clarsimp simp: get_etcb_def  invs_def valid_state_def)
+      apply (subgoal_tac "etcb = the (ekheap sa (cur_thread sa))"; fastforce)
+     apply (clarsimp simp: exs_valid_def gets_the_def gets_def get_def assert_opt_def
+                           bind_def fail_def return_def split: option.split)
+     apply (frule_tac sl=tcb_fault_handler_slot in opt_cap_tcb)
+       apply (erule (1) valid_etcbs_get_tcb_get_etcb)
+      apply (clarsimp simp: not_idle_thread_def)
+     apply (clarsimp simp: not_idle_thread_def transform_def transform_current_thread_def)
+    apply wpsimp
+    apply (frule_tac sl=tcb_fault_handler_slot in opt_cap_tcb)
+      apply (erule (1) valid_etcbs_get_tcb_get_etcb)
+     apply (clarsimp simp: not_idle_thread_def transform_def transform_current_thread_def)+
+  done
 
 lemma get_tcb_mrs_wp:
   "\<lbrace>ko_at (TCB obj) thread and K_bind (evalMonad (lookup_ipc_buffer False thread) sa = Some (op_buf)) and (=) sa\<rbrace>
@@ -1055,7 +1055,7 @@ lemma decode_invocation_corres':
 lemma reply_from_kernel_error:
   notes option.case_cong_weak [cong]
   shows
-  "\<lbrace>tcb_at oid and K (fst e \<le> mask 19 \<and> 0 < fst e = er)\<rbrace>reply_from_kernel oid e
+  "\<lbrace>tcb_at oid and K (fst e \<le> mask 15 \<and> 0 < fst e = er)\<rbrace>reply_from_kernel oid e
     \<lbrace>\<lambda>rv s. (\<exists>tcb. guess_error (mi_label (get_tcb_message_info tcb)) = er \<and>
     ko_at (TCB tcb) oid s)\<rbrace>"
   apply (rule hoare_gen_asm)
@@ -1197,7 +1197,7 @@ lemma invoke_domain_idle:
 crunch idle[wp]: "Syscall_A.perform_invocation" "\<lambda>s. P (idle_thread s)"
 
 lemma msg_from_syscall_error_simp:
-  "fst (msg_from_syscall_error rv) \<le> mask 19"
+  "fst (msg_from_syscall_error rv) \<le> mask 15"
   "0 < fst (msg_from_syscall_error rv)"
    apply (case_tac rv)
             apply (clarsimp simp:mask_def)+

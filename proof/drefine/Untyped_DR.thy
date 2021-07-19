@@ -295,7 +295,6 @@ lemma freeMemory_dcorres:
                         mask_2pm1[symmetric])
   apply (erule_tac x="(p && ~~ mask (pageBitsForSize sz))" in allE)
   apply clarsimp
-  apply (thin_tac "length xs = y" for xs y)
   apply (erule impE)
    apply (simp add:mask_def[unfolded shiftl_t2n,simplified,symmetric] p_assoc_help)
    apply (erule order_trans[OF word_and_le2])

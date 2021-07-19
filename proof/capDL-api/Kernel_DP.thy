@@ -101,10 +101,10 @@ definition seL4_TCB_Configure :: "cdl_cptr \<Rightarrow> cdl_cptr \<Rightarrow> 
 where
   "seL4_TCB_Configure tcb_cap fault_ep cspace_root cspace_root_data vspace_root vspace_root_data buffer_addr buffer_frame \<equiv>
     do_kernel_op $ call_kernel_with_intent
-      \<lparr>cdl_intent_op = Some $ TcbIntent $ TcbConfigureIntent fault_ep cspace_root_data vspace_root_data buffer_addr,
+      \<lparr>cdl_intent_op = Some $ TcbIntent $ TcbConfigureIntent cspace_root_data vspace_root_data buffer_addr,
        cdl_intent_error = False,
        cdl_intent_cap = tcb_cap,
-       cdl_intent_extras = [cspace_root, vspace_root, buffer_frame],
+       cdl_intent_extras = [fault_ep, cspace_root, vspace_root, buffer_frame],
        cdl_intent_recv_slot = None\<rparr> True"
 
 definition seL4_TCB_SetIPCBuffer :: "cdl_cptr \<Rightarrow> word32 \<Rightarrow> cdl_cptr
@@ -132,10 +132,10 @@ definition seL4_TCB_SetSpace :: "cdl_cptr \<Rightarrow> cdl_cptr \<Rightarrow> c
 where
   "seL4_TCB_SetSpace tcb_cap fault_ep cspace_root cspace_root_data vspace_root vspace_root_data \<equiv>
     do_kernel_op $ call_kernel_with_intent
-      \<lparr>cdl_intent_op = Some $ TcbIntent $ TcbSetSpaceIntent fault_ep cspace_root_data vspace_root_data,
+      \<lparr>cdl_intent_op = Some $ TcbIntent $ TcbSetSpaceIntent cspace_root_data vspace_root_data,
        cdl_intent_error = False,
        cdl_intent_cap = tcb_cap,
-       cdl_intent_extras = [cspace_root, vspace_root],
+       cdl_intent_extras = [fault_ep, cspace_root, vspace_root],
        cdl_intent_recv_slot = None\<rparr> False"
 
 definition seL4_TCB_Resume :: "cdl_cptr \<Rightarrow> bool u_monad"
