@@ -581,26 +581,30 @@ end
 
 \<comment> \<open>Project threads from the kernel heap\<close>
 
-definition tcb_of :: "kernel_object \<rightharpoonup> tcb" where
-  "tcb_of ko \<equiv> case ko of TCB tcb \<Rightarrow> Some tcb | _ \<Rightarrow> None"
-
-lemma tcb_of_simps:
+primrec tcb_of :: "Structures_A.kernel_object \<rightharpoonup> tcb" where
   "tcb_of (TCB tcb) = Some tcb"
-  "tcb_of (SchedContext sc n) = None"
-  "tcb_of (CNode n cnode) = None"
-  "tcb_of (Endpoint ep) = None"
-  "tcb_of (Notification ntfn) = None"
-  "tcb_of (Reply reply) = None"
-  "tcb_of (ArchObj aobj) = None"
-  by (auto simp: tcb_of_def)
+| "tcb_of (Endpoint _) = None"
+| "tcb_of (Notification _) = None"
+| "tcb_of (CNode _ _) = None"
+| "tcb_of (Reply _) = None"
+| "tcb_of (SchedContext _ _) = None"
+| "tcb_of (ArchObj _) = None"
+
+lemma tcb_of_SomeD[dest!]:
+  "tcb_of ko = Some obj \<Longrightarrow> ko = TCB obj"
+  by (cases ko; simp)
+
+lemma tcb_of_NoneD[simp]:
+  "tcb_of ko = None \<Longrightarrow> \<not> (\<exists>tcb. ko = TCB tcb)"
+  by (cases ko; simp)
 
 lemma tcb_of_Some:
   "tcb_of ko = Some tcb \<longleftrightarrow> ko = TCB tcb"
-  by (simp add: tcb_of_def split: kernel_object.splits)
+  by (cases ko; simp)
 
 lemma tcb_of_None:
   "tcb_of ko = None \<longleftrightarrow> (\<forall>tcb. ko \<noteq> TCB tcb)"
-  by (simp add: tcb_of_def split: kernel_object.splits)
+  by (cases ko; simp)
 
 definition tcbs_of_kh :: "('obj_ref \<rightharpoonup> kernel_object) \<Rightarrow> 'obj_ref \<rightharpoonup> tcb" where
   "tcbs_of_kh kh \<equiv> kh |> tcb_of"
@@ -720,26 +724,30 @@ lemma etcb_at'_pred_map:
 
 \<comment> \<open>Project scheduling contexts from the kernel heap\<close>
 
-definition sc_of :: "kernel_object \<rightharpoonup> sched_context" where
-  "sc_of ko \<equiv> case ko of SchedContext sc n \<Rightarrow> Some sc | _ \<Rightarrow> None"
-
-lemma sc_of_simps:
-  "sc_of (SchedContext sc n) = Some sc"
-  "sc_of (CNode n cnode) = None"
+primrec sc_of :: "Structures_A.kernel_object \<rightharpoonup> sched_context" where
   "sc_of (TCB tcb) = None"
-  "sc_of (Endpoint ep) = None"
-  "sc_of (Notification ntfn) = None"
-  "sc_of (Reply reply) = None"
-  "sc_of (ArchObj aobj) = None"
-  by (auto simp: sc_of_def)
+| "sc_of (Endpoint _) = None"
+| "sc_of (Notification _) = None"
+| "sc_of (CNode _ _) = None"
+| "sc_of (Reply _) = None"
+| "sc_of (SchedContext sc _) = Some sc"
+| "sc_of (ArchObj _) = None"
+
+lemma sc_of_SomeD[dest!]:
+  "sc_of ko = Some obj \<Longrightarrow> \<exists>n. ko = SchedContext obj n"
+  by (cases ko; simp)
+
+lemma sc_of_NoneD[simp]:
+  "sc_of ko = None \<Longrightarrow> \<not> (\<exists>sc n. ko = SchedContext sc n)"
+  by (cases ko; simp)
 
 lemma sc_of_Some:
   "sc_of ko = Some sc \<longleftrightarrow> (\<exists>n. ko = SchedContext sc n)"
-  by (simp add: sc_of_def split: kernel_object.splits)
+ by (cases ko; simp)
 
 lemma sc_of_None:
   "sc_of ko = None \<longleftrightarrow> (\<forall>sc n. ko \<noteq> SchedContext sc n)"
-  by (simp add: sc_of_def split: kernel_object.splits)
+ by (cases ko; simp)
 
 definition scs_of_kh :: "('obj_ref \<rightharpoonup> kernel_object) \<Rightarrow> 'obj_ref \<rightharpoonup> sched_context" where
   "scs_of_kh kh \<equiv> kh |> sc_of"
@@ -835,54 +843,47 @@ global_interpretation sc_replies:
 
 \<comment> \<open>Project endpoints from the kernel heap\<close>
 
-definition ep_of :: "kernel_object \<rightharpoonup> endpoint" where
-  "ep_of ko \<equiv> case ko of Endpoint endpoint \<Rightarrow> Some endpoint | _ \<Rightarrow> None"
-
-definition send_q_of :: "endpoint \<rightharpoonup> obj_ref list" where
-  "send_q_of endpoint \<equiv> case endpoint of SendEP q  \<Rightarrow> Some q | _ \<Rightarrow> None"
-
-definition recv_q_of :: "endpoint \<rightharpoonup> obj_ref list" where
-  "recv_q_of endpoint \<equiv> case endpoint of RecvEP q  \<Rightarrow> Some q | _ \<Rightarrow> None"
-
-lemma ep_of_simps:
-  "ep_of (SchedContext sc n) = None"
-  "ep_of (CNode n cnode) = None"
+primrec ep_of :: "Structures_A.kernel_object \<rightharpoonup> endpoint" where
   "ep_of (TCB tcb) = None"
-  "ep_of (Endpoint endpoint) = Some endpoint"
-  "ep_of (Notification ntfn) = None"
-  "ep_of (Reply reply) = None"
-  "ep_of (ArchObj aobj) = None"
-  "send_q_of IdleEP = None"
+| "ep_of (Endpoint ep) = Some ep"
+| "ep_of (Notification _) = None"
+| "ep_of (CNode _ _) = None"
+| "ep_of (Reply _) = None"
+| "ep_of (SchedContext _ _) = None"
+| "ep_of (ArchObj _) = None"
+
+lemma ep_of_SomeD[dest!]:
+  "ep_of ko = Some obj \<Longrightarrow> ko = Endpoint obj"
+  by (cases ko; simp)
+
+lemma ep_of_NoneD[simp]:
+  "ep_of ko = None \<Longrightarrow> \<not> (\<exists>ep. ko = Endpoint ep)"
+  by (cases ko; simp)
+
+primrec send_q_of :: "endpoint \<rightharpoonup> obj_ref list" where
   "send_q_of (SendEP q) = Some q"
-  "send_q_of (RecvEP q) = None"
-  "recv_q_of IdleEP = None"
-  "recv_q_of (SendEP q) = None"
+| "send_q_of (RecvEP _)  = None"
+| "send_q_of IdleEP = None"
+
+primrec recv_q_of :: "endpoint \<rightharpoonup> obj_ref list" where
   "recv_q_of (RecvEP q) = Some q"
-  by (auto simp: ep_of_def send_q_of_def recv_q_of_def)
+| "recv_q_of (SendEP _)  = None"
+| "recv_q_of IdleEP = None"
 
 lemma ep_of_Some:
   "ep_of ko = Some ep \<longleftrightarrow> ko = Endpoint ep"
-  by (simp add: ep_of_def split: kernel_object.splits)
+  by (cases ko; simp)
 
 lemma ep_of_None:
   "ep_of ko = None \<longleftrightarrow> (\<forall>ep. ko \<noteq> Endpoint ep)"
-  by (simp add: ep_of_def split: kernel_object.splits)
+  by (cases ko; simp)
 
-lemma send_q_of_Some:
-  "send_q_of ep = Some q \<longleftrightarrow> ep = SendEP q"
-  by (simp add: send_q_of_def split: endpoint.splits)
-
-lemma send_q_of_None:
-  "send_q_of ep = None \<longleftrightarrow> (\<forall>q. ep \<noteq> SendEP q)"
-  by (simp add: send_q_of_def split: endpoint.splits)
-
-lemma recv_q_of_Some:
-  "recv_q_of ep = Some q \<longleftrightarrow> ep = RecvEP q"
-  by (simp add: recv_q_of_def split: endpoint.splits)
-
-lemma recv_q_of_None:
-  "recv_q_of ep = None \<longleftrightarrow> (\<forall>q. ep \<noteq> RecvEP q)"
-  by (simp add: recv_q_of_def split: endpoint.splits)
+lemma shows
+  send_q_of_Some: "send_q_of ep = Some q \<longleftrightarrow> ep = SendEP q" and
+  send_q_of_None: "send_q_of ep = None \<longleftrightarrow> (\<forall>q. ep \<noteq> SendEP q)" and
+  recv_q_of_Some: "recv_q_of ep = Some q \<longleftrightarrow> ep = RecvEP q" and
+  recv_q_of_None: "recv_q_of ep = None \<longleftrightarrow> (\<forall>q. ep \<noteq> RecvEP q)"
+  by (cases ep; simp)+
 
 definition eps_of_kh :: "('obj_ref \<rightharpoonup> kernel_object) \<Rightarrow> 'obj_ref \<rightharpoonup> endpoint" where
   "eps_of_kh kh \<equiv> kh |> ep_of"
@@ -916,6 +917,54 @@ global_interpretation ep_recv_qs:
   opt_map_opt_map_cons_def_locale _ ep_of eps_of_kh Endpoint recv_q_of RecvEP ep_recv_qs_of_eps
   using ep_recv_qs_of_eps_def recv_q_of_None recv_q_of_Some by unfold_locales
 
+\<comment> \<open>Notifications\<close>
+
+\<comment> \<open>Project notifications from the kernel heap\<close>
+
+primrec ntfn_of :: "Structures_A.kernel_object \<rightharpoonup> notification" where
+  "ntfn_of (TCB tcb) = None"
+| "ntfn_of (Endpoint ep) = None"
+| "ntfn_of (Notification ntfn) = Some ntfn"
+| "ntfn_of (CNode _ _) = None"
+| "ntfn_of (Reply _) = None"
+| "ntfn_of (SchedContext _ _) = None"
+| "ntfn_of (ArchObj _) = None"
+
+lemma ntfn_of_SomeD[dest!]:
+  "ntfn_of ko = Some obj \<Longrightarrow> ko = Notification obj"
+  by (cases ko; simp)
+
+lemma ntfn_of_NoneD[simp]:
+  "ntfn_of ko = None \<Longrightarrow> \<not> (\<exists>ep. ko = Notification ep)"
+  by (cases ko; simp)
+
+abbreviation ntfns_of :: "'z state \<Rightarrow> obj_ref \<rightharpoonup> Structures_A.notification" where
+  "ntfns_of \<equiv> (\<lambda>s. kheap s |> ntfn_of)"
+
+\<comment> \<open>Replies\<close>
+
+\<comment> \<open>Project replies from the kernel heap\<close>
+
+primrec reply_of :: "Structures_A.kernel_object \<rightharpoonup> reply" where
+  "reply_of (TCB tcb) = None"
+| "reply_of (Endpoint ep) = None"
+| "reply_of (Notification _) = None"
+| "reply_of (CNode _ _) = None"
+| "reply_of (Reply reply) = Some reply"
+| "reply_of (SchedContext _ _) = None"
+| "reply_of (ArchObj _) = None"
+
+lemma reply_of_SomeD[dest!]:
+  "reply_of ko = Some obj \<Longrightarrow> ko = Reply obj"
+  by (cases ko; simp)
+
+lemma reply_of_NoneD[simp]:
+  "reply_of ko = None \<Longrightarrow> \<not> (\<exists>reply. ko = Reply reply)"
+  by (cases ko; simp)
+
+abbreviation replies_of :: "'z state \<Rightarrow> obj_ref \<rightharpoonup> Structures_A.reply" where
+  "replies_of \<equiv> (\<lambda>s. kheap s |> reply_of)"
+
 \<comment> \<open>Heap simplification rules\<close>
 
 lemmas vs_pred_map_simps =
@@ -948,9 +997,6 @@ lemmas vs_pred_map_simps =
   pred_map_def[where m="kheap s" for s :: "'z state"]
 
 lemmas vs_heap_simps =
-  tcb_of_simps
-  sc_of_simps
-  ep_of_simps
   tcb_heap.simps
   tcb_sts.simps
   tcb_scps.simps
