@@ -8847,24 +8847,34 @@ lemma bound_head_time_buffer:
   done
 
 lemma head_time_buffer_true_imp_buffer:
-  "\<lbrakk>the (head_time_buffer usage s); pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)\<rbrakk>
-   \<Longrightarrow> pred_map (\<lambda>cfg. max_time - r_time (hd ((scrc_refills cfg))) \<ge> 5 * MAX_PERIOD)
-                (sc_refill_cfgs_of s) (cur_sc s)"
-  apply (frule bound_head_time_buffer[where usage=usage])
-  apply (clarsimp simp: head_time_buffer_def obind_def read_sched_context_def ogets_def
-                        vs_all_heap_simps
-                 split: kernel_object.splits)
+  "pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)
+   \<Longrightarrow> the (head_time_buffer usage s)
+       = (pred_map (\<lambda>cfg. r_time (scrc_refill_hd cfg) < MAX_RELEASE_TIME)
+                   (sc_refill_cfgs_of s) (cur_sc s)
+          \<and> pred_map (\<lambda>cfg. r_amount (scrc_refill_hd cfg) \<le> usage )
+                     (sc_refill_cfgs_of s) (cur_sc s))"
+  apply (fastforce simp: head_time_buffer_def obind_def read_sched_context_def ogets_def
+                         vs_all_heap_simps MAX_RELEASE_TIME_def
+                  split: kernel_object.splits)
+  done
+
+lemma unat_MAX_RELEASE_TIME:
+  "unat MAX_RELEASE_TIME = unat max_time - 5 * unat MAX_PERIOD"
+  apply (clarsimp simp: MAX_RELEASE_TIME_def unat_sub MAX_PERIOD_mult')
   done
 
 lemma head_time_buffer_true_imp_unat_buffer:
-  "\<lbrakk>the (head_time_buffer usage s); pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)\<rbrakk>
-   \<Longrightarrow> pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg))) + 5 * unat MAX_PERIOD \<le> unat max_time)
-                (sc_refill_cfgs_of s) (cur_sc s)"
-  apply (frule head_time_buffer_true_imp_buffer[where usage=usage])
-   apply (clarsimp simp: vs_all_heap_simps obj_at_kh_kheap_simps)
-  apply (clarsimp simp: vs_all_heap_simps obj_at_kh_kheap_simps)
-  apply (clarsimp simp: word_le_nat_alt unat_sub)
-  apply (metis MAX_PERIOD_mult add_diff_cancel_left' le_diff_iff nat_le_iff_add unat_bounded_above)
+  "pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)
+   \<Longrightarrow> the (head_time_buffer usage s)
+       = (pred_map (\<lambda>cfg. unat (r_time (scrc_refill_hd cfg)) < unat MAX_RELEASE_TIME)
+                   (sc_refill_cfgs_of s) (cur_sc s)
+          \<and> pred_map (\<lambda>cfg. r_amount (scrc_refill_hd cfg) \<le> usage )
+                     (sc_refill_cfgs_of s) (cur_sc s))"
+  apply (intro iffI)
+  apply (fastforce dest!: head_time_buffer_true_imp_buffer[THEN iffD1, where usage1=usage]
+                    simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
+  apply (fastforce simp: head_time_buffer_true_imp_buffer[THEN iffD2, where usage1=usage]
+                    simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
   done
 
 lemma refill_single_sp:
@@ -9088,12 +9098,12 @@ lemma handle_overrun_loop_ordered_disjoint:
   apply (intro hoare_vcg_conj_lift_pre_fix
          ; (solves handle_overrun_loop_body_simple)?)
      apply (wpsimp wp: handle_overrun_loop_body_ordered_disjoint)
-     apply (fastforce dest: head_time_buffer_true_imp_unat_buffer
-                      simp: vs_all_heap_simps)
+     apply (fastforce dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                      simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
     apply (wpsimp wp: handle_overrun_loop_body_window)
     apply (fastforce intro!: head_time_buffer_implies_no_overflow
-                       dest: head_time_buffer_true_imp_unat_buffer
-                       simp: vs_all_heap_simps)
+                       dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                       simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
    apply (wpsimp wp: handle_overrun_loop_body_nonzero_refills)
   apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget)
   done
@@ -9117,11 +9127,11 @@ lemma handle_overrun_loop_window:
          ; (solves handle_overrun_loop_simple)?)
      apply (wpsimp wp: handle_overrun_loop_body_window)
     apply (fastforce intro!: head_time_buffer_implies_no_overflow
-                       dest: head_time_buffer_true_imp_unat_buffer
-                       simp: vs_all_heap_simps)
+                      dest!: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                       simp: vs_all_heap_simps  unat_MAX_RELEASE_TIME)
     apply (wpsimp wp: handle_overrun_loop_body_ordered_disjoint)
-    apply (fastforce dest: head_time_buffer_true_imp_unat_buffer
-                     simp: vs_all_heap_simps)
+    apply (fastforce dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                     simp: vs_all_heap_simps MAX_RELEASE_TIME_def MAX_PERIOD_mult' unat_sub)
    apply (wpsimp wp: handle_overrun_loop_body_nonzero_refills)
   apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget)
   done
@@ -9202,7 +9212,7 @@ lemma handle_overrun_loop_head_bound:
 
    apply (clarsimp simp: update_sched_context_set_refills_rewrite update_refill_hd_rewrite)
    apply (wpsimp wp: get_refills_wp set_refills_wp)
-   apply (frule head_time_buffer_true_imp_unat_buffer)
+   apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
     apply (fastforce simp: vs_all_heap_simps obj_at_kh_kheap_simps)
    apply (clarsimp simp: obj_at_def vs_all_heap_simps word_le_nat_alt)
    apply (rename_tac sc n)
@@ -9211,9 +9221,10 @@ lemma handle_overrun_loop_head_bound:
    apply (insert MAX_PERIOD_mult'[where n=4]; simp)
    apply (clarsimp simp: window_def)
    apply (subst unat_add_lem')
-    apply (prop_tac "unat (r_time (refill_hd sc)) \<le> unat (sc_budget sc)")
-     apply (simp add: refills_unat_sum_member_bound less_not_refl2 tail_nonempty_length)
-    apply (clarsimp simp: max_word_def)
+    apply (clarsimp simp: max_word_def word_le_nat_alt)
+   apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
+    apply (fastforce simp: vs_all_heap_simps obj_at_kh_kheap_simps)
+   apply (clarsimp simp: max_word_def unat_MAX_RELEASE_TIME)
    apply (fastforce simp: less_not_refl2 tail_nonempty_length)
 
   apply (wpsimp wp: get_refills_wp set_refills_wp update_sched_context_wp
@@ -9221,8 +9232,9 @@ lemma handle_overrun_loop_head_bound:
   apply (frule head_time_buffer_implies_no_overflow[rotated]; simp?)
    apply (fastforce simp: vs_all_heap_simps obj_at_kh_kheap_simps)
   apply (clarsimp simp: vs_all_heap_simps obj_at_kh_kheap_simps pred_map_simps)
-  apply (frule head_time_buffer_true_imp_unat_buffer)
+  apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
    apply (fastforce simp: vs_all_heap_simps obj_at_kh_kheap_simps)
+
   apply (rename_tac sc n)
 
   apply (prop_tac "unat (r_time (hd (schedule_used
@@ -9275,8 +9287,10 @@ lemma handle_overrun_loop_head_bound:
    apply (rule_tac y="unat (r_time (refill_hd sc)) + unat (sc_period sc) + 4 * unat MAX_PERIOD"
                 in order_trans)
     apply linarith
-   apply (clarsimp simp: vs_all_heap_simps)
-  apply (prop_tac "unat (sc_period sc) + 4 * unat MAX_PERIOD \<le> 5 * unat MAX_PERIOD", linarith)
+   apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
+    apply (clarsimp simp: vs_all_heap_simps)
+   apply (fastforce simp: vs_all_heap_simps unat_sub MAX_RELEASE_TIME_def MAX_PERIOD_mult')
+
   apply (clarsimp simp: window_def)
   apply (rule order_trans[OF schedule_used_r_time_last[simplified word_le_nat_alt]])
     apply (blast intro: no_overflow_sublist)
@@ -9353,6 +9367,7 @@ method head_insufficient_loop_simple
             simp: non_overlapping_merge_refills_def refill_pop_head_def
                   update_sched_context_set_refills_rewrite update_refill_hd_rewrite
      , clarsimp simp: vs_all_heap_simps obj_at_def sc_valid_refills_def round_robin_def
+                      unat_MAX_RELEASE_TIME
      , fastforce?)
 
 method refill_head_overlapping_loop_simple
@@ -9408,6 +9423,14 @@ lemma handle_overrun_loop_length:
            | wps)+
   done
 
+lemma handle_overrun_loop_body_sc_at_cur_sc[wp]:
+  "handle_overrun_loop_body usage \<lbrace>\<lambda>s. pred_map (\<lambda>_. True) (sc_refill_cfgs_of s) (cur_sc s)\<rbrace>"
+  apply (clarsimp simp: handle_overrun_loop_body_def)
+  apply (wpsimp simp: update_refill_hd_def refill_pop_head_def refill_single_def refill_size_def
+                  wp: update_sched_context_wp get_refills_wp)
+  apply (clarsimp simp: vs_all_heap_simps)
+  done
+
 lemma refill_budget_check_valid_refills[wp]:
   "\<lbrace>\<lambda>s. valid_refills sc_ptr s \<and> cur_sc_offset_ready 0 s \<and> current_time_bounded 5 s\<rbrace>
    refill_budget_check usage
@@ -9438,15 +9461,19 @@ lemma refill_budget_check_valid_refills[wp]:
           ; (fastforce simp: )?)
    apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
 
-  apply (rule_tac B="\<lambda>_ s. \<not> round_robin sc_ptr s
-                           \<and> all_sp_valid_refills_but_MIN_BUDGET_in_head_no_overflow sc_ptr s
-                           \<and> pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
-                                              = unat (scrc_budget cfg))
-                                       (sc_refill_cfgs_of s) sc_ptr
-                           \<and> pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg)))
-                                              + 4 * unat MAX_PERIOD
-                                              \<le> unat max_time)
-                                       (sc_refill_cfgs_of s) sc_ptr \<and> cur_sc s = sc_ptr"
+  apply (rule_tac B="\<lambda>usage' s. \<not> round_robin sc_ptr s
+                                \<and> all_sp_valid_refills_but_MIN_BUDGET_in_head_no_overflow sc_ptr s
+                                \<and> pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
+                                                   = unat (scrc_budget cfg))
+                                           (sc_refill_cfgs_of s) sc_ptr
+                                \<and> pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg)))
+                                                   + 4 * unat MAX_PERIOD
+                                                  \<le> unat max_time)
+                                           (sc_refill_cfgs_of s) sc_ptr \<and> cur_sc s = sc_ptr
+                                \<and> (pred_map (\<lambda>cfg. r_time (hd (scrc_refills cfg)) < MAX_RELEASE_TIME)
+                                            (sc_refill_cfgs_of s) (cur_sc s)
+                                   \<longrightarrow> pred_map (\<lambda>cfg. usage' < r_amount (hd (scrc_refills cfg)))
+                                                (sc_refill_cfgs_of s) (cur_sc s))"
                in hoare_seq_ext[rotated])
 
     apply (intro hoare_vcg_conj_lift_pre_fix
@@ -9465,6 +9492,11 @@ lemma refill_budget_check_valid_refills[wp]:
     apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
    apply (wpsimp wp: handle_overrun_loop_head_bound)
    apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
+   apply (clarsimp simp: handle_overrun_loop_def)
+   apply (wpsimp wp: valid_whileLoop[where I="\<lambda>_ s. pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)"])
+    apply (fastforce simp: head_time_buffer_true_imp_unat_buffer vs_all_heap_simps word_less_nat_alt
+                           word_le_nat_alt)
+   apply (clarsimp simp: vs_all_heap_simps)
 
   apply (rule_tac R1="\<lambda>s. pred_map (\<lambda>cfg. no_overflow (scrc_refills cfg)) (sc_refill_cfgs_of s) sc_ptr"
                in hoare_pre_add[THEN iffD2, simplified pred_conj_def])
@@ -10306,9 +10338,18 @@ lemma refill_budget_check_refill_ready_offset_ready_and_sufficient:
                                               = unat (scrc_budget cfg))
                                        (sc_refill_cfgs_of s) sc_ptr
                             \<and> sc_ptr = cur_sc s
+                            \<and> (pred_map (\<lambda>cfg. r_time (hd (scrc_refills cfg)) < MAX_RELEASE_TIME)
+                                         (sc_refill_cfgs_of s) (cur_sc s)
+                               \<longrightarrow> pred_map (\<lambda>cfg. rv < r_amount (hd (scrc_refills cfg)))
+                                            (sc_refill_cfgs_of s) (cur_sc s))
                             \<and> rv = usage"
                in hoare_seq_ext[rotated])
-   subgoal by (intro hoare_vcg_conj_lift_pre_fix; solves handle_overrun_loop_fail_simple)
+   apply (intro hoare_vcg_conj_lift_pre_fix; (solves handle_overrun_loop_fail_simple)?)
+   apply (clarsimp simp: handle_overrun_loop_def)
+   apply (wpsimp wp: valid_whileLoop[where I="\<lambda>_ s. pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)"])
+    apply (fastforce simp: head_time_buffer_true_imp_unat_buffer vs_all_heap_simps word_less_nat_alt
+                           word_le_nat_alt)
+   apply (clarsimp simp: vs_all_heap_simps)
 
   apply (rule hoare_seq_ext[OF _ get_refills_sp])
   apply (rule_tac B="\<lambda>_ s. pred_map (\<lambda>cfg. r_time (scrc_refill_hd cfg)
@@ -10382,14 +10423,23 @@ lemma refill_budget_check_is_refill_sufficient:
           ; fastforce?)
    apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
 
-  apply (rule_tac B="\<lambda>_ s. pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
+  apply (rule_tac B="\<lambda>usage' s. pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
                                            = unat (scrc_budget cfg))
                                     (sc_refill_cfgs_of s) sc_ptr
-                           \<and> valid_refills (cur_sc s) s
-                           \<and> sc_ptr = cur_sc s
-                           \<and> \<not> round_robin sc_ptr s"
+                                \<and> valid_refills (cur_sc s) s
+                                \<and> sc_ptr = cur_sc s
+                                \<and> \<not> round_robin sc_ptr s
+                                \<and> (pred_map (\<lambda>cfg. r_time (hd (scrc_refills cfg)) < MAX_RELEASE_TIME)
+                                             (sc_refill_cfgs_of s) (cur_sc s)
+                                   \<longrightarrow> pred_map (\<lambda>cfg. usage' < r_amount (hd (scrc_refills cfg)))
+                                                (sc_refill_cfgs_of s) (cur_sc s))"
                in hoare_seq_ext[rotated])
-   subgoal by (intro hoare_vcg_conj_lift_pre_fix; solves handle_overrun_loop_fail_simple)
+   apply (intro hoare_vcg_conj_lift_pre_fix; (solves handle_overrun_loop_fail_simple)?)
+   apply (clarsimp simp: handle_overrun_loop_def)
+   apply (wpsimp wp: valid_whileLoop[where I="\<lambda>_ s. pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)"])
+    apply (fastforce simp: head_time_buffer_true_imp_unat_buffer vs_all_heap_simps word_less_nat_alt
+                           word_le_nat_alt)
+   apply (clarsimp simp: vs_all_heap_simps)
 
   apply (rule hoare_seq_ext[OF _ get_refills_sp])
   apply (rule_tac B="\<lambda>_ s. pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
@@ -10950,15 +11000,19 @@ lemma refill_budget_check_bounded_release_time:
           ; (fastforce simp: )?)
    apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
 
-  apply (rule_tac B="\<lambda>_ s. \<not> round_robin sc_ptr s
-                           \<and> all_sp_valid_refills_but_MIN_BUDGET_in_head_no_overflow sc_ptr s
-                           \<and> pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
-                                              = unat (scrc_budget cfg))
-                                       (sc_refill_cfgs_of s) sc_ptr
-                           \<and> pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg)))
-                                              + 4 * unat MAX_PERIOD
-                                              \<le> unat max_time)
-                                       (sc_refill_cfgs_of s) sc_ptr \<and> cur_sc s = sc_ptr"
+  apply (rule_tac B="\<lambda>usage' s. \<not> round_robin sc_ptr s
+                                \<and> all_sp_valid_refills_but_MIN_BUDGET_in_head_no_overflow sc_ptr s
+                                \<and> pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg)
+                                                   = unat (scrc_budget cfg))
+                                            (sc_refill_cfgs_of s) sc_ptr
+                                \<and> pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg)))
+                                                   + 4 * unat MAX_PERIOD
+                                                   \<le> unat max_time)
+                                            (sc_refill_cfgs_of s) sc_ptr \<and> cur_sc s = sc_ptr
+                                \<and> (pred_map (\<lambda>cfg. r_time (hd (scrc_refills cfg)) < MAX_RELEASE_TIME)
+                                             (sc_refill_cfgs_of s) (cur_sc s)
+                                   \<longrightarrow> pred_map (\<lambda>cfg. usage' < r_amount (hd (scrc_refills cfg)))
+                                                (sc_refill_cfgs_of s) (cur_sc s))"
                in hoare_seq_ext[rotated])
     apply (intro hoare_vcg_conj_lift_pre_fix
            ; (solves handle_overrun_loop_simple)?)
@@ -10976,6 +11030,11 @@ lemma refill_budget_check_bounded_release_time:
     apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
    apply (wpsimp wp: handle_overrun_loop_head_bound)
    apply (clarsimp simp: sc_valid_refills_def vs_all_heap_simps)
+   apply (clarsimp simp: handle_overrun_loop_def)
+   apply (wpsimp wp: valid_whileLoop[where I="\<lambda>_ s. pred_map \<top> (sc_refill_cfgs_of s) (cur_sc s)"])
+    apply (fastforce simp: head_time_buffer_true_imp_unat_buffer vs_all_heap_simps word_less_nat_alt
+                           word_le_nat_alt is_sc_obj_def)
+   apply (clarsimp simp: vs_all_heap_simps)
 
   apply (clarsimp simp: current_time_bounded_def)
   apply (rule_tac R1="\<lambda>s. pred_map (\<lambda>cfg. no_overflow (scrc_refills cfg)) (sc_refill_cfgs_of s) sc_ptr"
