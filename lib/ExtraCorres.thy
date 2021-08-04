@@ -278,18 +278,16 @@ lemma wp_from_corres_unit:
   f' \<lbrace>\<lambda>_ s'. \<exists>s. (s,s') \<in> state_relation \<and> Q s \<and> Q' s'\<rbrace>"
   by (auto intro!: wp_from_corres_u_unit)
 
-lemma corres_whileLoop_results:
+lemma corres_whileLoop_results_helper:
   assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_corres:
            "\<And>r r'. rrel r r'
-                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and A and C r) (P' and A' and C' r') 
-                                                              (B r) (B' r')"
-  assumes body_inv: "\<And>r. \<lbrace>P and A and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and A' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes cross: "\<And>s s'. \<lbrakk>(s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> A s \<and> A' s'"
+                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
+  assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
   shows "(rv', t') \<in> fst (whileLoop C' B' r' s')
          \<Longrightarrow> \<forall>s r. (s,s') \<in> srel \<and> rrel r r' \<and> P s \<and> P' s'
                    \<longrightarrow> (\<exists>rv t. (rv, t) \<in> fst (whileLoop C B r s) \<and> (t,t') \<in> srel \<and> rrel rv rv')"
-  apply (rule_tac r=r' and B=B' and C=C' in in_whileLoop_induct)
+  apply (rule_tac r=r' and B=B' in in_whileLoop_induct)
     apply simp
    apply clarsimp
    apply (rename_tac r_conc s_conc s_abs r_abs)
@@ -299,8 +297,6 @@ lemma corres_whileLoop_results:
   apply (thin_tac "_ \<in> fst _")
   apply (rename_tac r s' r' t' r'' u')
   apply clarsimp
-  apply (prop_tac "A s \<and> A' s'")
-   apply (fastforce dest: cross)
   apply (rename_tac s r_abs)
   apply (insert body_corres)
   apply (drule_tac x=r_abs in meta_spec)
@@ -323,7 +319,47 @@ lemma corres_whileLoop_results:
   apply (simp add: cond whileLoop_def whileLoop_results.intros)
   done
 
-lemmas corres_whileLoop_results_inv = corres_whileLoop_results[where A=\<top> and A'=\<top>, simplified]
+lemma corres_whileLoop_no_fail_helper:
+  assumes body_guard: "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
+  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
+  assumes termin: "\<And>r' s'. P' s' \<Longrightarrow> whileLoop_terminates C' B' r' s'"
+  shows "P' s \<Longrightarrow> \<not> snd (whileLoop C' B' r' s)"
+  apply (rule_tac I="\<lambda>_ s. P' s"
+              and R="{((r', s'), r, s). C' r s \<and> (r', s') \<in> fst (B' r s)
+                                        \<and> whileLoop_terminates C' B' r s}"
+               in not_snd_whileLoop)
+    apply simp
+   apply (clarsimp simp: validNF_def)
+   apply (intro conjI)
+    apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
+      apply (insert assms)
+      apply (fastforce simp: valid_def)
+     apply (clarsimp simp: valid_def)
+    apply wpsimp
+   apply (fastforce intro: no_fail_pre)  
+  apply (fastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
+  done
+
+lemma corres_whileLoop:
+  assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
+  assumes body_corres:
+           "\<And>r r'. rrel r r'
+                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
+  assumes body_guard: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
+  assumes rel: "rrel r r'"
+  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
+  assumes termin: "\<And>r' s'. P' s' \<Longrightarrow> whileLoop_terminates C' B' r' s'"
+  shows "corres_underlying srel False nf' rrel P P' (whileLoop C B r) (whileLoop C' B' r')"
+  apply (rule corres_no_failI)
+   apply (simp add: no_fail_def)
+   apply (intro allI impI)
+   apply (insert assms)
+   apply (rule corres_whileLoop_no_fail_helper; blast)
+  apply clarsimp
+  apply (frule_tac C=C and P=P and P'=P' and rrel=rrel and srel=srel
+                in corres_whileLoop_results_helper[rotated 4])
+      apply fastforce+
+  done
 
 lemma whileLoop_terminates_cross_helper:
   assumes body_corres:
@@ -333,12 +369,12 @@ lemma whileLoop_terminates_cross_helper:
   assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
                     "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes abs_termin: "\<And>r s. whileLoop_terminates C B r s"
+  assumes abs_termination: "\<And>r s. whileLoop_terminates C B r s"
   shows "\<forall>r' s'. (rrel r r' \<and> (s,s') \<in> srel \<and> P s \<and> P' s')  \<longrightarrow> whileLoop_terminates C' B' r' s'"
   apply (rule_tac P="\<lambda>r s. \<forall>r' s'. rrel r r' \<and> (s, s') \<in> srel \<and> P s \<and> P' s' 
                                    \<longrightarrow> whileLoop_terminates C' B' r' s'" 
                in whileLoop_terminates.induct)
-    apply (fastforce intro: abs_termin)
+    apply (fastforce intro: abs_termination)
    apply clarsimp
    apply (case_tac "\<not> C' r' s'")
     apply (simp add: whileLoop_terminates.intros)
@@ -373,7 +409,7 @@ lemma whileLoop_terminates_cross:
   assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
                     "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes termin: "\<And>r s. whileLoop_terminates C B r s"
+  assumes abs_termination: "\<And>r s. whileLoop_terminates C B r s"
   assumes rel: "\<exists>r s. rrel r r' \<and> (s,s') \<in> srel \<and> P s"
   assumes P': "P' s'"
   shows "whileLoop_terminates C' B' r' s'"
@@ -381,7 +417,7 @@ lemma whileLoop_terminates_cross:
   apply (fastforce dest!: whileLoop_terminates_cross_helper)
   done
 
-lemma whileLoop_no_fail':
+lemma whileLoop_no_fail_abs_termination:
   assumes cond:
           "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_corres:
@@ -391,7 +427,7 @@ lemma whileLoop_no_fail':
   assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
                     "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
   assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
-  assumes abs_termin: "\<And>r s. whileLoop_terminates C B r s"
+  assumes abs_termination: "\<And>r s. whileLoop_terminates C B r s"
   assumes rel: "\<exists>r s. rrel r r' \<and> (s,s') \<in> srel \<and> P s"
   assumes rrel: "\<forall>r'. \<exists>r. rrel r r'"
   assumes P': "P' s'"
@@ -408,7 +444,7 @@ lemma whileLoop_no_fail':
     apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
       apply (prop_tac "\<exists>abs_r. rrel abs_r conc_r")
        apply (insert assms)[1]
-       apply presburger
+       apply simp
       apply clarsimp
       apply (rule hoare_weaken_pre)
        apply (insert assms)
@@ -421,99 +457,32 @@ lemma whileLoop_no_fail':
   apply (fastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
  done
 
-lemma whileLoop_no_fail:
-  assumes body_guard: "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
-  assumes termin: "\<And>r' s'. P' s' \<Longrightarrow> C' r' s' \<Longrightarrow> whileLoop_terminates C' B' r' s'"
-  shows "no_fail P' (whileLoop C' B' r')"
-  apply (simp add: no_fail_def)
-  apply (intro allI impI)
-  apply (rule_tac I="\<lambda>_ s. P' s"
-              and R="{((r', s'), r, s). C' r s \<and> (r', s') \<in> fst (B' r s)
-                                        \<and> whileLoop_terminates C' B' r s}"
-               in not_snd_whileLoop)
-    apply simp
-   apply (clarsimp simp: validNF_def)
-   apply (intro conjI)
-    apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
-      apply (insert assms)
-      apply (fastforce simp: valid_def)
-     apply (clarsimp simp: valid_def)
-    apply wpsimp
-   apply (fastforce intro: no_fail_pre)
-  apply (fastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
-  done
-
-lemma corres_whileLoop:
+lemma corres_whileLoop_abs_termination:
   assumes cond:
           "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_corres:
           "\<And>r r'. rrel r r'
-                  \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
-  assumes nf': "\<And>r s. \<lbrakk>P' s; C' r s\<rbrakk> \<Longrightarrow> \<not> snd (B' r s)"
+                   \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
+  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
   assumes rrel: "rrel r r'"
   assumes rrel2: "\<forall>r'. \<exists>r. rrel r r'"
   assumes body_guard: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes termin: "\<And>r s. whileLoop_terminates C B r s"
+  assumes abs_termination: "\<And>r s. whileLoop_terminates C B r s"
   shows "corres_underlying srel False nf' rrel P P' (whileLoop C B r) (whileLoop C' B' r')"
- apply (clarsimp simp: corres_underlying_def split: prod.splits)
-apply safe
-defer
-thm whileLoop_no_fail'
-apply (rename_tac s s')
-apply (insert assms)
-thm whileLoop_no_fail'
-apply (prop_tac "\<exists>r_abs. rrel r_abs r'")
-apply (insert assms)[1]
-  apply presburger
-apply clarsimp
-
-thm  whileLoop_no_fail'[rotated 5]
-apply (subgoal_tac "\<not>snd (whileLoop C'
-               B'
-              r' s')")
-  apply argo
-
-thm  whileLoop_no_fail'[rotated 5]
-
-apply (rule_tac  C=C  and B=B and rrel=rrel
- and srel=srel and P=P and B'=B' and P'=P' in whileLoop_no_fail')
-  apply blast
-  apply blast
-  apply blast
-  apply fast
-  apply blast
-  apply fast
-  apply blast
-  apply blast
-  apply blast
-
+  apply (clarsimp simp: corres_underlying_def)
+  apply (intro conjI ballI)
+   defer
+   apply (rename_tac s s')
+   apply (insert assms)
+   apply (prop_tac "\<exists>abs_r. rrel abs_r r'")
+    apply (insert assms)[1]
+    apply simp
+   apply clarsimp
+   apply (frule_tac P=P in whileLoop_no_fail_abs_termination[rotated 7]; fastforce)
   apply clarsimp
-  apply (frule_tac C=C and C'=C' and A="A" and A'="A'" and B=B and rrel=rrel and srel=srel and
-                   P=P and P'=P'
-         in corres_whileLoop_results[rotated 5])
-       apply (erule (1) cond)
-        apply (fastforce dest: cross)
-       apply (fastforce dest: cross)
-      apply (erule body_corres)
-     apply (rule body_guard(1))
-    apply (rule body_guard(2))
-   apply (fastforce dest: cross)
-  apply (drule_tac x=x1 and y=r in spec2, clarsimp simp: rel)
-  apply (fastforce simp: rel)
+  apply (frule_tac C=C and P=P and P'=P' and rrel=rrel and srel=srel
+                in corres_whileLoop_results_helper[rotated 4])
+      apply fastforce+
   done
-
-lemma corres_whileLoop_inv:
-  assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
-  assumes body_corres:
-           "\<And>r r'. rrel r r'
-                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
-  assumes body_guard: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes rel: "rrel r r'"
-  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
-  assumes termin: "\<And>r' s'. P' s' \<Longrightarrow> whileLoop_terminates C' B' r' s'"
-  shows "corres_underlying srel False nf' rrel P P' (whileLoop C B r) (whileLoop C' B' r')"
-  apply (rule corres_whileLoop[where A=\<top> and A'=\<top> and I'=P'])
-  using assms by simp+
 
 end
