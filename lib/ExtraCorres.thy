@@ -325,128 +325,101 @@ lemma corres_whileLoop_results:
 
 lemmas corres_whileLoop_results_inv = corres_whileLoop_results[where A=\<top> and A'=\<top>, simplified]
 
+lemma whileLoop_terminates_cross_helper:
+  assumes body_corres:
+           "\<forall>r r'. rrel r r'
+                    \<longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
+                                                              (B r) (B' r')"
+  assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
+  assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
+                    "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
+  assumes abs_termin: "\<And>r s. whileLoop_terminates C B r s"
+  shows "\<forall>r' s'. (rrel r r' \<and> (s,s') \<in> srel \<and> P s \<and> P' s')  \<longrightarrow> whileLoop_terminates C' B' r' s'"
+  apply (rule_tac P="\<lambda>r s. \<forall>r' s'. rrel r r' \<and> (s, s') \<in> srel \<and> P s \<and> P' s' 
+                                   \<longrightarrow> whileLoop_terminates C' B' r' s'" 
+               in whileLoop_terminates.induct)
+    apply (fastforce intro: abs_termin)
+   apply clarsimp
+   apply (case_tac "\<not> C' r' s'")
+    apply (simp add: whileLoop_terminates.intros)
+   apply (fastforce dest: cond)
+  apply (clarsimp split: prod.splits)
+  apply (subst whileLoop_terminates.simps)
+  apply (insert cond)
+  apply clarsimp
+  apply (rename_tac conc_rv conc_s)
+  apply (prop_tac "\<exists>rv t. (rv,t) \<in> fst (B r s) \<and> rrel rv conc_rv \<and> (t, conc_s) \<in> srel")
+   apply (insert body_corres)
+   apply (prop_tac "C r s")
+    apply (insert cond)
+    apply clarsimp      
+   apply (prop_tac "corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')")
+    apply simp
+   apply (fastforce simp: corres_underlying_def)
+  apply clarsimp
+  apply (drule_tac x="(rv,t)" in bspec)
+   apply assumption
+  apply (prop_tac "P' conc_s")
+   apply (insert body_inv)
+   apply (fastforce simp: valid_def)
+  apply (fastforce intro: body_inv simp: valid_def)
+  done
+
 lemma whileLoop_terminates_cross:
   assumes body_corres:
-           "\<And>r r'. rrel r r'
-                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
+           "\<forall>r r'. rrel r r'
+                    \<longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
                                                               (B r) (B' r')"
   assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
                     "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
   assumes termin: "\<And>r s. whileLoop_terminates C B r s"
-  shows "\<forall>r' s'. (rrel r r' \<and> (s,s') \<in> srel \<and> P s \<and> P' s')  \<longrightarrow> whileLoop_terminates C' B' r' s'"
-  apply (rule_tac P="\<lambda>r s. \<forall>r' s'. rrel r r' \<and> (s, s') \<in> srel \<and> P s \<and> P' s' \<longrightarrow>
-    whileLoop_terminates C' B' r' s'" and C=C and B=B in  whileLoop_terminates.induct)
-using termin
-  apply fast
-apply clarsimp
-apply (case_tac "\<not> C' r' s'")
-apply (simp add: whileLoop_terminates.intros)
-using cond
-  apply blast
-apply clarsimp
-
-apply (clarsimp split: prod.splits)
-apply (subst whileLoop_terminates.simps)
-using cond apply clarsimp         
-  apply (prop_tac "\<exists>rv t. (rv,t) \<in> fst (B r s) \<and> rrel rv a \<and> (t,b) \<in> srel")
-apply (insert body_corres)
-apply (prop_tac "C r s")
-using cond
-  apply simp            
-apply (prop_tac "corres_underlying srel False nf' rrel (P and C r)
-            (P' and C' r') (B r) (B' r')")
-  apply simp
-apply (fastforce simp: corres_underlying_def)
-apply clarsimp
-apply (drule_tac x="(rv,t)" in bspec)
-    apply assumption
-apply clarsimp
-apply (drule_tac x=a in spec)
-apply clarsimp
-apply (prop_tac "P' s'")
-apply (insert body_inv)
-apply (clarsimp simp: valid_def)
-apply clarsimp
-apply (drule_tac x=b in spec)
-apply clarsimp
-apply (prop_tac "P' b")
-apply (insert body_inv)
-apply (fastforce simp: valid_def)
-apply (elim impE)
-apply assumption
-apply (insert body_inv)
-apply (fastforce simp: valid_def)
-apply simp
-done
-
-lemma whileLoop_terminates_cross2:
-  assumes body_corres:
-           "\<And>r r'. rrel r r'
-                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
-                                                              (B r) (B' r')"
-  assumes cond: "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
-  assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
-                    "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes termin: "\<And>r s. whileLoop_terminates C B r s"
-  assumes rrel: "rrel r r'"
-  assumes srel: "(s,s') \<in> srel"
-  assumes a: "P s"
-  assumes b: "P' s'"
+  assumes rel: "\<exists>r s. rrel r r' \<and> (s,s') \<in> srel \<and> P s"
+  assumes P': "P' s'"
   shows "whileLoop_terminates C' B' r' s'"
-apply (insert assms)
-apply clarsimp
-thm whileLoop_terminates_cross
-
-  apply (frule whileLoop_terminates_cross[rotated, where rrel=rrel and srel=srel])
-  apply auto[1]
-  apply blast
-
-apply clarsimp
-apply (prop_tac "rrel r r' \<and> (s, s') \<in> srel \<and> P s \<and> P' s' \<longrightarrow> whileLoop_terminates C' B' r' s'")
-apply clarsimp
-thm whileLoop_terminates_cross
-
-
+  apply (insert assms)
+  apply (fastforce dest!: whileLoop_terminates_cross_helper)
+  done
 
 lemma whileLoop_no_fail':
   assumes cond:
           "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_corres:
-           "\<And>r r'. rrel r r'
-                    \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
+           "\<forall>r r'. rrel r r'
+                    \<longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') 
                                                               (B r) (B' r')"
   assumes body_inv: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" 
                     "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
-  assumes nf: "\<And>r s. \<lbrakk>P s; C r s\<rbrakk> \<Longrightarrow> \<not> snd (B r s)"
-  assumes nf': "\<And>r s. \<lbrakk>P' s; C' r s\<rbrakk> \<Longrightarrow> \<not> snd (B' r s)"
-  assumes termin: "\<And>r s. whileLoop_terminates C B r s"
-  assumes srel: "(s, s') \<in> srel"
-  assumes rrel: "rrel r r'"
-  assumes a: "P s"
-  assumes b: "P' s'"
-  shows "\<And>r'. \<not> snd (whileLoop C' B' r' s')"
-  apply (rule_tac I="\<lambda>_ s. P' s"
+  assumes nf': "\<And>r'. no_fail (P' and C' r') (B' r')"
+  assumes abs_termin: "\<And>r s. whileLoop_terminates C B r s"
+  assumes rel: "\<exists>r s. rrel r r' \<and> (s,s') \<in> srel \<and> P s"
+  assumes rrel: "\<forall>r'. \<exists>r. rrel r r'"
+  assumes P': "P' s'"
+  shows "\<not> snd (whileLoop C' B' r' s')"
+  apply (rule_tac I="\<lambda>rv' s'. \<exists>rv s. (s, s') \<in> srel \<and> rrel rv rv' \<and> P s \<and> P' s'"
               and R="{((r', s'), r, s). C' r s \<and> (r', s') \<in> fst (B' r s)
                                         \<and> whileLoop_terminates C' B' r s}"
                in not_snd_whileLoop)
-    apply simp
-    apply (simp add: assms)
+    apply (insert assms)[1]
+    apply blast
+   apply (rename_tac conc_r s)
    apply (clarsimp simp: validNF_def)
    apply (intro conjI)
     apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
-      apply (insert assms)
-      apply (fastforce simp: valid_def)
-     apply (clarsimp simp: valid_def)
+      apply (prop_tac "\<exists>abs_r. rrel abs_r conc_r")
+       apply (insert assms)[1]
+       apply presburger
+      apply clarsimp
+      apply (rule hoare_weaken_pre)
+       apply (insert assms)
+       apply (fastforce intro!: wp_from_corres_u)
+      apply blast
+     apply (fastforce simp: valid_def)
     apply wpsimp
-
-thm whileLoop_terminates_cross
-apply (insert assms)
-apply (frule whileLoop_terminates_cross[where srel=srel and nf'=nf' and rrel=rrel and P=P and B=B])
-
-apply (xfastforce dest: whileLoop_terminates_cross)
-   apply (xfastforce intro: no_fail_pre)
-  apply (xfastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
+    apply (frule whileLoop_terminates_cross; fast?)
+   apply (fastforce intro: no_fail_pre)
+  apply (fastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
+ done
 
 lemma whileLoop_no_fail:
   assumes body_guard: "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
@@ -471,40 +444,50 @@ lemma whileLoop_no_fail:
   apply (fastforce intro: wf_subset[OF whileLoop_terminates_wf[where C=C' and B=B']])
   done
 
-(* note: I think that the relationship between I' and P' and A' could potentially be weakened *)
-(* note: A and A' can be as strong as you like so long as the cross assumption holds. *)
 lemma corres_whileLoop:
   assumes cond:
           "\<And>r r' s s'. \<lbrakk>rrel r r'; (s, s') \<in> srel; P s; P' s'\<rbrakk> \<Longrightarrow> C r s = C' r' s'"
   assumes body_corres:
           "\<And>r r'. rrel r r'
                   \<Longrightarrow> corres_underlying srel False nf' rrel (P and C r) (P' and C' r') (B r) (B' r')"
-  assumes nf: "\<And>r s. \<lbrakk>P s; C r s\<rbrakk> \<Longrightarrow> \<not> snd (B r s)"
   assumes nf': "\<And>r s. \<lbrakk>P' s; C' r s\<rbrakk> \<Longrightarrow> \<not> snd (B' r s)"
   assumes rrel: "rrel r r'"
+  assumes rrel2: "\<forall>r'. \<exists>r. rrel r r'"
   assumes body_guard: "\<And>r. \<lbrace>P and C r\<rbrace> B r \<lbrace>\<lambda>_. P\<rbrace>" "\<And>r'. \<lbrace>P' and C' r'\<rbrace> B' r' \<lbrace>\<lambda>_. P'\<rbrace>"
   assumes termin: "\<And>r s. whileLoop_terminates C B r s"
   shows "corres_underlying srel False nf' rrel P P' (whileLoop C B r) (whileLoop C' B' r')"
-
-
-apply (clarsimp simp: corres_underlying_def split: prod.splits)
+ apply (clarsimp simp: corres_underlying_def split: prod.splits)
 apply safe
 defer
 thm whileLoop_no_fail'
 apply (rename_tac s s')
 apply (insert assms)
+thm whileLoop_no_fail'
+apply (prop_tac "\<exists>r_abs. rrel r_abs r'")
+apply (insert assms)[1]
+  apply presburger
+apply clarsimp
+
 thm  whileLoop_no_fail'[rotated 5]
-apply (frule whileLoop_no_fail'[rotated 5, where P=P and P'=P' and nf'=nf' and rrel=rrel
-and C=C and C'=C' and B=B and B'=B']; clarsimp?) 
+apply (subgoal_tac "\<not>snd (whileLoop C'
+               B'
+              r' s')")
+  apply argo
+
+thm  whileLoop_no_fail'[rotated 5]
+
+apply (rule_tac  C=C  and B=B and rrel=rrel
+ and srel=srel and P=P and B'=B' and P'=P' in whileLoop_no_fail')
   apply blast
-using whileLoop_no_fail' 
-  apply (rule corres_no_failI)
-   apply (rule no_fail_pre)
-    apply (rule whileLoop_no_fail)
-      apply (rule body_guard3)
-     apply (rule nf')
-    apply (erule (2) termin)
-   apply (simp add: weaken)
+  apply blast
+  apply blast
+  apply fast
+  apply blast
+  apply fast
+  apply blast
+  apply blast
+  apply blast
+
   apply clarsimp
   apply (frule_tac C=C and C'=C' and A="A" and A'="A'" and B=B and rrel=rrel and srel=srel and
                    P=P and P'=P'
