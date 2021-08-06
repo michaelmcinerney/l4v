@@ -8871,8 +8871,8 @@ lemma head_time_buffer_true_imp_unat_buffer:
           \<and> pred_map (\<lambda>cfg. r_amount (scrc_refill_hd cfg) \<le> usage )
                      (sc_refill_cfgs_of s) (cur_sc s))"
   apply (intro iffI)
-  apply (fastforce dest!: head_time_buffer_true_imp_buffer[THEN iffD1, where usage1=usage]
-                    simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
+   apply (fastforce dest!: head_time_buffer_true_imp_buffer[THEN iffD1, where usage1=usage]
+                     simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
   apply (fastforce simp: head_time_buffer_true_imp_buffer[THEN iffD2, where usage1=usage]
                     simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
   done
