@@ -275,7 +275,7 @@ This module uses the C preprocessor to select a target architecture.
 >                 full <- refillFull scPtr
 >                 if (not full)
 >                    then refillAddTail scPtr new
->                    else do 
+>                    else do
 >                      updateRefillTl scPtr (\last -> last { rTime = rTime new - rAmount last})
 >                      updateRefillTl scPtr (\last -> last { rAmount = rAmount last + rAmount new})
 
