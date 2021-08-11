@@ -342,6 +342,7 @@ fun
 where
   "handle_event (SyscallEvent call) = doE
     liftE $ update_time_stamp;
+    liftE $ check_domain_time;
     restart \<leftarrow> liftE $ check_budget_restart;
     whenE restart (case call of
           SysSend \<Rightarrow> handle_send True
@@ -371,6 +372,7 @@ where
 
 | "handle_event (UnknownSyscall n) = (without_preemption $ do
     update_time_stamp;
+    check_domain_time;
     restart \<leftarrow> check_budget_restart;
     when restart $ do
       thread \<leftarrow> gets cur_thread;
@@ -380,6 +382,7 @@ where
 
 | "handle_event (UserLevelFault w1 w2) = (without_preemption $ do
     update_time_stamp;
+    check_domain_time;
     restart \<leftarrow> check_budget_restart;
     when restart $ do
       thread \<leftarrow> gets cur_thread;
@@ -390,6 +393,7 @@ where
 | "handle_event Interrupt = (without_preemption $ do
     active \<leftarrow> do_machine_op $ getActiveIRQ False;
     update_time_stamp;
+    check_domain_time;
     check_budget;
     case active of
        Some irq \<Rightarrow> handle_interrupt irq
@@ -398,6 +402,7 @@ where
 
 | "handle_event (VMFaultEvent fault_type) = (without_preemption $ do
     update_time_stamp;
+    check_domain_time;
     restart \<leftarrow> check_budget_restart;
     when restart $ do
       thread \<leftarrow> gets cur_thread;
@@ -421,8 +426,8 @@ text \<open>
 
 definition preemption_path where
   "preemption_path \<equiv> do
+      check_domain_time;
       irq \<leftarrow> do_machine_op (getActiveIRQ True);
-      when (irq = Some timerIRQ) update_time_stamp;
       ct \<leftarrow> gets cur_thread;
       schedulable \<leftarrow> is_schedulable ct;
       if schedulable then do check_budget;
@@ -430,9 +435,11 @@ definition preemption_path where
                           od
       else do csc \<leftarrow> gets cur_sc;
               active \<leftarrow> get_sc_active csc;
-              when active (do consumed \<leftarrow> gets consumed_time;
-                              charge_budget consumed False
-                           od)
+              if active
+                 then do consumed \<leftarrow> gets consumed_time;
+                         charge_budget consumed False
+                      od
+                 else modify (\<lambda>s. s\<lparr>consumed_time := 0\<rparr>)
            od;
       when (irq \<noteq> None) (handle_interrupt (the irq))
    od"
