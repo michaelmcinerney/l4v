@@ -546,8 +546,6 @@ where
       od;
       update_sched_context csc (\<lambda>sc. sc\<lparr>sc_consumed := (sc_consumed sc) + consumed \<rparr>)
     od;
-    when (num_domains > 1) $
-      commit_domain_time;
     modify (\<lambda>s. s\<lparr>consumed_time := 0\<rparr> )
   od"
 
