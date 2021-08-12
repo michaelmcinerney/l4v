@@ -664,7 +664,7 @@ where
      when exp $ do modify (\<lambda>s. s\<lparr>reprogram_timer := True\<rparr>);
                    reschedule_required
                 od
-    od"
+   od"
 
 definition
   preemption_point :: "(unit,'z::state_ext) p_monad"
@@ -680,7 +680,7 @@ where
           test \<leftarrow> liftE $ andM (get_sc_active cur_sc)
                                (get_sc_refill_sufficient cur_sc consumed);
           exp \<leftarrow> liftE $ gets is_cur_domain_expired;
-          whenE (\<not> test \<or> exp \<or> (\<exists>y. irq_opt = Some y)) $ throwError ()
+          whenE (\<not>test \<or> exp \<or> (\<exists>y. irq_opt = Some y)) $ throwError ()
       odE)
      (returnOk ())
    odE"

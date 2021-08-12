@@ -428,7 +428,6 @@ definition preemption_path where
   "preemption_path \<equiv> do
       check_domain_time;
       irq \<leftarrow> do_machine_op (getActiveIRQ True);
-      when (irq = Some timerIRQ) update_time_stamp;
       ct \<leftarrow> gets cur_thread;
       schedulable \<leftarrow> is_schedulable ct;
       if schedulable then do check_budget;

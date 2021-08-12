@@ -519,16 +519,6 @@ where
   od"
 
 
-definition
-  commit_domain_time :: "(unit, 'z::state_ext) s_monad"
-where
-  "commit_domain_time = do
-    consumed \<leftarrow> gets consumed_time;
-    domain_time \<leftarrow> gets domain_time;
-    time' \<leftarrow> return (if domain_time < consumed then 0 else domain_time - consumed);
-    modify (\<lambda>s. s\<lparr>domain_time := time'\<rparr>)
-  od"
-
 text \<open> Update time consumption of current scheduling context and current domain. \<close>
 definition
   commit_time :: "(unit, 'z::state_ext) s_monad"
