@@ -1040,7 +1040,7 @@ lemma update_time_stamp_is_refill_ready[wp]:
   unfolding update_time_stamp_def
   apply (wpsimp wp: dmo_getCurrentTime_wp)
      prefer 2
-     apply (rule_tac Q="(is_refill_ready scp and (\<lambda>s. cur_time s = prev_time))"
+     apply (rule_tac Q="(is_refill_ready scp and (\<lambda>s. cur_time s = previous_time))"
             in hoare_weaken_pre[rotated], assumption)
      apply wpsimp
     apply (clarsimp simp: vs_all_heap_simps refill_ready_def)
@@ -1060,9 +1060,9 @@ lemma update_time_stamp_cur_time_monotonic:
    \<lbrace>\<lambda>_ s. val \<le> cur_time s\<rbrace>"
   supply minus_add_distrib[simp del]
   apply (clarsimp simp: update_time_stamp_def)
-  apply (rule hoare_seq_ext[OF _ gets_sp])
+  apply (rule hoare_seq_ext[OF _ gets_sp], rename_tac previous_time)
   apply (rule_tac B="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer - 1
-                            \<and> cur_time s = val \<and> cur_time s = prev_time"
+                            \<and> cur_time s = val \<and> cur_time s = previous_time"
                in hoare_seq_ext[rotated])
    apply (wpsimp wp: dmo_getCurrentTime_sp)+
   done
@@ -1150,12 +1150,6 @@ lemmas valid_sched_action_no_sc_sched_act_not
 lemma simple_sched_act_not[simp]:
   "simple_sched_action s \<Longrightarrow> scheduler_act_not t s"
   by (clarsimp simp: simple_sched_action_def scheduler_act_not_def)
-
-lemma set_tcb_queue_wp:
-  "\<lbrace>\<lambda>s. P (ready_queues_update (\<lambda>qs d p. if d = t \<and> p = prio then queue else qs d p) s)\<rbrace>
-   set_tcb_queue t prio queue
-   \<lbrace>\<lambda>_. P\<rbrace>"
-  by (wpsimp simp: set_tcb_queue_def) (auto elim!: rsubst[of P])
 
 lemma get_tcb_queue_wp[wp]: "\<lbrace>\<lambda>s. P (ready_queues s t p) s\<rbrace> get_tcb_queue t p \<lbrace>P\<rbrace>"
   by (wpsimp simp: get_tcb_queue_def)
