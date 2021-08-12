@@ -516,6 +516,25 @@ lemma post_cap_delete_pre_is_final_cap':
      apply simp+
   done
 
+lemma preemption_point_invs:
+  "preemption_point \<lbrace>invs\<rbrace>"
+  by (wpsimp wp: preemption_point_inv)
+
+lemma ex_cte_cap_wp_to_lift:
+  assumes x : "\<And>P. f \<lbrace>\<lambda>s. P (caps_of_state s)\<rbrace>"
+  assumes y : "\<And>P. f \<lbrace>\<lambda>s. P (interrupt_irq_node s)\<rbrace>"
+  shows "f \<lbrace>ex_cte_cap_wp_to g h\<rbrace>"
+  apply (wpsimp simp: ex_cte_cap_wp_to_def hoare_vcg_ex_lift )
+  apply (rule hoare_weaken_pre)
+  apply (wps y)
+  apply (wpsimp wp: hoare_cte_wp_caps_of_state_lift hoare_vcg_ex_lift x)
+  apply simp
+  done
+
+lemma preemption_point_ex_cte_cap_wp_to:
+  "preemption_point \<lbrace>ex_cte_cap_wp_to g h\<rbrace>"
+  by (wpsimp wp: ex_cte_cap_wp_to_lift preemption_point_inv)
+
 lemma rec_del_invs'':
   notes Inr_in_liftE_simp[simp del]
   assumes set_cap_Q[wp]: "\<And>cap p. \<lbrace>Q and invs\<rbrace> set_cap cap p \<lbrace>\<lambda>_.Q\<rbrace>"
@@ -571,12 +590,7 @@ next
      apply (wp replace_cap_invs | simp)
      apply ((wp replace_cap_invs | simp)+)[1]
        apply (wp "2.hyps")
-         apply (wp preemption_point_Q | simp)+
-         apply (wp preemption_point_inv, simp+)
-         apply (wp preemption_point_Q)
-         apply ((wp preemption_point_inv irq_state_independent_A_conjI irq_state_independent_AI
-                    invs_irq_state_independent
-               | simp add: valid_rec_del_call_def irq_state_independent_A_def)+)[1]
+         apply (wpsimp wp: preemption_point_Q preemption_point_invs hoare_vcg_imp_lift' preemption_point_ex_cte_cap_wp_to)
         apply (simp(no_asm))
         apply (rule spec_strengthen_postE)
         apply (rule "2.hyps"[simplified rec_del_call.simps slot_rdcall.simps conj_assoc], assumption+)

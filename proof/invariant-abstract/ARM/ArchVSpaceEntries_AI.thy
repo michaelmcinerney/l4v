@@ -1628,7 +1628,9 @@ lemma handle_invocation_valid_pdpt[wp]:
                  intro!: st_tcb_ex_cap)
   done
 
-crunch valid_pdpt[wp]: update_time_stamp "valid_pdpt_objs::det_state \<Rightarrow> _"
+crunches update_time_stamp, check_domain_time
+  for valid_pdpt[wp]: "valid_pdpt_objs::det_state \<Rightarrow> _"
+  (simp: crunch_simps)
 
 crunch valid_pdpt[wp]: sc_and_timer "valid_pdpt_objs::det_state \<Rightarrow> _"
   (wp: hoare_drop_imps hoare_vcg_if_lift2)
@@ -1652,6 +1654,28 @@ lemma schedule_valid_pdpt[wp]: "\<lbrace>valid_pdpt_objs\<rbrace> schedule :: (u
   apply (wpsimp wp: alternative_wp select_wp hoare_drop_imps)
   done
 
+
+
+
+
+
+
+lemma check_budget_restart_not_is_cur_domain_expired_sched_act:
+   "\<lbrace>\<lambda>s. \<not>is_cur_domain_expired s \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>
+    check_budget_restart
+    \<lbrace>\<lambda>rv s. rv \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>"
+   unfolding check_budget_restart_def check_budget_def
+   by (wpsimp wp: gts_wp)
+
+lemma bind_liftE_distrib': "(liftE (A >>= (\<lambda>x. B))) = (liftE A >>=E (\<lambda>x. liftE (\<lambda>s. B s)))"
+  apply (clarsimp simp: liftE_def bindE_def lift_def bind_assoc)
+  done
+
+crunches check_domain_time
+  for pred_tcb_at_ct[wp]: "\<lambda>s. bound_sc_tcb_at bound (cur_thread s) s"
+  and ct_running[wp]: ct_running
+  (simp: crunch_simps wp: crunch_wps)
+
 lemma call_kernel_valid_pdpt[wp]:
   "\<lbrace>invs and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_pdpt_objs
      and (\<lambda>s. scheduler_action s = resume_cur_thread)
@@ -1659,21 +1683,27 @@ lemma call_kernel_valid_pdpt[wp]:
       (call_kernel e) :: (unit,det_ext) s_monad
         \<lbrace>\<lambda>_. valid_pdpt_objs\<rbrace>"
   apply (cases e, simp_all add: call_kernel_def preemption_path_def)
+
        apply (rule hoare_seq_ext[rotated])
         apply (rule validE_valid)
         apply (rule_tac Q="\<lambda>_. (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in handleE_wp[rotated])
+apply (subst bindE_assoc[symmetric])
+apply (subst bind_liftE_distrib'[symmetric])
+
          apply (rule_tac B="\<lambda>_. invs and ct_running and
+(\<lambda>s. (\<not>is_cur_domain_expired s) \<longrightarrow> scheduler_action s = resume_cur_thread) and
            (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. scheduler_action s = resume_cur_thread) and
+     \<comment> \<open>      (\<lambda>s. scheduler_action s = resume_cur_thread) and\<close>
            (\<lambda>s. is_schedulable_bool (cur_thread s) s)" in seqE)
           apply (rule liftE_wp)
-          apply (wpsimp wp: hoare_vcg_ex_lift)
+apply (wpsimp wp: update_time_stamp_inv check_domain_time_inv)
          apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
            (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
            (\<lambda>s. rv \<longrightarrow> scheduler_action s = resume_cur_thread) and
            (\<lambda>s. rv \<longrightarrow> (is_schedulable_bool (cur_thread s) s))" in seqE)
           apply (rule liftE_wp)
-          apply (wpsimp wp: check_budget_restart_true)
+          apply ((wpsimp wp: hoare_vcg_conj_lift check_budget_restart_not_is_cur_domain_expired_sched_act
+                 | wpsimp wp: check_budget_restart_true)+)[1]
          apply (rule valid_validE)
          apply (wpsimp)
          apply (fastforce simp: ct_in_state_def pred_tcb_weakenE)
@@ -1683,9 +1713,12 @@ lemma call_kernel_valid_pdpt[wp]:
       apply (rule_tac B="\<lambda>_. (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in hoare_seq_ext[rotated])
        apply (rule validE_valid)
        apply (rule liftE_wp)
+apply (subst bind_assoc[symmetric])
+
+
        apply (rule_tac B="\<lambda>_. invs and ct_running and
            (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. bound_sc_tcb_at (\<lambda>a. \<exists>y. a = Some y) (cur_thread s) s)" in hoare_seq_ext[rotated])
+           (\<lambda>s. bound_sc_tcb_at bound (cur_thread s) s)" in hoare_seq_ext[rotated])
         apply wpsimp
         apply (clarsimp simp: pred_tcb_at_def obj_at_def is_schedulable_bool_def')
        apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
@@ -1701,8 +1734,7 @@ lemma call_kernel_valid_pdpt[wp]:
            (\<lambda>s. bound_sc_tcb_at (\<lambda>a. \<exists>y. a = Some y) (cur_thread s) s)" in hoare_seq_ext[rotated])
        apply wpsimp
        apply (clarsimp simp: pred_tcb_at_def obj_at_def is_schedulable_bool_def')
-      apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
-           (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in hoare_seq_ext[rotated])
+
        apply (wpsimp wp: check_budget_restart_true)
       apply (wpsimp+)[2]
     (***)
@@ -1716,10 +1748,8 @@ lemma call_kernel_valid_pdpt[wp]:
            (\<lambda>s. bound_sc_tcb_at (\<lambda>a. \<exists>y. a = Some y) (cur_thread s) s)" in hoare_seq_ext[rotated])
      apply wpsimp
      apply (clarsimp simp: pred_tcb_at_def obj_at_def is_schedulable_bool_def')
-    apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
-           (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in hoare_seq_ext[rotated])
+
      apply (wpsimp wp: check_budget_restart_true)
-    apply (wpsimp+)[2]
     (***)
   apply wpsimp
   done

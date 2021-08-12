@@ -55,15 +55,16 @@ lemma asid_high_bits_of_add:
               simp: asid_low_bits_def word_bits_def nth_ucast)
   done
 
-lemma preemption_point_success [simp,intro]:
+(* lemma preemption_point_success [simp,intro]:
   "\<lbrakk>((Inr (), s') \<in> fst (preemption_point s))\<rbrakk>
-   \<Longrightarrow> \<exists>f g es lasttime curtime consumed.
+   \<Longrightarrow> \<exists>f g es lasttime curtime consumed domtime.
               s' = s\<lparr>machine_state :=
                      machine_state s\<lparr>irq_state := f (irq_state (machine_state s)),
                                      time_state := g (time_state (machine_state s)),
                                      last_machine_time := lasttime\<rparr>,
                      cur_time := curtime,
                      consumed_time := consumed,
+                     domain_time := domtime,
                      exst := es \<rparr>"
   apply (clarsimp simp: in_monad preemption_point_def do_machine_op_def
                         select_f_def select_def getActiveIRQ_def alternative_def
@@ -94,7 +95,7 @@ lemma preemption_point_success [simp,intro]:
             rule_tac x="last_machine_time (machine_state s)" in exI,
             rule_tac x="cur_time s" in exI,
             rule_tac x="consumed_time s" in exI, force)+
-  done
+  done *)
 
 lemma pageBits_less_word_bits [simp]:
   "pageBits < word_bits" by (simp add: pageBits_def word_bits_conv)
