@@ -859,13 +859,12 @@ lemma commit_times_invs_helper:
          consumed_time s = consumed \<and>
          cur_sc s = csc\<rbrace>
        do y <- update_sched_context csc (\<lambda>sc. sc\<lparr>sc_consumed := sc_consumed sc + consumed\<rparr>);
-          y <- commit_domain_time;
           modify (consumed_time_update (\<lambda>_. 0))
        od
        \<lbrace>\<lambda>rv. invs\<rbrace>"
   apply (wpsimp simp: invs_def valid_state_def valid_pspace_def
                       consumed_time_update_arch.state_refs_update
-                      commit_domain_time_def sc_consumed_update_eq[symmetric]
+                      sc_consumed_update_eq[symmetric]
                   wp: valid_irq_node_typ hoare_vcg_imp_lift')
   done
 

@@ -1151,12 +1151,6 @@ lemma simple_sched_act_not[simp]:
   "simple_sched_action s \<Longrightarrow> scheduler_act_not t s"
   by (clarsimp simp: simple_sched_action_def scheduler_act_not_def)
 
-lemma set_tcb_queue_wp:
-  "\<lbrace>\<lambda>s. P (ready_queues_update (\<lambda>qs d p. if d = t \<and> p = prio then queue else qs d p) s)\<rbrace>
-   set_tcb_queue t prio queue
-   \<lbrace>\<lambda>_. P\<rbrace>"
-  by (wpsimp simp: set_tcb_queue_def) (auto elim!: rsubst[of P])
-
 lemma get_tcb_queue_wp[wp]: "\<lbrace>\<lambda>s. P (ready_queues s t p) s\<rbrace> get_tcb_queue t p \<lbrace>P\<rbrace>"
   by (wpsimp simp: get_tcb_queue_def)
 

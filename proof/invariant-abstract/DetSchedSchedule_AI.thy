@@ -14975,14 +14975,6 @@ lemma tcb_sched_action_schedulable_bool_not[wp]:
                   wp: set_object_wp set_tcb_queue_wp)
   by (clarsimp simp: is_schedulable_bool_def get_tcb_rev obj_at_def dest!: get_tcb_SomeD split: option.splits)
 
-lemma tcb_sched_action_schedulable_bool[wp]:
-  "\<lbrace>\<lambda>s. is_schedulable_bool t s\<rbrace>
-   tcb_sched_action f t
-   \<lbrace>\<lambda>rv s. is_schedulable_bool t s\<rbrace>"
-  apply (wpsimp simp: tcb_sched_action_def thread_set_def thread_get_def
-                  wp: set_object_wp set_tcb_queue_wp)
-  by (fastforce simp: is_schedulable_bool_def get_tcb_rev obj_at_def dest!: get_tcb_SomeD split: option.splits)
-
 (* move *)
 lemma valid_sched_action_switch_thread_is_schedulable:
   "\<lbrakk>valid_sched_action s; scheduler_action s = switch_thread thread\<rbrakk> \<Longrightarrow>
@@ -24899,5 +24891,5 @@ lemma schedule_ct_activateable:
   done
 
 end
-
+find_theorems is_schedulable_bool
 end
