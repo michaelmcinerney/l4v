@@ -492,7 +492,7 @@ locale EmptyFail_AI_call_kernel = EmptyFail_AI_schedule state_ext_t
 begin
 
 lemma call_kernel_empty_fail: "empty_fail (call_kernel a :: (unit,'state_ext) s_monad)"
-  apply (simp add: call_kernel_def preemption_path_def)
+  apply (simp add: call_kernel_def preemption_path_def check_domain_time_def)
   apply (wpsimp simp: get_sc_active_def)
   done
 
