@@ -54,6 +54,10 @@ crunches awaken
   for invs[wp]: invs
   (wp: crunch_wps simp: tcb_release_dequeue_def)
 
+crunches check_domain_time
+  for invs[wp]: invs
+  (simp: crunch_simps)
+
 lemma set_scheduler_action_valid_state_cur_tcb [wp]:
   "\<lbrace>invs\<rbrace> set_scheduler_action action \<lbrace>\<lambda>_ s. valid_state s \<and> cur_tcb s\<rbrace>"
   apply (wpsimp simp: set_scheduler_action_def)
@@ -100,13 +104,14 @@ lemma schedule_choose_new_thread_valid_state_cur_tcb [wp]:
                wp: set_scheduler_action_valid_state_cur_tcb switch_to_idle_thread_invs
                    guarded_switch_to_invs hoare_drop_imps)
 
-lemma schedule_invs[wp]: "\<lbrace>invs\<rbrace> Schedule_A.schedule \<lbrace>\<lambda>rv. invs\<rbrace>"
-  supply if_split[split del]
-  apply (simp add: Schedule_A.schedule_def)
-  apply (wp switch_to_thread_invs hoare_drop_imps
-            hoare_strengthen_post[OF awaken_invs] sc_and_timer_invs
-         | simp add: if_apply_def2 set_scheduler_action_def invs_def
+lemma schedule_invs[wp]:
+  "schedule \<lbrace>invs\<rbrace>"
+  apply (simp add: schedule_def)
+  apply (wpsimp wp: switch_to_thread_invs hoare_drop_imps sc_and_timer_invs
+              simp: if_apply_def2 set_scheduler_action_def
          | wpc)+
+    apply (rule_tac Q="\<lambda>_. invs" in hoare_strengthen_post)
+     apply (wpsimp simp: invs_def)+
   done
 
 lemma invs_domain_time_update[simp]:
@@ -1561,6 +1566,89 @@ lemma handle_invocation_not_blocking_not_calling_first_phase_ct_active[wp]:
   apply (auto simp: ct_in_state_def fault_tcbs_valid_states_active
               dest: invs_fault_tcbs_valid_states
               elim: st_tcb_ex_cap)
+  done
+
+lemma check_budget_restart_true_imp_schact_is_rct[wp]:
+  "\<lbrace>\<lambda>s. \<not>is_cur_domain_expired s \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>
+   check_budget_restart
+   \<lbrace>\<lambda>rv s. rv \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>"
+  unfolding check_budget_restart_def check_budget_def
+  by (wpsimp wp: gts_wp)
+
+lemma is_cur_domain_expired_lift:
+  assumes domain_time_inv: "\<And>P. f \<lbrace>\<lambda>s. P (domain_time s)\<rbrace>"
+  shows "f \<lbrace>is_cur_domain_expired\<rbrace>"
+  unfolding is_cur_domain_expired_def
+  by (wp domain_time_inv)
+
+lemma check_domain_time_inv:
+  "reprogram_timer_independent_A P
+   \<Longrightarrow> \<lbrace>P\<rbrace> check_domain_time \<lbrace>\<lambda>_ s. \<not> is_cur_domain_expired s \<longrightarrow> P s\<rbrace>"
+  apply (clarsimp simp: check_domain_time_def)
+  apply (rule hoare_seq_ext[OF _ gets_sp])
+  apply (rule hoare_when_cases, simp)
+  apply (rule hoare_seq_ext_skip, wpsimp)
+   apply (fastforce simp: reprogram_timer_independent_A_def is_cur_domain_expired_def)
+  apply (wpsimp wp: hoare_vcg_imp_lift' is_cur_domain_expired_lift)
+   apply (rule hoare_pre_cont)
+  apply wpsimp
+  done
+
+crunches check_domain_time
+  for invs[wp]: invs
+  and st_tcb_at_active_cur_thread[wp]: "\<lambda>s. st_tcb_at active (cur_thread s) s"
+  and ez_nonz_cap_to_cur_thread[wp]: "\<lambda>s. ex_nonz_cap_to (cur_thread s) s"
+  (simp: crunch_simps wp: crunch_wps)
+
+lemma set_scheduler_action_is_schedulable_bool_cur_thread[wp]:
+  "set_scheduler_action sa \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
+  apply (clarsimp simp: set_scheduler_action_def)
+  apply (wpsimp wp: modify_wp)
+  apply (clarsimp simp: is_schedulable_bool_def' get_tcb_def opt_map_red in_release_queue_def)
+  done
+
+lemma set_tcb_queue_wp:
+  "\<lbrace>\<lambda>s. P (ready_queues_update (\<lambda>qs d p. if d = t \<and> p = prio then queue else qs d p) s)\<rbrace>
+   set_tcb_queue t prio queue
+   \<lbrace>\<lambda>_. P\<rbrace>"
+  by (wpsimp simp: set_tcb_queue_def) (auto elim!: rsubst[of P])
+
+lemma tcb_sched_action_schedulable_bool[wp]:
+  "\<lbrace>\<lambda>s. is_schedulable_bool t s\<rbrace>
+   tcb_sched_action f t
+   \<lbrace>\<lambda>rv s. is_schedulable_bool t s\<rbrace>"
+  apply (wpsimp simp: tcb_sched_action_def thread_set_def thread_get_def get_tcb_queue_def
+                  wp: set_object_wp set_tcb_queue_wp)
+  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def
+               dest!: get_tcb_SomeD split: option.splits)
+
+lemma tcb_sched_action_schedulable_bool_cur_thread[wp]:
+  "\<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>
+   tcb_sched_action f t
+   \<lbrace>\<lambda>rv s. is_schedulable_bool (cur_thread s) s\<rbrace>"
+  apply (wpsimp simp: tcb_sched_action_def thread_set_def thread_get_def get_tcb_queue_def
+                  wp: set_object_wp set_tcb_queue_wp)
+  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def
+               dest!: get_tcb_SomeD split: option.splits)
+
+lemma reschedule_required_is_schedulable_bool[wp]:
+  "reschedule_required \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
+  apply (clarsimp simp: reschedule_required_def)
+  apply (rule hoare_seq_ext[OF _ gets_sp])
+  apply (rule hoare_seq_ext, wpsimp)
+  apply (case_tac action; clarsimp?, (solves wpsimp)?)
+  apply (rule hoare_seq_ext[OF _ is_schedulable_sp'])
+  apply (rule hoare_when_cases, simp)
+  apply (wpsimp wp: thread_get_wp)
+  apply (clarsimp simp: is_schedulable_bool_def' tcb_at_def get_tcb_def pred_tcb_at_def obj_at_def
+                        is_tcb_def)
+  done
+
+lemma check_domain_time_is_schedulable_bool[wp]:
+  "check_domain_time \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
+  apply (clarsimp simp: check_domain_time_def)
+  apply wpsimp
+  apply (clarsimp simp: is_schedulable_bool_def' in_release_queue_def)
   done
 
 lemma he_invs[wp]:
