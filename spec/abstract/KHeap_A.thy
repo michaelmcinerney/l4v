@@ -645,10 +645,10 @@ definition
   update_time_stamp :: "(unit, 'z::state_ext) s_monad"
 where
   "update_time_stamp = do
-    prev_time \<leftarrow> gets cur_time;
-    cur_time' \<leftarrow> do_machine_op getCurrentTime;
-    consumed \<leftarrow> return (cur_time' - prev_time);
-    modify (\<lambda>s. s\<lparr> cur_time := cur_time' \<rparr>);
+    previous_time \<leftarrow> gets cur_time;
+    current_time \<leftarrow> do_machine_op getCurrentTime;
+    consumed \<leftarrow> return (current_time - previous_time);
+    modify (\<lambda>s. s\<lparr> cur_time := current_time \<rparr>);
     modify (\<lambda>s. s\<lparr> consumed_time := consumed_time s + consumed \<rparr>);
     domain_time \<leftarrow> gets domain_time;
     when (num_domains > 1) $ if consumed + MIN_BUDGET \<ge> domain_time
@@ -680,7 +680,7 @@ where
           test \<leftarrow> liftE $ andM (get_sc_active cur_sc)
                                (get_sc_refill_sufficient cur_sc consumed);
           exp \<leftarrow> liftE $ gets is_cur_domain_expired;
-          whenE (\<not>test \<or> exp \<or> (\<exists>y. irq_opt = Some y)) $ throwError ()
+          whenE (\<not>test \<or> exp \<or> irq_opt \<noteq> None) $ throwError ()
       odE)
      (returnOk ())
    odE"
