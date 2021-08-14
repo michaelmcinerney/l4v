@@ -100,7 +100,7 @@ locale DetSchedDomainTime_AI =
   assumes arch_invoke_irq_handler_domain_list_inv'[wp]:
     "\<And>P i. arch_invoke_irq_handler i \<lbrace>\<lambda>s::det_state. P (domain_list s)\<rbrace>"
   assumes arch_invoke_irq_handler_domain_time_scheduler_action_inv'[wp]:
-    "\<And>P i. arch_invoke_irq_handler i \<lbrace>\<lambda>s::det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
+    "\<And>P i. arch_invoke_irq_handler i \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
 
 crunches update_restart_pc
   for domain_list[wp]: "\<lambda>s. P (domain_list s)"
@@ -128,7 +128,7 @@ locale DetSchedDomainTime_AI_2 = DetSchedDomainTime_AI +
   assumes arch_mask_irq_signal_domain_list_inv'[wp]:
     "\<And>P irq. arch_mask_irq_signal irq \<lbrace>\<lambda>s::det_state. P (domain_list s)\<rbrace>"
   assumes arch_mask_irq_signal_domain_time_scheduler_action_inv'[wp]:
-    "\<And>P irq. arch_mask_irq_signal irq \<lbrace>\<lambda>s::det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
+    "\<And>P irq. arch_mask_irq_signal irq \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
 
 context DetSchedDomainTime_AI begin
 
@@ -256,7 +256,7 @@ crunches
 context DetSchedDomainTime_AI begin
 
 crunch domain_list_inv[wp]:
-  refill_budget_check, charge_budget, check_budget
+  refill_budget_check,charge_budget, check_budget
   "\<lambda>s::det_state. P (domain_list s)"
   (wp: crunch_wps check_cap_inv maybeM_inv simp: Let_def)
 
@@ -348,7 +348,7 @@ lemma handle_recv_domain_list_inv[wp]:
 
 crunches
   handle_yield, handle_call, handle_vm_fault, handle_hypervisor_fault, check_domain_time
-  for domain_list_inv[wp]: "\<lambda>s::det_state. P (domain_list s)"
+  for domain_list_inv[wp]: "\<lambda>s :: det_state. P (domain_list s)"
   (wp: crunch_wps simp: crunch_simps)
 
 crunch domain_list_inv[wp]: check_budget_restart "\<lambda>s::det_state. P (domain_list s)"
@@ -365,7 +365,7 @@ lemma handle_event_domain_list_inv[wp]:
   done
 
 crunches preemption_path
-  for domain_list[wp]: "\<lambda>s::det_state. P (domain_list s)"
+  for domain_list[wp]: "\<lambda>s :: det_state. P (domain_list s)"
   (wp: crunch_wps simp: crunch_simps)
 
 (* no one modifies domain_list - supplied at compile time *)
@@ -525,7 +525,7 @@ crunches reply_from_kernel, create_cap, retype_region
   for domain_time_scheduler_action_inv[wp]: "\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)"
 
 crunches do_reply_transfer
-  for dtime_bounded[wp]:"\<lambda>s::det_state. dtime_bounded s"
+  for dtime_bounded[wp]:"\<lambda>s :: det_state. dtime_bounded s"
   (wp: hoare_drop_imps)
 
 crunches delete_objects
@@ -533,7 +533,7 @@ crunches delete_objects
   (simp: detype_def)
 
 lemma reset_untyped_cap_dtime_bounded[wp]:
-  "\<lbrace>dtime_bounded\<rbrace> reset_untyped_cap src_slot \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+  "\<lbrace>dtime_bounded\<rbrace> reset_untyped_cap src_slot \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   (is "\<lbrace>?pre\<rbrace> _ \<lbrace>_\<rbrace>, -")
   apply (clarsimp simp: reset_untyped_cap_def)
   apply (clarsimp simp: validE_R_def)
@@ -559,7 +559,7 @@ crunches refill_budget_check, charge_budget, refill_budget_check_round_robin
   (wp: crunch_wps check_cap_inv maybeM_inv simp: Let_def crunch_simps)
 
 lemma invoke_untyped_dtime_bounded[wp]:
-  "\<lbrace>dtime_bounded\<rbrace> invoke_untyped ui \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+  "\<lbrace>dtime_bounded\<rbrace> invoke_untyped ui \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   apply (clarsimp simp: invoke_untyped_def)
   apply (cases ui; simp)
   apply (clarsimp simp: validE_R_def whenE_def)
@@ -589,7 +589,7 @@ crunches maybe_sched_context_unbind_tcb, maybe_sched_context_bind_tcb, set_prior
   (wp: crunch_wps)
 
 lemma invoke_tcb_dtime_bounded[wp]:
-  "\<lbrace>dtime_bounded\<rbrace> invoke_tcb iv \<lbrace>\<lambda>_ (s::det_state). dtime_bounded s\<rbrace>, -"
+  "\<lbrace>dtime_bounded\<rbrace> invoke_tcb iv \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   supply if_split [split del]
   apply (cases iv; (solves \<open>wpsimp wp: mapM_x_wp_inv hoare_drop_imps hoare_vcg_if_lift2\<close>)?)
    apply (clarsimp simp: validE_R_def)
@@ -604,7 +604,7 @@ crunches invoke_domain, invoke_irq_control,invoke_irq_handler
   (wp: crunch_wps check_cap_inv maybeM_inv simp: crunch_simps)
 
 crunches invoke_sched_context
-  for dtime_bounded[wp]: "\<lambda>s::det_state. dtime_bounded s"
+  for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
   (wp: crunch_wps)
 
 crunches refill_budget_check, refill_budget_check_round_robin
@@ -629,7 +629,7 @@ crunches cap_move
   for domain_time_scheduler_action_inv[wp]: "\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)"
 
 lemma cap_revoke_dtime_bounded[wp]:
-  "\<lbrace>dtime_bounded\<rbrace> cap_revoke slot \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+  "\<lbrace>dtime_bounded\<rbrace> cap_revoke slot \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   by (wpsimp wp: cap_revoke_preservationE)
 
 crunches cancel_badged_sends
@@ -640,22 +640,22 @@ end
 context DetSchedDomainTime_AI_2 begin
 
 lemma invoke_cnode_dtime_bounded[wp]:
-  "\<lbrace>dtime_bounded\<rbrace> invoke_cnode i \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+  "\<lbrace>dtime_bounded\<rbrace> invoke_cnode i \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   apply (clarsimp simp: invoke_cnode_def cap_delete_def)
   apply (cases i; clarsimp)
        apply (wpsimp | intro conjI impI)+
   done
 
-lemma perfom_invocation_dtime_bounded[wp]:
+lemma perform_invocation_dtime_bounded[wp]:
   "\<lbrace>dtime_bounded and valid_domain_list\<rbrace>
    perform_invocation block call can_donate iv
-   \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+   \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   by (cases iv; wpsimp)
 
 lemma handle_invocation_dtime_bounded[wp]:
   "\<lbrace>dtime_bounded and valid_domain_list\<rbrace>
    handle_invocation calling blocking can_donate first_phase cptr
-   \<lbrace>\<lambda>_ s::det_state. dtime_bounded s\<rbrace>, -"
+   \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
   unfolding handle_invocation_def
   by (wpsimp wp: syscall_valid hoare_drop_imps)
 
