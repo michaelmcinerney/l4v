@@ -2788,8 +2788,8 @@ lemma reset_untyped_cap_invs_etc:
                 | rule irq_state_independent_A_conjI
                 | simp add: cte_wp_at_caps_of_state
                 | wp (once) ct_in_state_thread_state_lift
-                | (clarsimp simp: ct_in_state_def ex_cte_cap_wp_to_def)
-                 | rule conj_cong)+
+                | clarsimp simp: ct_in_state_def ex_cte_cap_wp_to_def
+                | rule conj_cong)+
        apply (clarsimp simp: is_aligned_neg_mask_eq bits_of_def field_simps
                            cte_wp_at_caps_of_state nth_rev)
      apply (strengthen order_trans[where z="2 ^ sz", rotated, mk_strg I E])

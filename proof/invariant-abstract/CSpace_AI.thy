@@ -178,6 +178,21 @@ lemma domain_time_independent_A_conjI[intro!]:
    \<Longrightarrow> domain_time_independent_A (\<lambda>s. P s \<and> Q s)"
   by (auto simp: domain_time_independent_A_def)
 
+definition reprogram_timer_independent_A :: "('z state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "reprogram_timer_independent_A P \<equiv> \<forall>f s. P s \<longrightarrow> P (s\<lparr>reprogram_timer := f (reprogram_timer s)\<rparr>)"
+
+lemma reprogram_timer_independent_AI[intro!, simp]:
+  "\<lbrakk>\<And>s f. P (s\<lparr>reprogram_timer := f (reprogram_timer s)\<rparr>) = P s\<rbrakk>
+   \<Longrightarrow> reprogram_timer_independent_A P"
+  by (simp add: reprogram_timer_independent_A_def)
+
+lemma reprogram_timer_independent_A_conjI[intro!]:
+  "\<lbrakk>reprogram_timer_independent_A P; reprogram_timer_independent_A Q\<rbrakk>
+   \<Longrightarrow> reprogram_timer_independent_A (P and Q)"
+  "\<lbrakk>reprogram_timer_independent_A P; reprogram_timer_independent_A Q\<rbrakk>
+   \<Longrightarrow> reprogram_timer_independent_A (\<lambda>s. P s \<and> Q s)"
+  by (auto simp: reprogram_timer_independent_A_def)
+
 definition update_time_stamp_independent_A :: "('z state \<Rightarrow> bool) \<Rightarrow> bool" where
   "update_time_stamp_independent_A P \<equiv>
       \<forall>f s. P s \<longrightarrow> P (s\<lparr>consumed_time := f (consumed_time s) (cur_time s)\<rparr>)"

@@ -1563,51 +1563,33 @@ lemma handle_invocation_not_blocking_not_calling_first_phase_ct_active[wp]:
               elim: st_tcb_ex_cap)
   done
 
-lemma asdfkjhksjhdf[wp]:
-   "\<lbrace>\<lambda>s. \<not>is_cur_domain_expired s \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>
-    check_budget_restart
-    \<lbrace>\<lambda>rv s. rv \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>"
-   unfolding check_budget_restart_def check_budget_def
-   by (wpsimp wp: gts_wp)
-
-definition reprogram_timer_independent_A :: "('z state \<Rightarrow> bool) \<Rightarrow> bool" where
-   "reprogram_timer_independent_A P \<equiv> \<forall>f s. P s \<longrightarrow> P (s\<lparr>reprogram_timer := f (reprogram_timer s)\<rparr>)"
-
- lemma reprogram_timer_independent_AI[intro!, simp]:
-   "\<lbrakk>\<And>s f. P (s\<lparr>reprogram_timer := f (reprogram_timer s)\<rparr>) = P s\<rbrakk>
-    \<Longrightarrow> reprogram_timer_independent_A P"
-   by (simp add: reprogram_timer_independent_A_def)
-
- lemma reprogram_timer_independent_A_conjI[intro!]:
-   "\<lbrakk>reprogram_timer_independent_A P; reprogram_timer_independent_A Q\<rbrakk>
-    \<Longrightarrow> reprogram_timer_independent_A (P and Q)"
-   "\<lbrakk>reprogram_timer_independent_A P; reprogram_timer_independent_A Q\<rbrakk>
-    \<Longrightarrow> reprogram_timer_independent_A (\<lambda>s. P s \<and> Q s)"
-   by (auto simp: reprogram_timer_independent_A_def)
-
+lemma check_budget_restart_true_imp_schact_is_rct[wp]:
+  "\<lbrace>\<lambda>s. \<not>is_cur_domain_expired s \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>
+   check_budget_restart
+   \<lbrace>\<lambda>rv s. rv \<longrightarrow> scheduler_action s = resume_cur_thread\<rbrace>"
+  unfolding check_budget_restart_def check_budget_def
+  by (wpsimp wp: gts_wp)
 
 lemma is_cur_domain_expired_lift:
-   assumes x: "\<And>P. f \<lbrace>\<lambda>s. P (domain_time s)\<rbrace>"
-   shows "f \<lbrace>is_cur_domain_expired\<rbrace>"
-   unfolding is_cur_domain_expired_def
-   by (wp x)
+  assumes domain_time_inv: "\<And>P. f \<lbrace>\<lambda>s. P (domain_time s)\<rbrace>"
+  shows "f \<lbrace>is_cur_domain_expired\<rbrace>"
+  unfolding is_cur_domain_expired_def
+  by (wp domain_time_inv)
 
 lemma check_domain_time_inv:
-   shows "\<lbrakk>
-           reprogram_timer_independent_A P\<rbrakk>
-          \<Longrightarrow> \<lbrace>P\<rbrace> check_domain_time \<lbrace>\<lambda>_ s. (\<not> is_cur_domain_expired s) \<longrightarrow> P s\<rbrace>"
+  "reprogram_timer_independent_A P
+   \<Longrightarrow> \<lbrace>P\<rbrace> check_domain_time \<lbrace>\<lambda>_ s. \<not> is_cur_domain_expired s \<longrightarrow> P s\<rbrace>"
   apply (clarsimp simp: check_domain_time_def)
   apply (rule hoare_seq_ext[OF _ gets_sp])
-  apply (rule hoare_when_cases)
-  apply clarsimp
+  apply (rule hoare_when_cases, simp)
   apply (rule hoare_seq_ext_skip, wpsimp)
-apply (fastforce simp: reprogram_timer_independent_A_def is_cur_domain_expired_def)
-    apply (wpsimp wp: hoare_vcg_imp_lift' is_cur_domain_expired_lift)
-    apply (rule hoare_pre_cont)
-   apply (wpsimp simp: is_cur_domain_expired_def hoare_vcg_if_lift2 wp: gets_wp)
-   done
+   apply (fastforce simp: reprogram_timer_independent_A_def is_cur_domain_expired_def)
+  apply (wpsimp wp: hoare_vcg_imp_lift' is_cur_domain_expired_lift)
+   apply (rule hoare_pre_cont)
+  apply wpsimp
+  done
 
-lemma update_time_stamp_inv:
+(* lemma update_time_stamp_inv:
    shows "\<lbrakk>time_state_independent_A P;
           domain_time_independent_A P;  getCurrentTime_independent_A P;
 update_time_stamp_independent_A P;
@@ -1624,7 +1606,7 @@ update_time_stamp_independent_A P;
    apply (rule hoare_seq_ext_skip, wpsimp)+
 apply wpsimp
     apply (fastforce simp: domain_time_independent_A_def)
-done
+done *)
 
 crunches check_domain_time
   for invs[wp]: invs
@@ -1632,10 +1614,6 @@ crunches check_domain_time
   and asdf[wp]: "\<lambda>s. st_tcb_at active (cur_thread s) s"
   and asdf2[wp]: "\<lambda>s. ex_nonz_cap_to (cur_thread s) s"
   (simp: crunch_simps wp: crunch_wps)
-
-lemma bind_liftE_distrib': "(liftE (A >>= (\<lambda>x. B))) = (liftE A >>=E (\<lambda>x. liftE (\<lambda>s. B s)))"
-  apply (clarsimp simp: liftE_def bindE_def lift_def bind_assoc)
-  done
 
 lemma set_scheduler_action_is_schedulable_bool_cur_thread[wp]:
   "set_scheduler_action sa \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
@@ -1656,7 +1634,8 @@ lemma tcb_sched_action_schedulable_bool[wp]:
    \<lbrace>\<lambda>rv s. is_schedulable_bool t s\<rbrace>"
   apply (wpsimp simp: tcb_sched_action_def thread_set_def thread_get_def get_tcb_queue_def
                   wp: set_object_wp set_tcb_queue_wp)
-  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def dest!: get_tcb_SomeD split: option.splits)
+  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def
+               dest!: get_tcb_SomeD split: option.splits)
 
 lemma tcb_sched_action_schedulable_bool_cur_thread[wp]:
   "\<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>
@@ -1664,36 +1643,28 @@ lemma tcb_sched_action_schedulable_bool_cur_thread[wp]:
    \<lbrace>\<lambda>rv s. is_schedulable_bool (cur_thread s) s\<rbrace>"
   apply (wpsimp simp: tcb_sched_action_def thread_set_def thread_get_def get_tcb_queue_def
                   wp: set_object_wp set_tcb_queue_wp)
-  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def dest!: get_tcb_SomeD split: option.splits)
+  by (fastforce simp: is_schedulable_bool_def' get_tcb_rev obj_at_def
+               dest!: get_tcb_SomeD split: option.splits)
 
 lemma reschedule_required_is_schedulable_bool[wp]:
   "reschedule_required \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
   apply (clarsimp simp: reschedule_required_def)
   apply (rule hoare_seq_ext[OF _ gets_sp])
-  apply (rule hoare_seq_ext)
-   apply wpsimp
-  apply (case_tac action; clarsimp)
-    apply wpsimp
-prefer 2
-apply wpsimp
+  apply (rule hoare_seq_ext, wpsimp)
+  apply (case_tac action; clarsimp?, (solves wpsimp)?)
   apply (rule hoare_seq_ext[OF _ is_schedulable_sp'])
   apply (rule hoare_when_cases, simp)
-apply (wpsimp wp: thread_get_wp)+
-  apply (clarsimp simp: is_schedulable_bool_def' tcb_at_def get_tcb_def pred_tcb_at_def obj_at_def is_tcb_def)
-done
+  apply (wpsimp wp: thread_get_wp)
+  apply (clarsimp simp: is_schedulable_bool_def' tcb_at_def get_tcb_def pred_tcb_at_def obj_at_def
+                        is_tcb_def)
+  done
 
 lemma check_domain_time_is_schedulable_bool[wp]:
   "check_domain_time \<lbrace>\<lambda>s. is_schedulable_bool (cur_thread s) s\<rbrace>"
   apply (clarsimp simp: check_domain_time_def)
-  apply (rule hoare_seq_ext[OF _ gets_sp])
-  apply (rule hoare_when_cases)
-  apply clarsimp
-  apply (rule hoare_seq_ext_skip, wpsimp)
-  apply (clarsimp simp: is_schedulable_bool_def' tcb_at_def get_tcb_def pred_tcb_at_def obj_at_def is_tcb_def
-in_release_queue_def is_cur_domain_expired_def)
-apply wpsimp
-   done
-
+  apply wpsimp
+  apply (clarsimp simp: is_schedulable_bool_def' in_release_queue_def)
+  done
 
 lemma he_invs[wp]:
   "\<And>e.
@@ -1705,15 +1676,15 @@ lemma he_invs[wp]:
   apply (case_tac e, simp_all)
        apply (rename_tac syscall)
        apply (case_tac syscall, simp_all)
-              apply (wpsimp wp: hoare_vcg_imp_conj_lift' check_domain_time_inv update_time_stamp_inv
-                           comb: hoare_drop_imps hoare_drop_imp_conj'
-                           simp: if_apply_def2 valid_fault_def
-                      | wpsimp wp: check_budget_restart_true
-                      | wps | erule active_from_running
-                      | fastforce simp: tcb_at_invs ct_in_state_def valid_fault_def
-                                 elim!: st_tcb_ex_cap dest: active_from_running
-| clarsimp simp: ct_in_state_def pred_tcb_at_def obj_at_def)+
-  done
+                 by (wpsimp wp: hoare_vcg_imp_conj_lift' check_domain_time_inv
+                          comb: hoare_drop_imps hoare_drop_imp_conj'
+                          simp: if_apply_def2 valid_fault_def
+                     | wpsimp wp: check_budget_restart_true
+                     | wps | erule active_from_running
+                     | fastforce simp: tcb_at_invs ct_in_state_def valid_fault_def
+                                elim!: st_tcb_ex_cap
+                                 dest: active_from_running
+                     | clarsimp simp: ct_in_state_def pred_tcb_at_def obj_at_def)+
 
 end
 

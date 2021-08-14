@@ -192,8 +192,6 @@ locale CNodeInv_AI =
      prepare_thread_delete t
    \<lbrace>\<lambda>rv s. caps_of_state s x = Some (cap.ThreadCap p)\<rbrace>"
 
-(* lemmas in_preempt = preemption_point_success *)
-
 locale CNodeInv_AI_2 = CNodeInv_AI state_ext_t
   for state_ext_t :: "'state_ext::state_ext itself" +
   assumes rec_del_invs':
@@ -860,9 +858,7 @@ lemma suspend_thread_cap:
   done
 
 lemma not_recursive_cspaces_preemption_point_independent[intro!, simp]:
-  "not_recursive_cspaces
-     (s\<lparr>machine_state := machinestate\<rparr>)
-   = not_recursive_cspaces s"
+  "not_recursive_cspaces (s\<lparr>machine_state := ms\<rparr>) = not_recursive_cspaces s"
   by (simp add: not_recursive_cspaces_def)
 
 lemma not_recursive_cspaces_time_independent_simple[simp]:
@@ -879,82 +875,59 @@ crunches update_time_stamp
    and caps_of_state[wp]: "\<lambda>s. P (caps_of_state s)"
    (simp: crunch_simps wp: crunch_wps)
 
-lemma preemption_point_not_recursive_cspaces:
-  "preemption_point \<lbrace>\<lambda>s. P (not_recursive_cspaces s)\<rbrace>"
-  unfolding preemption_point_def
-  apply (wpsimp wp: OR_choiceE_weak_wp alternative_valid hoare_drop_imp)
-  done
-
-lemma preemption_point_caps_of_state:
-  "preemption_point \<lbrace>\<lambda>s. P (caps_of_state s)\<rbrace>"
-  unfolding preemption_point_def
-  apply (wpsimp wp: OR_choiceE_weak_wp alternative_valid hoare_drop_imp)
-  done
+crunches preemption_point
+  for not_recursive_cspaces[wp]: "\<lambda>s. P (not_recursive_cspaces s)"
+  and caps_of_state[wp]: "\<lambda>s. P (caps_of_state s)"
+  (wp: OR_choiceE_weak_wp alternative_valid hoare_drop_imp simp: preemption_point_def)
 
 lemma rec_del_termination:
   "All (rec_del_dom :: rec_del_call \<times> 'state_ext state \<Rightarrow> bool)"
-  apply (rule rec_del.termination[OF rec_del_recset_wf])
-     \<comment>\<open>case 1\<close>
-     apply (simp add: rec_del_recset_def wf_sum_def rdcall_finalise_ord_lift_def mlex_prod_def)
-    \<comment>\<open>case 2\<close>
-    apply (simp add: rec_del_recset_def wf_sum_def rdcall_finalise_ord_lift_def mlex_prod_def)
-   \<comment>\<open>case 3\<close>
-   apply (simp add: rec_del_recset_def wf_sum_def in_monad is_final_cap_def is_zombie_def
-                    rdcall_finalise_ord_lift_def mlex_prod_def)
-   apply (case_tac exposed; simp)
-    \<comment>\<open>case 3a\<close>
-    apply (rule disjI1, rule map_prod_split_imageI, clarsimp)
-    apply (erule use_valid [OF _ preemption_point_caps_of_state])
-    apply (case_tac aa, simp_all add: fail_def rec_del.psimps)[1]
-    apply (rename_tac word option nat)
-    apply (case_tac nat, simp_all)[1]
-    apply (clarsimp simp: in_monad rec_del.psimps)
-    apply (clarsimp simp: in_monad in_get_cap_cte_wp_at cte_wp_at_caps_of_state rec_del.psimps
-                   split: if_split_asm)
-     apply (erule use_valid [OF _ set_cap_caps_of_state])+
-     apply (simp add: fst_cte_ptrs_first_cte_of cong: if_cong)
-     apply (case_tac rv, simp_all)[1]
-     apply (clarsimp simp: in_monad fst_cte_ptrs_first_cte_of)
-    apply (case_tac new_cap, simp_all add: is_cap_simps)[1]
-     apply (case_tac rv, simp_all)[1]
-    apply (clarsimp simp: fst_cte_ptrs_first_cte_of)
-    apply (case_tac rv, simp_all)[1]
-    apply (clarsimp simp: fst_cte_ptrs_first_cte_of in_monad)
-   \<comment>\<open>case 3b\<close>
-   apply (rule disjI2, rule map_prod_split_imageI, clarsimp)
-   apply (erule use_valid [OF _ preemption_point_not_recursive_cspaces])
+  apply (rule rec_del.termination[OF rec_del_recset_wf]
+         ; simp add: rec_del_recset_def wf_sum_def rdcall_finalise_ord_lift_def mlex_prod_def
+                     is_final_cap_def)
+  apply (case_tac exposed; simp)
+   apply (rule disjI1, rule map_prod_split_imageI, clarsimp)
+   apply (erule use_valid [OF _ preemption_point_caps_of_state])
    apply (case_tac aa, simp_all add: fail_def rec_del.psimps)[1]
    apply (rename_tac word option nat)
-   apply (case_tac nat, simp_all)
-   apply (clarsimp simp: in_monad prod_eqI rec_del.psimps)
-   apply (erule use_valid [OF _ cap_swap_fd_not_recursive])
-   apply (frule use_valid [OF _ get_cap_cte_wp_at], simp)
-   apply (drule in_inv_by_hoareD [OF get_cap_inv])
-   apply clarsimp
-   apply (erule use_valid [OF _ hoare_vcg_conj_lift [OF set_zombie_not_recursive final_cap_still_at]])
-   apply (frule use_valid [OF _ finalise_cap_cases])
-    apply (fastforce simp add: cte_wp_at_eq_simp)
-   apply clarsimp
-   apply (case_tac rv, simp_all add: fst_cte_ptrs_def)
-     apply (clarsimp simp: in_monad cte_wp_at_caps_of_state fst_cte_ptrs_def
-                    split: if_split_asm)
-    apply (clarsimp simp: in_monad cte_wp_at_caps_of_state fst_cte_ptrs_def
-                   split: if_split_asm)
-    apply (frule(1) use_valid [OF _ unbind_notification_caps_of_state],
-           frule(1) use_valid [OF _ unbind_from_sc_caps_of_state],
-           frule(1) use_valid [OF _ suspend_thread_cap],
-           frule(1) use_valid [OF _ prepare_thread_delete_thread_cap])
-    apply clarsimp
-    apply (erule use_valid [OF _ prepare_thread_delete_not_recursive])
-    apply (erule use_valid [OF _ suspend_not_recursive])
-    apply (erule use_valid [OF _ unbind_from_sc_not_recursive])
-    apply (erule use_valid [OF _ unbind_notification_not_recursive])
-    apply simp
-   apply (clarsimp simp: in_monad cte_wp_at_caps_of_state fst_cte_ptrs_def zombie_cte_bits_def
-                         tcb_cnode_index_def
-                  split: option.split_asm)
-  \<comment>\<open>case 4\<close>
-  apply (simp add: rec_del_recset_def wf_sum_def rdcall_finalise_ord_lift_def mlex_prod_def)
+   apply (case_tac nat, simp_all)[1]
+   apply (clarsimp simp: in_monad rec_del.psimps)
+   apply (clarsimp simp: in_monad in_get_cap_cte_wp_at cte_wp_at_caps_of_state rec_del.psimps
+                  split: if_split_asm)
+    apply (erule use_valid [OF _ set_cap_caps_of_state])+
+    apply (simp add: fst_cte_ptrs_first_cte_of cong: if_cong)
+    apply (case_tac rv, simp_all)[1]
+    apply (clarsimp simp: in_monad fst_cte_ptrs_first_cte_of)
+   apply (case_tac new_cap, simp_all add: is_cap_simps)[1]
+    apply (case_tac rv, simp_all)[1]
+   apply (clarsimp simp: fst_cte_ptrs_first_cte_of)
+   apply (case_tac rv, simp_all)[1]
+   apply (clarsimp simp: fst_cte_ptrs_first_cte_of in_monad)
+  apply (rule disjI2, rule map_prod_split_imageI, clarsimp)
+  apply (erule use_valid [OF _ preemption_point_not_recursive_cspaces])
+  apply (case_tac aa, simp_all add: fail_def rec_del.psimps)[1]
+  apply (rename_tac word option nat)
+  apply (case_tac nat, simp_all)
+  apply (clarsimp simp: in_monad prod_eqI rec_del.psimps)
+  apply (erule use_valid [OF _ cap_swap_fd_not_recursive])
+  apply (frule use_valid [OF _ get_cap_cte_wp_at], simp)
+  apply (drule in_inv_by_hoareD [OF get_cap_inv])
+  apply clarsimp
+  apply (erule use_valid [OF _ hoare_vcg_conj_lift [OF set_zombie_not_recursive final_cap_still_at]])
+  apply (frule use_valid [OF _ finalise_cap_cases])
+   apply (fastforce simp add: cte_wp_at_eq_simp)
+  apply clarsimp
+  apply (case_tac rv, simp_all add: fst_cte_ptrs_def in_monad cte_wp_at_caps_of_state)
+  apply (clarsimp split: if_split_asm)
+  apply (frule (1) use_valid [OF _ unbind_notification_caps_of_state],
+         frule (1) use_valid [OF _ unbind_from_sc_caps_of_state],
+         frule (1) use_valid [OF _ suspend_thread_cap],
+         frule (1) use_valid [OF _ prepare_thread_delete_thread_cap])
+  apply (erule use_valid [OF _ prepare_thread_delete_not_recursive])
+  apply (erule use_valid [OF _ suspend_not_recursive])
+  apply (erule use_valid [OF _ unbind_from_sc_not_recursive])
+  apply (erule use_valid [OF _ unbind_notification_not_recursive])
+  apply simp
   done
 
 lemma rec_del_dom: "\<And> (p :: rec_del_call \<times> 'state_ext state). rec_del_dom p"
@@ -3116,5 +3089,13 @@ lemma has_parent_cte_at:"valid_mdb s \<Longrightarrow> (cdt s) c = Some p \<Long
   apply (simp add: valid_mdb_def mdb_cte_at_def del: split_paired_All)
   apply blast
   done
+
+lemma preemption_point_ex_cte_cap_wp_to[wp]:
+  "preemption_point \<lbrace>ex_cte_cap_wp_to P ptr\<rbrace>"
+  by (wpsimp wp: ex_cte_cap_to_pres preemption_point_inv)
+
+lemma preemption_point_invs[wp]:
+  "preemption_point \<lbrace>invs\<rbrace>"
+  by (wpsimp wp: preemption_point_inv)
 
 end

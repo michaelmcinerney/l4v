@@ -24891,5 +24891,5 @@ lemma schedule_ct_activateable:
   done
 
 end
-find_theorems is_schedulable_bool
+
 end
