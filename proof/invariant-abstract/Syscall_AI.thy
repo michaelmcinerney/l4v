@@ -1596,30 +1596,10 @@ lemma check_domain_time_inv:
   apply wpsimp
   done
 
-(* lemma update_time_stamp_inv:
-   shows "\<lbrakk>time_state_independent_A P;
-          domain_time_independent_A P;  getCurrentTime_independent_A P;
-update_time_stamp_independent_A P;
-          cur_time_independent_A P\<rbrakk>
-          \<Longrightarrow> \<lbrace>P\<rbrace> update_time_stamp \<lbrace>\<lambda>_ s. (\<not> is_cur_domain_expired s) \<longrightarrow> P s\<rbrace>"
-  apply (clarsimp simp: update_time_stamp_def commit_domain_time_def num_domains_def)
-   apply (rule hoare_seq_ext_skip, wpsimp)
-   apply (rule hoare_seq_ext_skip, wpsimp)
-   apply (rule hoare_seq_ext_skip, wpsimp)
-    apply (fastforce simp: cur_time_independent_A_def)
-   apply (rule hoare_seq_ext_skip, wpsimp)+
-
-    apply (fastforce simp:  update_time_stamp_independent_A_def)
-   apply (rule hoare_seq_ext_skip, wpsimp)+
-apply wpsimp
-    apply (fastforce simp: domain_time_independent_A_def)
-done *)
-
 crunches check_domain_time
   for invs[wp]: invs
-  and ct_active[wp]: ct_active
-  and asdf[wp]: "\<lambda>s. st_tcb_at active (cur_thread s) s"
-  and asdf2[wp]: "\<lambda>s. ex_nonz_cap_to (cur_thread s) s"
+  and st_tcb_at_active_cur_thread[wp]: "\<lambda>s. st_tcb_at active (cur_thread s) s"
+  and ez_nonz_cap_to_cur_thread[wp]: "\<lambda>s. ex_nonz_cap_to (cur_thread s) s"
   (simp: crunch_simps wp: crunch_wps)
 
 lemma set_scheduler_action_is_schedulable_bool_cur_thread[wp]:
@@ -1684,14 +1664,12 @@ lemma he_invs[wp]:
        apply (rename_tac syscall)
        apply (case_tac syscall, simp_all)
                  by (wpsimp wp: hoare_vcg_imp_conj_lift' check_domain_time_inv
-                          comb: hoare_drop_imps hoare_drop_imp_conj'
-                          simp: if_apply_def2 valid_fault_def
+                          comb: hoare_drop_imps
+                          simp: if_apply_def2 valid_fault_def ct_in_state_def
                      | wpsimp wp: check_budget_restart_true
-                     | wps | erule active_from_running
-                     | fastforce simp: tcb_at_invs ct_in_state_def valid_fault_def
-                                elim!: st_tcb_ex_cap
-                                 dest: active_from_running
-                     | clarsimp simp: ct_in_state_def pred_tcb_at_def obj_at_def)+
+                     | wps
+                     | fastforce simp: tcb_at_invs ct_in_state_def pred_tcb_at_def obj_at_def
+                                elim!: st_tcb_ex_cap)+
 
 end
 
