@@ -75,8 +75,6 @@ locale DetSchedDomainTime_AI =
     "\<And>P t. arch_get_sanitise_register_info t \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
   assumes arch_switch_to_idle_thread_domain_time_scheduler_action_inv'[wp]:
     "\<And>P. arch_switch_to_idle_thread \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
-  assumes arch_switch_to_idle_thread_domain_scheduler_action_inv'[wp]:
-    "\<And>P. arch_switch_to_idle_thread \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
   assumes handle_arch_fault_reply_domain_time_scheduler_action_inv'[wp]:
     "\<And>P f t x y. handle_arch_fault_reply f t x y \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
   assumes init_arch_objects_domain_time_scheduler_action_inv'[wp]:
@@ -121,7 +119,7 @@ locale DetSchedDomainTime_AI_2 = DetSchedDomainTime_AI +
       \<lbrace>\<lambda>s :: det_state. 0 < domain_time s \<rbrace>
         handle_interrupt i
       \<lbrace>\<lambda>rv s.  domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread \<rbrace>"
-  assumes handle_reserved_irq_some_time_scheduler_action_inv'[wp]:
+  assumes handle_reserved_irq_domain_time_scheduler_action_inv'[wp]:
     "\<And>P irq. handle_reserved_irq irq \<lbrace>\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)\<rbrace>"
   assumes handle_reserved_irq_domain_list_inv'[wp]:
     "\<And>P irq. \<lbrace>\<lambda>s::det_state. P (domain_list s)\<rbrace> handle_reserved_irq irq \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
