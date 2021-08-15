@@ -52,7 +52,7 @@ global_interpretation DetSchedDomainTime_AI?: DetSchedDomainTime_AI
 context Arch begin global_naming ARM
 
 crunches arch_perform_invocation, arch_mask_irq_signal
-  for domain_time_scheduler_action_inv [wp, DetSchedDomainTime_AI_assms]:
+  for domain_time_scheduler_action_inv[wp, DetSchedDomainTime_AI_assms]:
         "\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)"
   and domain_list_inv [wp, DetSchedDomainTime_AI_assms]: "\<lambda>s::det_state. P (domain_list s)"
   (wp: crunch_wps)
@@ -60,7 +60,7 @@ crunches arch_perform_invocation, arch_mask_irq_signal
 crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]: arch_perform_invocation "\<lambda>s::det_state. P (domain_list s)"
   (wp: crunch_wps check_cap_inv)
 
-lemma handle_interrupt_valid_domain_time [DetSchedDomainTime_AI_assms]:
+lemma handle_interrupt_valid_domain_time[DetSchedDomainTime_AI_assms]:
   "\<lbrace>\<lambda>s :: det_ext state. 0 < domain_time s \<rbrace>
    handle_interrupt i
    \<lbrace>\<lambda>_ s.  domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread \<rbrace>"
@@ -73,7 +73,7 @@ lemma handle_interrupt_valid_domain_time [DetSchedDomainTime_AI_assms]:
 
 
 crunches handle_reserved_irq
-  for domain_time_scheduler_action_inv [wp, DetSchedDomainTime_AI_assms]:
+  for domain_time_scheduler_action_inv[wp, DetSchedDomainTime_AI_assms]:
         "\<lambda>s. P (domain_time s) (scheduler_action s)"
   (wp: crunch_wps mapM_wp subset_refl simp: crunch_simps)
 
