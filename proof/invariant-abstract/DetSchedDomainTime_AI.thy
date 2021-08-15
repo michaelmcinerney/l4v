@@ -411,7 +411,7 @@ lemma set_scheduler_action_cdfgtime_bounded[wp]:
                         pred_tcb_at_def)
   done
 
-crunches  do_user_op
+crunches do_user_op
   for domain_time_scheduler_action_inv[wp]:"\<lambda>s. P (domain_time s) (scheduler_action s)"
   (wp: select_wp)
 
@@ -550,11 +550,11 @@ crunches sched_context_bind_tcb, restart
   for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
   (wp: hoare_drop_imp maybeM_inv simp: crunch_simps)
 
-crunches refill_update, refill_new
+crunches refill_update, refill_new, refill_budget_check, refill_budget_check_round_robin
   for domain_time_scheduler_action_inv[wp]: "\<lambda>s. P (domain_time s) (scheduler_action s)"
   (wp: crunch_wps)
 
-crunches refill_budget_check, charge_budget, refill_budget_check_round_robin
+crunches charge_budget, check_budget_restart, commit_time
   for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
   (wp: crunch_wps check_cap_inv maybeM_inv simp: Let_def crunch_simps)
 
@@ -590,7 +590,6 @@ crunches maybe_sched_context_unbind_tcb, maybe_sched_context_bind_tcb, set_prior
 
 lemma invoke_tcb_dtime_bounded[wp]:
   "\<lbrace>dtime_bounded\<rbrace> invoke_tcb iv \<lbrace>\<lambda>_ s :: det_state. dtime_bounded s\<rbrace>, -"
-  supply if_split [split del]
   apply (cases iv; (solves \<open>wpsimp wp: mapM_x_wp_inv hoare_drop_imps hoare_vcg_if_lift2\<close>)?)
    apply (clarsimp simp: validE_R_def)
    apply (rule hoare_seq_ext_skipE, wpsimp)+
@@ -599,21 +598,13 @@ lemma invoke_tcb_dtime_bounded[wp]:
   apply (case_tac ntfnpt_opt; wpsimp)
   done
 
-crunches invoke_domain, invoke_irq_control,invoke_irq_handler
+crunches invoke_domain, invoke_irq_control, invoke_irq_handler
   for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
   (wp: crunch_wps check_cap_inv maybeM_inv simp: crunch_simps)
 
 crunches invoke_sched_context
   for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
   (wp: crunch_wps)
-
-crunches refill_budget_check, refill_budget_check_round_robin
-  for domain_time_scheduler_action[wp]: "\<lambda>s :: det_state. P (domain_time s) (scheduler_action s)"
-  (wp: crunch_wps)
-
-crunches charge_budget, check_budget_restart, commit_time
-  for dtime_bounded[wp]: "\<lambda>s :: det_state. dtime_bounded s"
-  (wp: crunch_wps mapM_wp')
 
 lemma invoke_sched_control_configure_flags_dtime_bounded[wp]:
   "\<lbrace>valid_domain_list and dtime_bounded\<rbrace>
