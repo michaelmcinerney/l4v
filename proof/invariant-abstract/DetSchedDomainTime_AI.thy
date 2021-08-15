@@ -16,7 +16,7 @@ text \<open>
 (* Note: domains in the domain list should also be \<le> maxDomain, but this is not needed right now *)
 definition
   "valid_domain_list_2 dlist
-     \<equiv> 0 < length dlist \<and> (\<forall>(d,time) \<in> set dlist. 0 < us_to_ticks (time * \<mu>s_to_ms))"
+     \<equiv> 0 < length dlist \<and> (\<forall>(d,time) \<in> set dlist. 0 < us_to_ticks (time * \<mu>s_in_ms))"
 
 abbreviation
   valid_domain_list :: "'z state \<Rightarrow> bool"
