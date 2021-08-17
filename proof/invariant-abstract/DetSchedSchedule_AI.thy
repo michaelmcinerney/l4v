@@ -3012,8 +3012,6 @@ lemma cap_swap_for_delete_valid_sched_pred[wp]:
   "cap_swap_for_delete slot1 slot2 \<lbrace>valid_sched_pred_strong P\<rbrace>"
   by (wpsimp simp: cap_swap_for_delete_def)
 
-crunches commit_domain_time for valid_sched_pred[wp]: "valid_sched_pred_strong P"
-
 context DetSchedSchedule_AI begin
 
 lemma schedule_choose_new_thread_valid_sched_except_domain[valid_sched_wp]:
@@ -3230,7 +3228,7 @@ lemma pred_map2_heap_upd_no_change[simp]:
   shows "pred_map2 P heap' (heap_upd f ref heap) = pred_map2 P heap' heap"
   by (simp add: pred_map2_pred_maps pred_map_heap_upd_no_change[where P=P, OF assms])
 
-crunches commit_domain_time
+crunches check_domain_time
   for obj_at[wp]: "\<lambda>s. N (obj_at P t s)"
   and kheap[wp]: "\<lambda>s. P (kheap s)"
 
@@ -10059,13 +10057,14 @@ lemma sc_refills_update_sc_tcb_sc_at[wp]:
   apply (clarsimp simp: sc_tcb_sc_at_def obj_at_def)
   done
 
-crunches commit_domain_time, refill_budget_check, refill_budget_check_round_robin,
+crunches check_domain_time, refill_budget_check, refill_budget_check_round_robin,
          refill_unblock_check
   for sc_tcb_sc_at[wp]: "\<lambda>s. Q (sc_tcb_sc_at P sc_ptr s)"
   and ct_in_cur_domain[wp]: "ct_in_cur_domain"
   and in_cur_domain[wp]: "in_cur_domain t"
   and valid_idle_etcb[wp]: "valid_idle_etcb"
   and etcb_at[wp]: "etcb_at P t"
+  and cur_sc_tcb_are_bound[wp]: cur_sc_tcb_are_bound
   (wp: crunch_wps set_refills_budget_ready
    simp: crunch_simps refill_budget_check_defs update_refill_tl_rewrite ignore: update_sched_context)
 
@@ -10075,8 +10074,7 @@ lemma commit_time_sc_tcb_sc_at[wp]:
    by (wpsimp wp: hoare_drop_imps)
 
 crunches commit_time
-  for simple_sched_action[wp]: "simple_sched_action"
-  and ct_not_in_q[wp]: "ct_not_in_q"
+  for ct_not_in_q[wp]: "ct_not_in_q"
   (wp: crunch_wps simp: crunch_simps)
 
 lemma head_insufficient_loop_valid_sched_action_not:
@@ -10864,9 +10862,11 @@ lemma commit_time_valid_sched_action:
        | strengthen simple_sched_act_not
        | intro conjI)+
 
-crunches commit_domain_time, refill_budget_check, refill_budget_check_round_robin
+crunches check_domain_time, refill_budget_check, refill_budget_check_round_robin
   for valid_blocked_except_set[wp]: "valid_blocked_except_set S"
-  (wp: crunch_wps simp: crunch_simps update_sched_context_set_refills_rewrite ignore: update_sched_context)
+  (wp: crunch_wps reschedule_required_valid_blocked
+   simp: crunch_simps update_sched_context_set_refills_rewrite
+   ignore: update_sched_context)
 
 lemma refill_budget_check_round_robin_not_active_sc[wp]:
    "\<lbrace>(\<lambda>s. \<not> pred_map active_scrc (sc_refill_cfgs_of s) scp)\<rbrace>
@@ -16349,6 +16349,9 @@ lemma handle_invocation_cur_sc_chargeable:
   apply (clarsimp simp: ct_in_state_def pred_tcb_at_def obj_at_def)
   done
 
+crunches check_domain_time
+  for ct_active[wp]: ct_active
+
 lemma handle_event_cur_sc_chargeable:
   "\<lbrace>cur_sc_tcb_are_bound and invs and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace>
    handle_event e
@@ -17978,7 +17981,7 @@ lemma update_time_stamp_cur_sc_offset_ready[wp]:
    \<lbrace>\<lambda>_. cur_sc_offset_ready used\<rbrace>"
   unfolding update_time_stamp_def
   apply (rule hoare_seq_ext[OF _ gets_sp])
-  apply (rule_tac Q="valid_machine_time and (cur_sc_offset_ready used and (\<lambda>s. cur_time s = prev_time))"
+  apply (rule_tac Q="valid_machine_time and (cur_sc_offset_ready used and (\<lambda>s. cur_time s = previous_time))"
                 in hoare_weaken_pre[rotated]; clarsimp)
   apply (rule hoare_seq_ext[OF _ dmo_getCurrentTime_sp])
    apply wpsimp
