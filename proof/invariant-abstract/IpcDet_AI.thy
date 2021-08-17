@@ -236,6 +236,8 @@ definition receive_ipc_preamble ::
 crunches receive_ipc_preamble
   for invs: "invs"
   and caps_of_state: "\<lambda>s. P (caps_of_state s)"
+  and cur_thread: "\<lambda>s. P (cur_thread s)"
+  (wp: crunch_wps)
 
 lemma receive_ipc_preamble_st_tcb_at:
   "\<lbrace>\<lambda>s. P (st_tcb_at P' t s)\<rbrace> receive_ipc_preamble reply t \<lbrace>\<lambda>rv s. P (st_tcb_at P' t s)\<rbrace>"
@@ -1225,35 +1227,28 @@ lemma maybe_return_sc_sc_at_ppred:
                       get_object_def)
   by (auto simp: sc_at_pred_n_def obj_at_def pred_tcb_at_def get_tcb_SomeD)
 
-lemma reschedule_required_cur_sc_tcb':
-  "\<lbrace>\<lambda>s. sc_tcb_sc_at \<top> (cur_sc s) s\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
+
+lemma reschedule_required_cur_sc_tcb'[wp]:
+  "\<lbrace>\<top>\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
   supply set_scheduler_action_cur_sc_tcb [wp del]
   unfolding reschedule_required_def
   by (wpsimp simp: reschedule_required_def set_scheduler_action_def tcb_sched_action_def
                    set_tcb_queue_def get_tcb_queue_def thread_get_def is_schedulable_def
                    cur_sc_tcb_def sc_tcb_sc_at_def obj_at_def)
 
+
 lemma maybe_return_sc_cur_sc_tcb[wp]:
-  "\<lbrace>cur_sc_tcb and (\<lambda>s. sym_refs (state_refs_of s)) and valid_objs\<rbrace>
+  "\<lbrace>cur_sc_tcb and (\<lambda>s. sym_refs (state_refs_of s)) and valid_objs and (\<lambda>s. thread = cur_thread s)\<rbrace>
     maybe_return_sc ntfn_ptr thread
    \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
-  supply reschedule_required_cur_sc_tcb' [wp]
-  supply reschedule_required_cur_sc_tcb [wp del]
-  apply (wpsimp simp: maybe_return_sc_def update_sched_context_def
-                      set_tcb_obj_ref_def set_object_def
-                      get_tcb_obj_ref_def thread_get_def get_sk_obj_ref_def get_simple_ko_def
-                      get_object_def)
-  apply (case_tac "thread = cur_thread s"; simp)
-   apply (fastforce split: if_split simp: sc_at_pred_n_def obj_at_def cur_sc_tcb_def)
-  apply (clarsimp split: if_split simp: sc_at_pred_n_def obj_at_def cur_sc_tcb_def)
-  apply (intro conjI allI impI; clarsimp?)
-  apply (frule get_tcb_SomeD, clarsimp)
-  apply (subgoal_tac "sc_tcb xa = Some thread", simp)
-  apply (fastforce elim: bound_sc_tcb_bound_sc_at simp: pred_tcb_at_def obj_at_def)
+  apply (clarsimp simp: maybe_return_sc_def)
+  apply (wpsimp wp: update_sched_context_wp set_object_wp
+             simp: set_tcb_obj_ref_def get_tcb_obj_ref_def thread_get_def
+                   get_sk_obj_ref_def get_simple_ko_def get_object_def)
   done
 
 lemma maybe_return_sc_invs[wp]:
-  "\<lbrace>invs and (\<lambda>s. thread \<noteq> idle_thread s)\<rbrace>
+  "\<lbrace>invs and (\<lambda>s. thread \<noteq> idle_thread s) and (\<lambda>s. thread = cur_thread s)\<rbrace>
     maybe_return_sc ntfn_ptr thread
    \<lbrace>\<lambda>_. invs\<rbrace>"
   by (wpsimp wp: hoare_vcg_conj_lift valid_ioports_lift
@@ -1278,7 +1273,7 @@ lemma ri_invs[wp]:
   notes complete_signal_invs[wp] set_endpoint_invs[wp]
   notes dxo_wp_weak[wp del]
   shows
-  "\<lbrace>\<lambda>s. invs s \<and> st_tcb_at active thread s
+  "\<lbrace>\<lambda>s. invs s \<and> st_tcb_at active thread s \<and> thread = cur_thread s
                \<and> ex_nonz_cap_to thread s
                \<and> (\<forall>r\<in>zobj_refs ep_cap. ex_nonz_cap_to r s)
                \<and> (\<forall>r\<in>zobj_refs reply. ex_nonz_cap_to r s)\<rbrace>
@@ -1289,17 +1284,19 @@ lemma ri_invs[wp]:
                                   receive_ipc_blocked_def[symmetric]
                                   receive_ipc_idle_def[symmetric])
   apply (rename_tac ep_ptr ep_badge ep_rights)
-  apply (rule hoare_seq_ext[where B="\<lambda>rv. invs and ?pre and receive_ipc_preamble_rv reply rv",
+  apply (rule hoare_seq_ext[where B="\<lambda>rv. invs and ?pre and receive_ipc_preamble_rv reply rv and (\<lambda>s. thread = cur_thread s)",
          rotated]; simp)
    apply (wpsimp wp: receive_ipc_preamble_invs receive_ipc_preamble_caps_of_state
                      receive_ipc_preamble_st_tcb_at receive_ipc_preamble_rv
-               simp: ex_nonz_cap_to_def cte_wp_at_caps_of_state)
+receive_ipc_preamble_cur_thread
+               simp: ex_nonz_cap_to_def cte_wp_at_caps_of_state )
+  apply blast
   apply (rename_tac reply_opt)
   apply (rule hoare_seq_ext[OF _ get_simple_ko_sp[simplified pred_conj_comm]])
   apply (rule hoare_seq_ext[OF _ gbn_sp[simplified pred_conj_comm]])
   apply (rule hoare_seq_ext[OF _ get_notification_default_sp])
   apply (rule hoare_weaken_pre)
-   apply (rule_tac R="receive_ipc_preconds thread ep_ptr reply reply_opt ep invs"
+   apply (rule_tac R="receive_ipc_preconds thread ep_ptr reply reply_opt ep invs and (\<lambda>s. thread = cur_thread s)"
           in hoare_vcg_if_split)
     apply (wp complete_signal_invs)
    prefer 2 apply (clarsimp simp: st_tcb_at_tcb_at)
@@ -1309,12 +1306,16 @@ lemma ri_invs[wp]:
              ex_nonz_cap_to ep_ptr s \<and>
              (\<forall>r\<in>zobj_refs reply. ex_nonz_cap_to r s) \<and>
              receive_ipc_preamble_rv reply reply_opt s \<and>
-             ko_at (Endpoint ep) ep_ptr s \<and> invs s"
+             ko_at (Endpoint ep) ep_ptr s \<and> invs s \<and> thread = cur_thread s"
            in hoare_seq_ext[rotated])
    apply (wpsimp wp: hoare_vcg_ball_lift split: if_split)
     apply (fastforce dest: st_tcb_at_idle_thread split: if_split)
     (* IdleEP, RecvEP *)
-  apply (case_tac ep; clarsimp simp: receive_ipc_blocked_invs[where reply=reply])
+  apply (case_tac ep; clarsimp)
+apply (wpsimp wp: receive_ipc_blocked_invs[where reply=reply])
+defer
+apply (wpsimp wp: receive_ipc_blocked_invs[where reply=reply])
+thm receive_ipc_blocked_invs
     (* SendEP *)
   apply (rename_tac queue)
   apply (rule hoare_seq_ext[OF _ assert_sp], simp)
