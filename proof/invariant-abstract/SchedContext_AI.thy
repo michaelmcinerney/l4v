@@ -1392,6 +1392,12 @@ lemma sched_context_bind_tcb_invs[wp]:
                   dest!: symreftype_inverse' split: if_splits)
   done
 
+lemma reschedule_required_cur_sc_tcb[wp]:
+  "\<lbrace>\<top>\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
+  by (wpsimp simp: reschedule_required_def set_scheduler_action_def tcb_sched_action_def
+                   set_tcb_queue_def get_tcb_queue_def thread_get_def is_schedulable_def
+                   cur_sc_tcb_def sc_tcb_sc_at_def obj_at_def)
+
 lemma maybe_sched_context_bind_tcb_invs[wp]:
   "\<lbrace>invs and (\<lambda>s. tcb_at tcb s \<and> (bound_sc_tcb_at (\<lambda>x. x \<noteq> Some sc) tcb s \<longrightarrow>
                     ex_nonz_cap_to sc s \<and> ex_nonz_cap_to tcb s
