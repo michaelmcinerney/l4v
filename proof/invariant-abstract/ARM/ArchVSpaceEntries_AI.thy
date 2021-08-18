@@ -1651,7 +1651,6 @@ lemma schedule_valid_pdpt[wp]: "\<lbrace>valid_pdpt_objs\<rbrace> schedule :: (u
 
 lemma call_kernel_valid_pdpt[wp]:
   "\<lbrace>invs and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_pdpt_objs
-     and (\<lambda>s. scheduler_action s = resume_cur_thread)
      and (\<lambda>s. is_schedulable_bool (cur_thread s) s)\<rbrace>
       (call_kernel e) :: (unit,det_ext) s_monad
         \<lbrace>\<lambda>_. valid_pdpt_objs\<rbrace>"
@@ -1661,13 +1660,11 @@ lemma call_kernel_valid_pdpt[wp]:
         apply (rule_tac Q="\<lambda>_. (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in handleE_wp[rotated])
          apply (rule_tac B="\<lambda>_. invs and ct_running and
            (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. scheduler_action s = resume_cur_thread) and
            (\<lambda>s. is_schedulable_bool (cur_thread s) s)" in seqE)
           apply (rule liftE_wp)
           apply (wpsimp wp: hoare_vcg_ex_lift)
          apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
            (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. rv \<longrightarrow> scheduler_action s = resume_cur_thread) and
            (\<lambda>s. rv \<longrightarrow> (is_schedulable_bool (cur_thread s) s))" in seqE)
           apply (rule liftE_wp)
           apply (wpsimp wp: check_budget_restart_true)
