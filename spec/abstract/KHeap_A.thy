@@ -638,18 +638,33 @@ text \<open>Allow preemption at this point.\<close>
 definition
   is_cur_domain_expired :: "'z::state_ext state \<Rightarrow> bool"
 where
-  "is_cur_domain_expired = (\<lambda>s. domain_time s < consumed_time s + MIN_BUDGET)"
+  "is_cur_domain_expired = (\<lambda>s. num_domains > 1 \<and> domain_time s = 0)"
 
 text \<open>Update current and consumed time.\<close>
 definition
   update_time_stamp :: "(unit, 'z::state_ext) s_monad"
 where
   "update_time_stamp = do
-    prev_time \<leftarrow> gets cur_time;
-    cur_time' \<leftarrow> do_machine_op getCurrentTime;
-    modify (\<lambda>s. s\<lparr> cur_time := cur_time' \<rparr>);
-    modify (\<lambda>s. s\<lparr> consumed_time := consumed_time s + cur_time' - prev_time \<rparr>)
+     previous_time \<leftarrow> gets cur_time;
+     current_time \<leftarrow> do_machine_op getCurrentTime;
+     consumed \<leftarrow> return (current_time - previous_time);
+     modify (\<lambda>s. s\<lparr> cur_time := current_time \<rparr>);
+     modify (\<lambda>s. s\<lparr> consumed_time := consumed_time s + consumed \<rparr>);
+     domain_time \<leftarrow> gets domain_time;
+     when (num_domains > 1) $ if consumed + MIN_BUDGET \<ge> domain_time
+                                 then modify (\<lambda>s. s\<lparr> domain_time := 0 \<rparr>)
+                                 else modify (\<lambda>s. s\<lparr> domain_time := domain_time - consumed \<rparr>)
   od"
+
+definition
+   check_domain_time :: "(unit, 'z::state_ext) s_monad"
+where
+  "check_domain_time \<equiv> do
+     exp \<leftarrow> gets is_cur_domain_expired;
+     when exp $ do modify (\<lambda>s. s\<lparr>reprogram_timer := True\<rparr>);
+                   reschedule_required
+                od
+   od"
 
 definition
   preemption_point :: "(unit,'z::state_ext) p_monad"
