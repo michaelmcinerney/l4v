@@ -1653,6 +1653,10 @@ lemma check_domain_time_is_schedulable_bool[wp]:
   apply (clarsimp simp: is_schedulable_bool_def' in_release_queue_def)
   done
 
+crunches check_domain_time
+  for bound_sc_tcb_at_some_cur_thread[wp]: "\<lambda>s. bound_sc_tcb_at (\<lambda>a. \<exists>y. a = Some y) (cur_thread s) s"
+  (wp: crunch_wps simp: crunch_simps)
+
 lemma he_invs[wp]:
   "\<And>e.
     \<lbrace>\<lambda>s. invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_running s) \<and>

@@ -209,7 +209,6 @@ lemma invoke_untyped_non_cspace_obj_at:
   shows "\<lbrace>\<lambda>s. obj_at P t s
               \<and> ex_nonz_cap_to t s
               \<and> ct_active s
-              \<and> scheduler_action s = resume_cur_thread
               \<and> valid_untyped_inv ui s
               \<and> invs s\<rbrace>
          invoke_untyped ui
@@ -229,7 +228,6 @@ lemma invoke_untyped_bound_sc_tcb_at:
   "\<lbrace>\<lambda>s. bound_sc_tcb_at P t s
         \<and> ex_nonz_cap_to t s
         \<and> ct_active s
-        \<and> scheduler_action s = resume_cur_thread
         \<and> valid_untyped_inv ui s
         \<and> invs s\<rbrace>
    invoke_untyped ui
@@ -240,7 +238,6 @@ lemma invoke_untyped_sc_at_pred_n:
   "\<lbrace>\<lambda>s. sc_at_pred_n N proj P scp s
         \<and> ex_nonz_cap_to scp s
         \<and> ct_active s
-        \<and> scheduler_action s = resume_cur_thread
         \<and> valid_untyped_inv ui s
         \<and> invs s\<rbrace>
    invoke_untyped ui
@@ -833,8 +830,7 @@ lemma valid_sched_tcb_state_preservation_gen:
 
 lemma invoke_untyped_valid_idle:
   "\<lbrace>invs and ct_active
-         and valid_untyped_inv ui
-         and (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace>
+         and valid_untyped_inv ui\<rbrace>
    invoke_untyped ui
    \<lbrace>\<lambda>_. valid_idle\<rbrace>"
   by (strengthen invs_valid_idle) (wpsimp wp: invoke_untyp_invs)
@@ -932,8 +928,7 @@ lemma invoke_untyped_obj_at_live:
   "\<lbrace>\<lambda>s. N (obj_at P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_untyped_inv ui s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_untyped_inv ui s\<rbrace>
    invoke_untyped ui
    \<lbrace>\<lambda>rv s. N (obj_at P p s)\<rbrace>"
   by (wpsimp wp: invoke_untyped_Q
@@ -953,8 +948,7 @@ lemma invoke_untyped_pred_tcb_at_live:
   "\<lbrace>\<lambda>s. N (pred_tcb_at proj P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_untyped_inv ui s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_untyped_inv ui s\<rbrace>
    invoke_untyped ui
    \<lbrace>\<lambda>rv s. N (pred_tcb_at proj P p s)\<rbrace>"
   unfolding pred_tcb_at_def using live
@@ -967,8 +961,7 @@ lemma invoke_untyped_sc_at_pred_n_live:
   "\<lbrace>\<lambda>s. Q (sc_at_pred_n N proj P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_untyped_inv ui s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_untyped_inv ui s\<rbrace>
    invoke_untyped ui
    \<lbrace>\<lambda>rv s. Q (sc_at_pred_n N proj P p s)\<rbrace>"
   unfolding sc_at_pred_n_def using live
@@ -1110,13 +1103,11 @@ lemma invoke_untyped_cur_time_monotonic:
   done
 
 lemma invoke_untyped_valid_sched:
-  "\<lbrace>valid_sched and valid_machine_time and invs and ct_active and valid_untyped_inv ui and
-    (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace>
+  "\<lbrace>valid_sched and valid_machine_time and invs and ct_active and valid_untyped_inv ui\<rbrace>
    invoke_untyped ui
    \<lbrace>\<lambda>_. valid_sched :: 'state_ext state \<Rightarrow> _\<rbrace>"
   apply wp_pre
-   apply (rule_tac I="invs and ct_active and valid_untyped_inv ui and valid_sched and
-                      (\<lambda>s. scheduler_action s = resume_cur_thread)"
+   apply (rule_tac I="invs and ct_active and valid_untyped_inv ui and valid_sched"
             in valid_sched_tcb_state_preservation_gen)
                   apply simp
                  apply (wpsimp wp: invoke_untyped_st_tcb_at invoke_untyped_pred_tcb_at_live
