@@ -158,9 +158,8 @@ lemma activate_thread_valid_sched:
                  get_tcb_obj_ref_wp hoare_drop_imps)
 
 lemma arch_perform_invocation_valid_sched [wp, DetSchedSchedule_AI_assms]:
-  "\<lbrace>invs and valid_sched and valid_machine_time and ct_active and (\<lambda>s. scheduler_action s = resume_cur_thread) and
-    valid_arch_inv a\<rbrace>
-     arch_perform_invocation a
+  "\<lbrace>invs and valid_sched and valid_machine_time and ct_active and valid_arch_inv a\<rbrace>
+   arch_perform_invocation a
    \<lbrace>\<lambda>_. valid_sched\<rbrace>"
   apply (cases a, simp_all add: arch_perform_invocation_def)
       apply (wpsimp simp: valid_arch_inv_def invs_valid_idle
@@ -226,8 +225,7 @@ lemma arch_perform_invocation_cur_sc_tcb_only_sym_bound[DetSchedSchedule_AI_assm
 
 lemma arch_perform_invocation_bound_sc_obj_tcb_at[DetSchedSchedule_AI_assms]:
   "\<lbrace>\<lambda>s. bound_sc_obj_tcb_at (P (cur_time s)) t s
-        \<and> ex_nonz_cap_to t s \<and> invs s \<and> ct_active s \<and> valid_arch_inv i s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> ex_nonz_cap_to t s \<and> invs s \<and> ct_active s \<and> valid_arch_inv i s\<rbrace>
    arch_perform_invocation i
    \<lbrace>\<lambda>_ s. bound_sc_obj_tcb_at (P (cur_time s)) t s\<rbrace>"
   unfolding arch_perform_invocation_def

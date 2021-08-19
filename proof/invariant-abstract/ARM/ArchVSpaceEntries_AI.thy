@@ -1664,14 +1664,18 @@ lemma call_kernel_valid_pdpt[wp]:
        apply (rule hoare_seq_ext[rotated])
         apply (rule validE_valid)
         apply (rule_tac Q="\<lambda>_. (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x)" in handleE_wp[rotated])
-         apply (rule_tac B="\<lambda>_. invs and ct_running and
-           (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. is_schedulable_bool (cur_thread s) s)" in seqE)
+         apply (subst bindE_assoc[symmetric])
+         apply (subst bind_liftE_distrib[symmetric])
+         apply (rule_tac B="\<lambda>_ s. invs s \<and> ct_running s
+                                  \<and> (\<forall>x\<in>ran (kheap s). obj_valid_pdpt x)
+                                  \<and> is_schedulable_bool (cur_thread s) s"
+                      in seqE)
           apply (rule liftE_wp)
-          apply (wpsimp wp: hoare_vcg_ex_lift)
-         apply (rule_tac B="\<lambda>rv. invs and (\<lambda>s. rv \<longrightarrow> ct_running s) and
-           (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and
-           (\<lambda>s. rv \<longrightarrow> (is_schedulable_bool (cur_thread s) s))" in seqE)
+          apply (wpsimp wp: check_domain_time_inv hoare_drop_imps)
+         apply (rule_tac B="\<lambda>rv s. invs s  \<and> (rv \<longrightarrow> ct_running s)
+                                   \<and> (\<forall>x\<in>ran (kheap s). obj_valid_pdpt x)
+                                   \<and> (rv \<longrightarrow> (is_schedulable_bool (cur_thread s) s))"
+                      in seqE)
           apply (rule liftE_wp)
           apply ((wpsimp wp: hoare_vcg_conj_lift check_budget_restart_true_imp_schact_is_rct
                  | wpsimp wp: check_budget_restart_true)+)[1]

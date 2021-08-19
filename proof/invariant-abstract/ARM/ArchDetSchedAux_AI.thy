@@ -164,7 +164,6 @@ lemma perform_asid_control_invocation_bound_sc_obj_tcb_at[wp]:
         \<and> ex_nonz_cap_to t s
         \<and> invs s
         \<and> ct_active s
-        \<and> scheduler_action s = resume_cur_thread
         \<and> valid_aci aci s \<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>rv s. bound_sc_obj_tcb_at (P (cur_time s)) t s\<rbrace>"
@@ -194,8 +193,7 @@ lemma perform_asid_control_invocation_obj_at_live:
   "\<lbrace>\<lambda>s. N (obj_at P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_aci aci s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_aci aci s\<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>rv s. N (obj_at P p s)\<rbrace>"
   apply (clarsimp simp: perform_asid_control_invocation_def split: asid_control_invocation.splits)
@@ -231,8 +229,7 @@ lemma perform_asid_control_invocation_pred_tcb_at_live:
   "\<lbrace>\<lambda>s. N (pred_tcb_at proj P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_aci aci s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_aci aci s\<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>rv s. N (pred_tcb_at proj P p s)\<rbrace>"
   unfolding pred_tcb_at_def using live
@@ -244,8 +241,7 @@ lemma perform_asid_control_invocation_sc_at_pred_n_live:
   "\<lbrace>\<lambda>s. Q (sc_at_pred_n N proj P p s)
         \<and> invs s
         \<and> ct_active s
-        \<and> valid_aci aci s
-        \<and> scheduler_action s = resume_cur_thread\<rbrace>
+        \<and> valid_aci aci s\<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>rv s. Q (sc_at_pred_n N proj P p s)\<rbrace>"
   unfolding sc_at_pred_n_def using live
@@ -253,8 +249,7 @@ lemma perform_asid_control_invocation_sc_at_pred_n_live:
 
 lemma perform_asid_control_invocation_valid_idle:
   "\<lbrace>invs and ct_active
-         and valid_aci aci
-         and (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace>
+         and valid_aci aci\<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>_. valid_idle\<rbrace>"
   by (strengthen invs_valid_idle) wpsimp
@@ -277,13 +272,12 @@ crunches perform_asid_control_invocation
   for valid_machine_time[wp]: "valid_machine_time"
 
 lemma perform_asid_control_invocation_valid_sched:
-  "\<lbrace>ct_active and (\<lambda>s. scheduler_action s = resume_cur_thread) and invs and valid_aci aci and
+  "\<lbrace>ct_active and invs and valid_aci aci and
     valid_sched and valid_machine_time and valid_idle\<rbrace>
      perform_asid_control_invocation aci
    \<lbrace>\<lambda>_. valid_sched\<rbrace>"
   apply (rule hoare_pre)
-   apply (rule_tac I="invs and ct_active and
-                      (\<lambda>s. scheduler_action s = resume_cur_thread) and valid_aci aci"
+   apply (rule_tac I="invs and ct_active and valid_aci aci"
           in valid_sched_tcb_state_preservation_gen)
                  apply simp
                  apply (wpsimp wp: perform_asid_control_invocation_st_tcb_at
