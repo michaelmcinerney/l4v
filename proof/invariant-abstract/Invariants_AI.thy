@@ -1277,7 +1277,7 @@ definition
 
 definition
   "cur_sc_tcb s
-    \<equiv> (scheduler_action s = resume_cur_thread) \<longrightarrow> sc_tcb_sc_at (\<lambda>t. t = Some (cur_thread s)) (cur_sc s) s"
+    \<equiv> scheduler_action s = resume_cur_thread \<longrightarrow> sc_tcb_sc_at (\<lambda>t. t = Some (cur_thread s)) (cur_sc s) s"
 
 definition valid_machine_time_2 :: "time \<Rightarrow> time \<Rightarrow> bool" where
    "valid_machine_time_2 ct lmt \<equiv> lmt \<le> - getCurrentTime_buffer - 1 \<and> ct \<le> lmt"

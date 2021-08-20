@@ -1365,11 +1365,15 @@ lemma tcb_sched_action_cur_sc_tcb [wp]:
   "\<lbrace>cur_sc_tcb\<rbrace> tcb_sched_action action thread \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
   by (wpsimp simp: tcb_sched_action_def set_tcb_queue_def)
 
-lemma reschedule_required_cur_sc_tcb_inv:
-  "\<lbrace>cur_sc_tcb\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
+lemma reschedule_required_cur_sc_tcb[wp]:
+  "\<lbrace>\<top>\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
   by (wpsimp simp: reschedule_required_def set_scheduler_action_def tcb_sched_action_def
                    set_tcb_queue_def get_tcb_queue_def thread_get_def is_schedulable_def
                    cur_sc_tcb_def sc_tcb_sc_at_def obj_at_def)
+
+lemma reschedule_required_cur_sc_tcb_inv:
+  "reschedule_required \<lbrace>cur_sc_tcb\<rbrace>"
+  by wpsimp
 
 lemma sched_context_bind_tcb_invs[wp]:
   "\<lbrace>invs
@@ -1377,6 +1381,7 @@ lemma sched_context_bind_tcb_invs[wp]:
     and sc_tcb_sc_at ((=) None) sc and ex_nonz_cap_to sc\<rbrace>
    sched_context_bind_tcb sc tcb
    \<lbrace>\<lambda>rv. invs\<rbrace>"
+  supply reschedule_required_cur_sc_tcb[wp del]
   apply (clarsimp simp: sched_context_bind_tcb_def invs_def valid_state_def valid_pspace_def)
   apply (wpsimp wp: valid_irq_node_typ obj_set_prop_at get_sched_context_wp ssc_refs_of_Some
                     update_sched_context_valid_objs_same valid_ioports_lift
@@ -1391,12 +1396,6 @@ lemma sched_context_bind_tcb_invs[wp]:
                    elim: ex_cap_to_after_update' delta_sym_refs valid_objs_valid_sched_context_size
                   dest!: symreftype_inverse' split: if_splits)
   done
-
-lemma reschedule_required_cur_sc_tcb[wp]:
-  "\<lbrace>\<top>\<rbrace> reschedule_required \<lbrace>\<lambda>_. cur_sc_tcb\<rbrace>"
-  by (wpsimp simp: reschedule_required_def set_scheduler_action_def tcb_sched_action_def
-                   set_tcb_queue_def get_tcb_queue_def thread_get_def is_schedulable_def
-                   cur_sc_tcb_def sc_tcb_sc_at_def obj_at_def)
 
 lemma maybe_sched_context_bind_tcb_invs[wp]:
   "\<lbrace>invs and (\<lambda>s. tcb_at tcb s \<and> (bound_sc_tcb_at (\<lambda>x. x \<noteq> Some sc) tcb s \<longrightarrow>
