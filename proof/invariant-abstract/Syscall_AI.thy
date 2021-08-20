@@ -1099,8 +1099,7 @@ lemma hinv_invs':
                       simp: st_tcb_at_tcb_at pred_neg_def)[1]
          apply (wpsimp wp: gts_sp)+
        apply (simp add: ct_in_state_def conj_commute conj_left_commute)
-       apply (wpsimp wp: sts_schedulable_scheduler_action
-                         set_thread_state_bound_sc_tcb_at_bound_cur_thread[simplified])
+       apply (wpsimp wp: sts_schedulable_scheduler_action)
        apply (rule_tac Q = "\<lambda>rv s. st_tcb_at active thread s \<and> cur_thread s = thread" in
               hoare_post_imp)
         apply simp
