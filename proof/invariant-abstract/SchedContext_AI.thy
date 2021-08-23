@@ -832,12 +832,6 @@ lemma refill_budget_check_valid_replies[wp]:
                       hoare_vcg_all_lift hoare_vcg_if_lift2)
   done
 
-lemma commit_time_valid_replies[wp]:
-  "commit_time \<lbrace> valid_replies_pred P \<rbrace>"
-  by (wpsimp simp: commit_time_def refill_budget_check_round_robin_def update_refill_tl_def
-                   update_refill_hd_def
-               wp: hoare_drop_imps cong: sched_context.fold_congs)
-
 lemma sc_consumed_update_eq:
   "(\<lambda>sc. sc_consumed_update (\<lambda>v. v + x) sc) = (\<lambda>sc. sc\<lparr>sc_consumed := sc_consumed sc + x\<rparr>)"
   by auto

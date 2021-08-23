@@ -440,7 +440,7 @@ lemma schedule_empty_fail[wp]:
 end
 *)
 crunch (empty_fail) empty_fail[wp]:
-  set_scheduler_action, next_domain, reschedule_required, get_sc_refill_capacity
+  set_scheduler_action, next_domain, reschedule_required, get_sc_refill_capacity, check_domain_time
 
 crunch (empty_fail) empty_fail[wp, intro!, simp]:
   possible_switch_to, awaken, schedule_switch_thread_fastfail
