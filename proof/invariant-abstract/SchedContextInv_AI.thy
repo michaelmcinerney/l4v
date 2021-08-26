@@ -780,12 +780,29 @@ lemmas sum_list_elements_unat_sum = sum_list_elements_unat_sum'[rule_format]
 
 (***)
 
+lemma unat_mult_lem':
+  "unat (x :: 64 word) * unat y \<le> unat max_time \<Longrightarrow> unat (x * y) = unat x * unat y"
+  apply (rule unat_mult_lem[THEN iffD1])
+  apply (clarsimp simp: max_word_def)
+  done
+
+lemma kernelWCET_ticks_no_overflow':
+  "2 * unat kernelWCET_ticks \<le> unat max_time"
+  apply (clarsimp simp: kernelWCET_ticks_def us_to_ticks_def)
+  apply (insert MIN_BUDGET_bound)
+  apply (subst unat_mult_lem' | subst unat_div)+
+   apply linarith
+  by (metis (no_types, hide_lams) div_le_dividend le_trans less_or_eq_imp_le more_arith_simps(11)
+                                  mult_le_mono2)
+
 lemma MIN_BUDGET_no_overflow:
   "unat MIN_BUDGET = 2 * unat kernelWCET_ticks"
   apply (simp add: MIN_BUDGET_def kernelWCET_ticks_def)
   apply (rule replicate_no_overflow[where a="us_to_ticks kernelWCET_us" and n=2
                                       and upper_bound=max_word, simplified])
-  using kernelWCET_ticks_no_overflow max_word_def by simp
+  apply (insert MIN_BUDGET_bound)
+  apply (clarsimp simp: us_to_ticks_def)
+  using kernelWCET_ticks_def kernelWCET_ticks_no_overflow' us_to_ticks_def by auto
 
 \<comment> \<open>Function definitions and lemmas for showing that the unat sum of the r_amounts of a refill list
     does not overflow, and is equal to the budget of the scheduling context\<close>
@@ -1878,6 +1895,30 @@ lemma decode_sched_context_inv_wf:
                         sc_yf_sc_at_def)
   done
 
+lemma us_to_ticks_mono:
+  "\<lbrakk>a \<le> b; unat b * unat factor1 \<le> unat max_time\<rbrakk>
+   \<Longrightarrow> us_to_ticks a \<le> us_to_ticks b"
+  apply (simp add: us_to_ticks_def)
+  apply (clarsimp simp: word_le_nat_alt)
+  apply (rule MachineOps.ARM.unat_div)
+  apply (clarsimp simp: word_le_nat_alt)
+  by (metis (no_types, hide_lams) le_unat_uoi mult_le_mono1 word_arith_nat_defs(2))
+
+lemma zxcpe':
+   "\<lbrakk>unat a * unat b  \<le> unat max_time\<rbrakk> \<Longrightarrow> (a :: 64 word) * (b  div c) \<le> a * b div c"
+sorry
+
+lemma hppoz:
+  "2 * us_to_ticks kernelWCET_us \<le> us_to_ticks (2 * kernelWCET_us)"
+  apply (clarsimp simp: us_to_ticks_def)
+apply (insert MIN_BUDGET_bound)
+apply (rule_tac order_trans[OF zxcpe'])
+apply (subst unat_mult_lem')
+  apply simp
+  apply simp
+using zxcpe'
+  by (metis (no_types, hide_lams) Rat.sign_simps(5) Rat.sign_simps(6) order_refl)
+
 lemma decode_sched_control_inv_wf:
   "\<lbrace>invs and
      (\<lambda>s. \<forall>x\<in>set excaps. s \<turnstile> x) and
@@ -1896,11 +1937,35 @@ lemma decode_sched_control_inv_wf:
   apply (rename_tac ko)
   apply (case_tac ko; simp)
   apply (clarsimp simp: valid_refills_number_def max_refills_cap_def
-                        MIN_BUDGET_def MIN_BUDGET_US_def MAX_PERIOD_def not_less
-                        us_to_ticks_mono[simplified mono_def] kernelWCET_ticks_def)
-  apply (insert us_to_ticks_mult)
-  using kernelWCET_ticks_no_overflow apply clarsimp
-  using mono_def apply blast
-  done
+ MAX_PERIOD_def not_less
+ kernelWCET_ticks_def cong: conj_cong)
+ apply (intro conjI impI)
+ apply (rule us_to_ticks_mono)
+   apply blast
+using MAX_RELEASE_TIME_bound
+  apply linarith
+
+thm replicate_no_overflow
+apply (clarsimp simp: MIN_BUDGET_def  MIN_BUDGET_US_def)
+
+apply (clarsimp simp: kernelWCET_ticks_def )
+thm replicate_no_overflow
+thm hppoz
+apply (rule order_trans[OF hppoz])
+apply (rule us_to_ticks_mono)
+apply simp
+apply (insert MAX_RELEASE_TIME_bound)
+apply (clarsimp simp: word_le_nat_alt)
+apply (prop_tac "unat MAX_PERIOD_US \<le> 5 * unat MAX_PERIOD_US")
+apply linarith
+  apply (meson le_trans mult_le_mono1 nat_less_le)
+apply (rule us_to_ticks_mono)
+  apply blast
+  apply linarith
+apply (rule us_to_ticks_mono)
+  apply force
+apply (clarsimp simp: word_le_nat_alt)
+  by (metis (no_types, hide_lams) MAX_RELEASE_TIME_bound Suc_leI arith_extra_simps(5) le_trans
+mult.left_neutral mult_le_mono1 nat_less_le semiring_norm(175) zero_less_numeral)
 
 end
