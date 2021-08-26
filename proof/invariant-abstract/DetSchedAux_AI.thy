@@ -83,7 +83,7 @@ locale DetSchedAux_AI =
   assumes dmo_getCurrentTime_vmt_sp:
     "\<lbrace>valid_machine_time :: 'state_ext state \<Rightarrow> _\<rbrace>
      do_machine_op getCurrentTime
-     \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer - 1)\<rbrace>"
+     \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer)\<rbrace>"
 
 lemmas mapM_x_defsym = mapM_x_def[symmetric]
 
@@ -596,12 +596,33 @@ lemma non_empty_sc_replies_nonz_cap:
   by (rule if_live_then_nonz_capD[OF assms(1) assms(2)[unfolded sc_at_pred_n_def]]
       ; clarsimp simp: live_def live_sc_def)
 
+lemma unat_minus'':
+   fixes x :: "'a :: len word"
+   shows "x \<noteq> 0 \<Longrightarrow> unat (-x) = unat (max_word :: 'a :: len word) + 1  - unat x"
+   using unat_minus'
+   by (metis Suc_eq_plus1 power_two_max_word_fold)
+
+lemma iepqdcv:
+   "\<lbrakk>a \<noteq> 0; (b :: 64 word) < a\<rbrakk> \<Longrightarrow> unat (-a) + unat b \<le> unat max_time"
+   apply (subst unat_minus'')
+ apply simp
+ apply (clarsimp simp: word_le_nat_alt)
+ apply (prop_tac " (unat max_time) - unat a + unat b < unat max_time")
+   apply (metis (mono_tags, hide_lams) add.commute diff_diff_less less_diff_conv linorder_neqE_nat
+  max_word_not_less unat_arith_simps(2))
+   by linarith
+
 lemma valid_machine_time_refill_ready_buffer:
   "valid_machine_time s \<Longrightarrow> cur_time s \<le> cur_time s + kernelWCET_ticks"
+supply minus_add_distrib[simp del]
   apply (clarsimp simp: valid_machine_time_def)
-  apply (insert getCurrentTime_buffer_minus)
-  by (metis (no_types, hide_lams) Groups.add_ac(2) olen_add_eqv plus_minus_no_overflow_ab
-                                  uminus_add_conv_diff word_n1_ge word_plus_mono_right2)
+apply (clarsimp simp: word_le_nat_alt)
+ apply (insert getCurrentTime_buffer_relation)
+ apply (frule iepqdcv[rotated])
+ subgoal sorry
+apply (clarsimp simp: kernelWCET_ticks_def)
+  using getCurrentTime_buffer_def unat_arith_simps(1) unat_sum_bound_equiv
+by fastforce
 
 lemma released_sc_cur_time_increasing:
   "\<lbrakk>sc_refill_cfg_sc_at (released_sc (cur_time s)) scp s'; cur_time s \<le> cur_time s';
@@ -1003,17 +1024,17 @@ lemma dmo_getCurrentTime_sp[wp]:
   "do_machine_op getCurrentTime \<lbrace>P\<rbrace> \<Longrightarrow>
    \<lbrace>valid_machine_time and P :: 'state_ext state \<Rightarrow> _\<rbrace>
    do_machine_op getCurrentTime
-   \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer - 1) \<and> P s\<rbrace>"
+   \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer) \<and> P s\<rbrace>"
   apply (clarsimp simp: pred_conj_def)
   apply (intro hoare_vcg_conj_lift_pre_fix)
     apply (rule_tac Q="valid_machine_time" in hoare_weaken_pre)
-     apply (rule_tac Q="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer - 1"
+     apply (rule_tac Q="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer"
                   in hoare_strengthen_post)
       apply (wpsimp wp: dmo_getCurrentTime_vmt_sp)
      apply simp
     apply simp
    apply (rule_tac Q="valid_machine_time" in hoare_weaken_pre)
-    apply (rule_tac Q="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer - 1"
+    apply (rule_tac Q="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer"
                  in hoare_strengthen_post)
     apply (wpsimp wp: dmo_getCurrentTime_vmt_sp)
     apply simp
@@ -1023,7 +1044,7 @@ lemma dmo_getCurrentTime_sp[wp]:
 
 (* This is not strictly a weakest precondition rule, but it is quite close. *)
 lemma dmo_getCurrentTime_wp:
-  assumes str_post: "\<And>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer - 1)
+  assumes str_post: "\<And>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer)
                              \<and> P s
                              \<longrightarrow> Q rv s"
   assumes dmo_inv: "do_machine_op getCurrentTime \<lbrace>P\<rbrace>"
@@ -1049,7 +1070,14 @@ lemma update_time_stamp_is_refill_ready[wp]:
     apply (subst olen_add_eqv)
     apply (subst add.commute)
     apply (rule no_plus_overflow_neg)
-    apply (insert getCurrentTime_buffer_minus')
+    apply (clarsimp simp: word_le_nat_alt)
+    apply (insert getCurrentTime_buffer_relation)
+    apply (frule iepqdcv[rotated])
+     subgoal sorry
+    apply (clarsimp simp: kernelWCET_ticks_def getCurrentTime_buffer_def word_less_nat_alt)
+    apply (subst unat_minus'')
+     apply (insert kernelWCET_pos')
+     apply simp
     apply fastforce
    apply wpsimp
   by simp
@@ -1060,9 +1088,9 @@ lemma update_time_stamp_cur_time_monotonic:
    \<lbrace>\<lambda>_ s. val \<le> cur_time s\<rbrace>"
   supply minus_add_distrib[simp del]
   apply (clarsimp simp: update_time_stamp_def)
-  apply (rule hoare_seq_ext[OF _ gets_sp], rename_tac previous_time)
-  apply (rule_tac B="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer - 1
-                            \<and> cur_time s = val \<and> cur_time s = previous_time"
+  apply (rule hoare_seq_ext[OF _ gets_sp])
+  apply (rule_tac B="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer
+                            \<and> cur_time s = val \<and> cur_time s = prev_time"
                in hoare_seq_ext[rotated])
    apply (wpsimp wp: dmo_getCurrentTime_sp)+
   done
