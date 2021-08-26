@@ -54,8 +54,6 @@ requalify_consts
   untyped_max_bits
   msg_label_bits
 
-requalify_facts
-  kernelWCET_ticks_pos2
 
 end
 
@@ -541,11 +539,6 @@ record sched_context =
   sc_sporadic   :: "bool"
 
 definition "MIN_REFILLS = 2"
-
-definition "MIN_BUDGET_US = 2 * kernelWCET_us"
-definition "MIN_BUDGET = 2 * kernelWCET_ticks"
-
-lemma MIN_BUDGET_pos: "0 < MIN_BUDGET" using MIN_BUDGET_def kernelWCET_ticks_pos2 by clarsimp
 
 definition "min_sched_context_bits = 8"
 
