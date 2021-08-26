@@ -167,7 +167,7 @@ and
   us_to_ticks_upper_bound:
   " \<forall>bound \<le> Max us_to_ticks_bounds.
         (\<forall>a b c d. bound = a * b + c * d
-        \<longrightarrow> unat a * unat (us_to_ticks b) + unat c * unat (us_to_ticks d) = unat (us_to_ticks bound))"
+        \<longrightarrow> unat a * unat (us_to_ticks b) + unat c * unat (us_to_ticks d) \<le> unat max_word)"
 and
   us_to_ticks_lower_bound:
      "\<forall>b \<in> us_to_ticks_bounds. 0 < us_to_ticks b"
@@ -185,15 +185,40 @@ lemma us_to_ticks_mono:
   apply (clarsimp simp: word_le_nat_alt)
    apply (rule unat_div)
   apply (insert us_to_ticks_upper_bound)
-  apply (frule_tac x=b in spec)
+  apply (drule_tac x=b in spec)
   apply (elim impE)
    apply (clarsimp simp: word_le_nat_alt)
   apply (clarsimp simp: word_le_nat_alt)
+(* find_theorems unat name: mult
+apply (subst unat_mult_lem[symmetric])
   apply (frule_tac x=b in spec)
   apply (elim impE)
    apply simp
+apply clarsimp
+apply (clarsimp simp: us_to_ticks_def)
+apply (drule_tac x=b in spec)
+apply simp
+apply (prop_tac "unat b * unat factor1 \<le> unat max_time")
+subgoal sorry *)
+
+apply (drule_tac x=0 in spec)
+apply (drule_tac x=0 in spec)
+apply clarsimp
+apply (drule_tac x=1 in spec)
+apply (drule_tac x=b in spec)
+
+apply clarsimp
+apply (clarsimp simp: us_to_ticks_def)
+apply (prop_tac "unat b * unat factor1 \<le> unat max_time")
+subgoal sorry
+
+apply clarsimp
+  by (metis (no_types) le_unat_uoi mult.commute mult_le_mono2 word_arith_nat_mult)
+find_theorems "unat (?A * ?B)"
+subgoal sorry
+  by (metis (no_types, hide_lams) le_unat_uoi mult_le_mono nat_le_linear word_arith_nat_defs(2))
   apply (frule less_imp_le)
-  by (metis (no_types, hide_lams) le_unat_uoi mult_le_mono1 word_arith_nat_defs(2))
+  by (mxetis (no_types, hide_lams) le_unat_uoi mult_le_mono1 word_arith_nat_defs(2))
 
 lemma us_to_ticks_zero:
   "us_to_ticks 0 = 0"
