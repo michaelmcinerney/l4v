@@ -67,33 +67,34 @@ requalify_consts
   timerPrecision
   max_time
   getCurrentTime_buffer
+  MIN_BUDGET_US
+  MIN_BUDGET
+  factor1
+  factor2
+  MAX_PERIOD
+  \<mu>s_in_ms
+  us_to_ticks_bounds
 
 requalify_facts
-  us_to_ticks_mono
-  us_to_ticks_zero
-  us_to_ticks_nonzero
-  kernelWCET_ticks_no_overflow
   MAX_PERIOD_US_def
   MAX_PERIOD_def
-  us_to_ticks_mult
-  getCurrentTime_buffer_no_overflow
   kernelWCET_ticks_def
-  replicate_no_overflow
-  getCurrentTime_buffer_nonzero
-  getCurrentTime_buffer_nonzero'
-  getCurrentTime_buffer_no_overflow'
-  getCurrentTime_buffer_no_overflow'_stronger
-  getCurrentTime_buffer_minus
-  getCurrentTime_buffer_minus'
-  MAX_PERIOD_mult
-  MAX_PERIOD_mult'
+  MIN_BUDGET_pos
+  us_to_ticks_def
+  us_to_ticks_non_zero
+  us_to_ticks_well_defined
+  us_to_ticks_lower_bound
+  us_to_ticks_upper_bound
+  us_to_ticks_mono
+  us_to_ticks_zero
+  MAX_PERIOD_def
+  MIN_BUDGET_US_def
+  MIN_BUDGET_def
+  \<mu>s_in_ms_def
+  getCurrentTime_buffer_US_no_overflow
+  us_to_ticks_bounds_def
 
 definition "MAX_RELEASE_TIME = max_time - 5 * MAX_PERIOD"
-
-lemma unat_MAX_RELEASE_TIME:
-  "unat MAX_RELEASE_TIME = unat max_time - 5 * unat MAX_PERIOD"
-  apply (clarsimp simp: MAX_RELEASE_TIME_def unat_sub MAX_PERIOD_mult')
-  done
 
 (* HERE IS THE PLACE FOR GENERIC WORD LEMMAS FOR ALL ARCHITECTURES *)
 
