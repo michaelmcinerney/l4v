@@ -66,34 +66,28 @@ requalify_consts
   setDeadline
   timerPrecision
   max_time
+  \<mu>s_to_ms
+  factor1
+  factor2
   getCurrentTime_buffer
 
 requalify_facts
-  us_to_ticks_mono
-  us_to_ticks_zero
-  us_to_ticks_nonzero
-  kernelWCET_ticks_no_overflow
   MAX_PERIOD_US_def
   MAX_PERIOD_def
-  us_to_ticks_mult
-  getCurrentTime_buffer_no_overflow
   kernelWCET_ticks_def
+  \<mu>s_to_ms_def
+  factor1_non_zero
+  MIN_BUDGET_bound
+  MAX_RELEASE_TIME_bound
+  kernelWCET_pos'
+  domain_time_pos
+  getCurrentTime_buffer_relation
+  getCurrentTime_buffer_def
+  MIN_BUDGET_pos'
   replicate_no_overflow
-  getCurrentTime_buffer_nonzero
-  getCurrentTime_buffer_nonzero'
-  getCurrentTime_buffer_no_overflow'
-  getCurrentTime_buffer_no_overflow'_stronger
-  getCurrentTime_buffer_minus
-  getCurrentTime_buffer_minus'
-  MAX_PERIOD_mult
-  MAX_PERIOD_mult'
+  us_to_ticks_def
 
 definition "MAX_RELEASE_TIME = max_time - 5 * MAX_PERIOD"
-
-lemma unat_MAX_RELEASE_TIME:
-  "unat MAX_RELEASE_TIME = unat max_time - 5 * unat MAX_PERIOD"
-  apply (clarsimp simp: MAX_RELEASE_TIME_def unat_sub MAX_PERIOD_mult')
-  done
 
 (* HERE IS THE PLACE FOR GENERIC WORD LEMMAS FOR ALL ARCHITECTURES *)
 
