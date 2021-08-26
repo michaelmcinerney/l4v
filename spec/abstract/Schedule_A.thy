@@ -51,8 +51,14 @@ definition
      modify (\<lambda>s. s \<lparr> cur_thread := thread \<rparr>)
    od"
 
+<<<<<<< HEAD
 definition "\<mu>s_in_ms = 1000"
 
+||||||| parent of 7f91e64fd (rt aspec: us_to_ticks)
+definition "\<mu>s_to_ms = 1000"
+
+=======
+>>>>>>> 7f91e64fd (rt aspec: us_to_ticks)
 definition
   next_domain :: "(unit, 'z::state_ext) s_monad" where
   "next_domain \<equiv> do
