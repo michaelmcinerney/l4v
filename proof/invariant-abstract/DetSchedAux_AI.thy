@@ -858,6 +858,7 @@ lemma main_helper:
   "unat (- (us_to_ticks (getCurrentTime_buffer_US) + 1))
     + unat kernelWCET_ticks +  5 * unat MAX_PERIOD
    \<le> unat max_time"
+oops
 apply (subst unat_minus_plus_one')
 apply (insert us_to_ticks_upper_bound)[1]
 apply (drule_tac x=getCurrentTime_buffer_US in spec)
@@ -911,17 +912,104 @@ apply (drule_tac x=MAX_PERIOD_US in spec)
 apply clarsimp
   by (simp add: MAX_PERIOD_def kernelWCET_ticks_def)
 
+lemma minus_add_distrib': "- ((a :: 64 word) + b) = - a - b"
+
+  by simp
+
+lemma unat_minus'':
+  fixes x :: "'a :: len word"
+  shows "x \<noteq> 0 \<Longrightarrow> unat (-x) = unat (max_word :: 'a :: len word) + 1  - unat x"
+  using unat_minus'
+  by (metis Suc_eq_plus1 power_two_max_word_fold)
+
+definition valid_machine_time_2 :: "time \<Rightarrow> time \<Rightarrow> bool" where
+   "valid_machine_time_2 ct lmt \<equiv> lmt \<le> - getCurrentTime_buffer \<and> ct \<le> lmt"
+
+abbreviation valid_machine_time :: "'z state \<Rightarrow> bool" where
+ "valid_machine_time s \<equiv> valid_machine_time_2 (cur_time s) (last_machine_time (machine_state s))"
+
+lemmas valid_machine_time_def = valid_machine_time_2_def
+
+lemma iepqdcv:
+  "\<lbrakk>a \<noteq> 0; (b :: 64 word) < a\<rbrakk> \<Longrightarrow> unat (-a) + unat b \<le> unat max_time"
+  apply (subst unat_minus'')
+apply simp
+apply (clarsimp simp: word_le_nat_alt)
+apply (prop_tac " (unat max_time) - unat a + unat b < unat max_time")
+  apply (metis (mono_tags, hide_lams) add.commute diff_diff_less less_diff_conv linorder_neqE_nat
+ max_word_not_less unat_arith_simps(2))
+  by linarith
+
 lemma valid_machine_time_refill_ready_buffer:
   "valid_machine_time s \<Longrightarrow> cur_time s \<le> cur_time s + kernelWCET_ticks"
-
-  apply_trace (clarsimp simp: valid_machine_time_def)
+supply minus_add_distrib[simp del]
+  apply (clarsimp simp: valid_machine_time_def)
   apply (subst  unat_sum_bound_equiv[symmetric])
-apply (insert main_helper)
+apply (clarsimp simp: word_le_nat_alt)
+apply (prop_tac "kernelWCET_ticks < getCurrentTime_buffer")
+subgoal sorry
+apply (frule iepqdcv[rotated])
+subgoal sorry
+  by simp
 
-apply (prop_tac "unat (- (us_to_ticks (kernelWCET_us + 5 * MAX_PERIOD_US) + 1)) + unat kernelWCET_ticks
-\<le> unat max_time")
+lemma head_time_buffer_true_imp_unat_buffer:
+  "pred_map \<top> (scs_of s) (cur_sc s)
+   \<Longrightarrow> the (head_time_buffer usage s)
+       = (pred_map (\<lambda>cfg. unat (r_time (scrc_refill_hd cfg)) < unat MAX_RELEASE_TIME)
+                   (sc_refill_cfgs_of s) (cur_sc s)
+          \<and> pred_map (\<lambda>cfg. r_amount (scrc_refill_hd cfg) \<le> usage )
+                     (sc_refill_cfgs_of s) (cur_sc s))"
+sorry
+(*   apply (intro iffI)
+   apply (fastforce dest!: head_time_buffer_true_imp_buffer[THEN iffD1, where usage1=usage]
+                     simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
+  apply (fastforce simp: head_time_buffer_true_imp_buffer[THEN iffD2, where usage1=usage]
+                    simp: vs_all_heap_simps obj_at_kh_kheap_simps word_less_nat_alt)
+  done *)
+
+lemma head_time_buffer_rewrite:
+  "\<lbrakk>the (head_time_buffer r s); pred_map \<top> (scs_of s) (cur_sc s)\<rbrakk>
+   \<Longrightarrow> pred_map (\<lambda>cfg. unat (r_time (scrc_refill_hd cfg)) + 5 * unat MAX_PERIOD < unat max_time)
+                (sc_refill_cfgs_of s) (cur_sc s)"
+apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
+apply simp
+     apply (clarsimp dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                      simp: vs_all_heap_simps MAX_RELEASE_TIME_def)
+apply (subst (asm) unat_sub)
+apply (clarsimp simp: word_le_nat_alt)
+thm newaxiom4
+apply (prop_tac "unat (5 :: 64 word) * unat MAX_PERIOD \<le> unat ((5 :: 64 word) * MAX_PERIOD)")
+apply_trace (clarsimp simp: MAX_PERIOD_def)
+apply (prop_tac " 5 * unat MAX_PERIOD_US * unat factor1 \<le> unat max_time")
+apply (insert newaxiom)
+apply (drule_tac x="5 * MAX_PERIOD_US" in spec)
+apply (elim impE)
+using us_to_ticks_bounds_def
+  apply force
+apply (drule_tac x="(5 :: 64 word)" in spec)
+apply (drule_tac x=MAX_PERIOD_US in spec)
+apply (drule_tac x=0 in spec)
+apply (drule_tac x=0 in spec)
+apply (elim impE)
+  apply force
+  apply fastforce
+apply (drule_tac x="5 * MAX_PERIOD_US" in spec)
+apply (elim impE)
+
+apply (rule less_eq_Max)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+
+apply (prop_tac "(5 :: nat) = unat (5 :: 64 word)")
+  apply simp
+apply (simp only: )
+
+apply (drule newaxiom4)
+  apply simp
+apply (clarsimp simp: MAX_PERIOD_def)
+apply (prop_tac "unat (r_time (refill_hd y)) + unat (5 * us_to_ticks MAX_PERIOD_US) < unat max_time")
+
   apply linarith
-  by (metis (no_types, hide_lams) add.commute add_left_mono_trans add_uminus_conv_diff more_arith_simps(9) unat_arith_simps(1))
+  by linarith
 
 lemma released_sc_cur_time_increasing:
   "\<lbrakk>sc_refill_cfg_sc_at (released_sc (cur_time s)) scp s'; cur_time s \<le> cur_time s';
