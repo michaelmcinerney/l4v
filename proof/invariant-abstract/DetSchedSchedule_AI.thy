@@ -54,15 +54,19 @@ lemma update_time_stamp_current_time_bounded_5:
                     \<le> unat (-(getCurrentTime_buffer + 1))")
     apply (force simp: minus_add_distrib)
    apply clarsimp
-  apply (clarsimp simp: minus_add_distrib)
-  apply (meson le_trans min.cobounded1 unat_of_nat_closure)
-  apply (subst unat_minus_plus_one)
-   apply (insert getCurrentTime_buffer_no_overflow getCurrentTime_buffer_no_overflow')
-   apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def max_word_def)
-  apply (clarsimp simp: max_word_def)
-  apply (insert getCurrentTime_buffer_no_overflow'_stronger getCurrentTime_buffer_no_overflow
-                getCurrentTime_buffer_no_overflow' MAX_PERIOD_mult)
-  by (fastforce simp: kernelWCET_ticks_def MAX_PERIOD_def max_word_def)
+   apply (prop_tac "\<forall>n na. unat (of_nat n::64 word) \<le> na \<or> na \<le> n")
+    apply (metis le_unat_uoi linorder_le_cases)
+   apply fastforce
+apply (insert main_helper)
+apply (prop_tac "0 < unat MAX_PERIOD")
+apply (insert us_to_ticks_lower_bound)
+apply (drule_tac x=MAX_PERIOD_US in bspec)
+using us_to_ticks_bounds_def
+  apply blast
+apply (clarsimp simp: MAX_PERIOD_def)
+  apply (simp add: unat_gt_0)
+apply (clarsimp simp: max_word_def)
+done
 
 lemma as_user_cur_sc_chargeable[wp]:
   "as_user f d \<lbrace>cur_sc_chargeable\<rbrace>"
@@ -9051,6 +9055,50 @@ lemma handle_overrun_loop_body_ordered_disjoint:
   apply (clarsimp simp: window_def last_tl)
   done
 
+lemma head_time_buffer_rewrite:
+  "\<lbrakk>the (head_time_buffer r s); pred_map \<top> (scs_of s) (cur_sc s)\<rbrakk>
+   \<Longrightarrow> pred_map (\<lambda>cfg. unat (r_time (scrc_refill_hd cfg)) + 5 * unat MAX_PERIOD < unat max_time)
+                (sc_refill_cfgs_of s) (cur_sc s)"
+apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
+apply simp
+     apply (clarsimp dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
+                      simp: vs_all_heap_simps MAX_RELEASE_TIME_def)
+apply (subst (asm) unat_sub)
+apply (clarsimp simp: word_le_nat_alt)
+
+apply (prop_tac "unat (5 :: 64 word) * unat MAX_PERIOD \<le> unat ((5 :: 64 word) * MAX_PERIOD)")
+apply_trace (clarsimp simp: MAX_PERIOD_def)
+apply (prop_tac " 5 * unat MAX_PERIOD_US * unat factor1 \<le> unat max_time")
+apply (insert newaxiom)
+apply (drule_tac x="5 * MAX_PERIOD_US" in spec)
+apply (elim impE)
+using us_to_ticks_bounds_def
+  apply force
+apply (drule_tac x="(5 :: 64 word)" in spec)
+apply (drule_tac x=MAX_PERIOD_US in spec)
+apply (drule_tac x=0 in spec)
+apply (drule_tac x=0 in spec)
+apply (elim impE)
+  apply force
+  apply fastforce
+apply (drule_tac x="5 * MAX_PERIOD_US" in spec)
+apply (elim impE)
+
+apply (rule less_eq_Max)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+
+apply (prop_tac "(5 :: nat) = unat (5 :: 64 word)")
+  apply simp
+apply (simp only: )
+
+apply (drule newaxiom4)
+  apply simp
+apply (clarsimp simp: MAX_PERIOD_def)
+apply (prop_tac "unat (r_time (refill_hd y)) + unat (5 * us_to_ticks MAX_PERIOD_US) < unat max_time")
+
+  apply linarith
+  by linarith
+
 lemma handle_overrun_loop_ordered_disjoint:
   "\<lbrace>\<lambda>s. pred_map (\<lambda>cfg. ordered_disjoint (scrc_refills cfg)) (sc_refill_cfgs_of s) sc_ptr
         \<and> pred_map (\<lambda>cfg. window (scrc_refills cfg) (scrc_period cfg)) (sc_refill_cfgs_of s) sc_ptr
@@ -9069,12 +9117,11 @@ lemma handle_overrun_loop_ordered_disjoint:
   apply (intro hoare_vcg_conj_lift_pre_fix
          ; (solves handle_overrun_loop_body_simple)?)
      apply (wpsimp wp: handle_overrun_loop_body_ordered_disjoint)
-     apply (fastforce dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
-                      simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
+apply (fastforce dest: head_time_buffer_rewrite simp: vs_all_heap_simps)
     apply (wpsimp wp: handle_overrun_loop_body_window)
     apply (fastforce intro!: head_time_buffer_implies_no_overflow
-                       dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
-                       simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
+                       dest: head_time_buffer_rewrite
+                       simp: vs_all_heap_simps )
    apply (wpsimp wp: handle_overrun_loop_body_nonzero_refills)
   apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget)
   done
@@ -9098,11 +9145,11 @@ lemma handle_overrun_loop_window:
          ; (solves handle_overrun_loop_simple)?)
      apply (wpsimp wp: handle_overrun_loop_body_window)
     apply (fastforce intro!: head_time_buffer_implies_no_overflow
-                      dest!: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
-                       simp: vs_all_heap_simps  unat_MAX_RELEASE_TIME)
+                      dest!: head_time_buffer_rewrite
+                       simp: vs_all_heap_simps )
     apply (wpsimp wp: handle_overrun_loop_body_ordered_disjoint)
-    apply (fastforce dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
-                     simp: vs_all_heap_simps MAX_RELEASE_TIME_def MAX_PERIOD_mult' unat_sub)
+    apply (fastforce dest: head_time_buffer_rewrite
+                     simp: vs_all_heap_simps MAX_RELEASE_TIME_def unat_sub)
    apply (wpsimp wp: handle_overrun_loop_body_nonzero_refills)
   apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget)
   done
@@ -9189,13 +9236,16 @@ lemma handle_overrun_loop_head_bound:
    apply (rename_tac sc n)
    apply (subst unat_add_lem')
     apply (clarsimp simp: max_word_def)
-   apply (insert MAX_PERIOD_mult'[where n=4]; simp)
+apply (frule head_time_buffer_rewrite)
+apply (clarsimp simp: vs_all_heap_simps)
+apply (intro conjI impI)
+apply (clarsimp simp: vs_all_heap_simps)
    apply (clarsimp simp: window_def)
    apply (subst unat_add_lem')
     apply (clarsimp simp: max_word_def word_le_nat_alt)
    apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
     apply (fastforce simp: vs_all_heap_simps obj_at_kh_kheap_simps)
-   apply (clarsimp simp: max_word_def unat_MAX_RELEASE_TIME)
+   apply (clarsimp simp: max_word_def)
    apply (fastforce simp: less_not_refl2 tail_nonempty_length)
 
   apply (wpsimp wp: get_refills_wp set_refills_wp update_sched_context_wp
@@ -9260,7 +9310,9 @@ lemma handle_overrun_loop_head_bound:
     apply linarith
    apply (frule head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated])
     apply (clarsimp simp: vs_all_heap_simps)
-   apply (fastforce simp: vs_all_heap_simps unat_sub MAX_RELEASE_TIME_def MAX_PERIOD_mult')
+apply (frule head_time_buffer_rewrite)
+   apply (fastforce simp: vs_all_heap_simps unat_sub MAX_RELEASE_TIME_def)
+   apply (fastforce simp: vs_all_heap_simps unat_sub MAX_RELEASE_TIME_def)
 
   apply (clarsimp simp: window_def)
   apply (rule order_trans[OF schedule_used_r_time_last[simplified word_le_nat_alt]])
@@ -9338,7 +9390,6 @@ method head_insufficient_loop_simple
             simp: non_overlapping_merge_refills_def refill_pop_head_def
                   update_sched_context_set_refills_rewrite update_refill_hd_rewrite
      , clarsimp simp: vs_all_heap_simps obj_at_def sc_valid_refills_def round_robin_def
-                      unat_MAX_RELEASE_TIME
      , fastforce?)
 
 method refill_head_overlapping_loop_simple
@@ -11035,8 +11086,16 @@ lemma refill_budget_check_bounded_release_time:
                in hoare_strengthen_post[rotated])
    apply (clarsimp simp: bounded_release_time_def vs_all_heap_simps)
   apply (wpsimp wp: head_insufficient_loop_r_time_helper)
-   apply (insert getCurrentTime_buffer_no_overflow)
    apply (clarsimp simp: MAX_PERIOD_def)
+apply (insert newaxiom2)
+apply (drule_tac x="5 * MAX_PERIOD_US" in spec)
+apply (elim impE)
+using us_to_ticks_bounds_def
+  apply force
+apply (drule_tac x=5 in spec)
+apply (drule_tac x=MAX_PERIOD_US in spec)
+apply (drule_tac x=0 in spec)
+apply clarsimp
   apply clarsimp
   done
 

@@ -73,7 +73,6 @@ lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
       apply (subst group_add_class.diff_conv_add_uminus)
       apply (subst minus_one_norm_num)
       apply clarsimp
-      apply (insert getCurrentTime_buffer_no_overflow')
       done
    subgoal for s
      apply (subst (asm) linorder_class.not_le)
@@ -92,7 +91,6 @@ lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
      apply (subst group_add_class.diff_conv_add_uminus)
      apply (subst minus_one_norm_num)
      apply clarsimp
-     apply (insert getCurrentTime_buffer_no_overflow')
      done
   subgoal for s
     apply (subst (asm) linorder_class.not_le)
@@ -110,13 +108,16 @@ lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
       apply simp
      apply simp
      apply (subst unat_minus_plus_one)
-      apply (insert getCurrentTime_buffer_no_overflow getCurrentTime_buffer_no_overflow')
+apply (insert us_to_ticks_upper_bound)
+subgoal sorry \<comment> \<open>b \in boundset ==> unat (us_to_ticks b) < unat max_time\<close>
+apply (prop_tac "unat (- (us_to_ticks (kernelWCET_us + 5 * MAX_PERIOD_US) + 1)) + unat kernelWCET_ticks \<le> unat max_time")
+subgoal sorry \<comment> \<open>done in the valid_machine_time proof\<close>
+apply (subst unat_add_lem'')
+apply (clarsimp simp: Suc_le_eq)
+subgoal sorry \<comment> \<open>b \in boundset ==> unat (us_to_ticks b) < unat max_time\<close>
+  apply fastforce
+      apply (insert getCurrentTime_buffer_US_no_overflow)
       apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def)
-     apply (insert getCurrentTime_buffer_no_overflow'_stronger)
-     apply (subst unat_add_lem')
-      apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def max_word_def)
-     apply fastforce
-    apply force
     done
   done
 
@@ -303,8 +304,9 @@ lemma kernelWCET_us_non_zero:
 
 lemma kernelWCET_ticks_non_zero:
   "kernelWCET_ticks \<noteq> 0"
-  using kernelWCET_us_non_zero us_to_ticks_nonzero
-  by (fastforce simp: kernelWCET_ticks_def)
+  apply (insert us_to_ticks_lower_bound)
+  apply (clarsimp simp: us_to_ticks_bounds_def kernelWCET_ticks_def)
+sorry \<comment> \<open>kernelWCET_us added to bound set\<close>
 
 end
 end

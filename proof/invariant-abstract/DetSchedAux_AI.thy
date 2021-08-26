@@ -596,12 +596,332 @@ lemma non_empty_sc_replies_nonz_cap:
   by (rule if_live_then_nonz_capD[OF assms(1) assms(2)[unfolded sc_at_pred_n_def]]
       ; clarsimp simp: live_def live_sc_def)
 
+lemma helppp:
+  "\<lbrakk>(a :: nat) * b < c; b \<noteq> 0\<rbrakk> \<Longrightarrow> a < c"
+  using multi_lessD neq0_conv by blast
+
+lemma unat_minus_plus_one':
+  "unat (buffer :: 'a :: len word) < unat (max_word :: 'a :: len word)
+   \<Longrightarrow> unat (-(buffer + 1)) = unat (max_word :: 'a :: len word) + 1 - (unat (buffer + 1))"
+  apply (frule unat_minus_plus_one)
+  apply (subst max_word_eq)
+  by (metis One_nat_def add.right_neutral add_Suc_right diff_Suc_Suc diff_zero minus_one_word
+            power_two_max_word_fold unat_minus_one_word)
+
+lemma helpppppppme:
+  "\<lbrakk>b \<le> a;  c + d < b\<rbrakk> \<Longrightarrow> Suc a - b + c + d \<le> a"
+  by linarith
+
+lemma unat_max_word:
+   "2 ^ LENGTH('a) - 1 = unat (max_word :: 'a :: len word)"
+  apply (rule Suc_inject)
+  apply (simp add: power_two_max_word_fold)
+  done
+
+lemma unat_add_lem'':
+  "(unat (x :: 'a :: len word) + unat y \<le> unat (max_word :: 'a :: len word))
+   \<Longrightarrow> (unat (x + y) = unat x + unat y)"
+  apply (rule unat_add_lem')
+  apply (clarsimp simp: less_Suc_eq_le[symmetric] unat_max_word[symmetric])
+  done
+
+lemma newaxiom:
+  " \<forall>bound \<le> Max us_to_ticks_bounds.
+        (\<forall>a b c d. bound = a * b + c * d
+        \<longrightarrow> (unat a * unat b * unat factor1 + unat c * unat d * unat factor1 < unat max_time))"
+sorry
+
+lemma helperrrrrrrr:
+  "(a :: nat) * b div c \<le> a * b"
+  by fastforce
+
+lemma iript:
+  "unat (us_to_ticks d) \<le> unat d * unat factor1"
+  apply (clarsimp simp: us_to_ticks_def)
+  by (metis (no_types, hide_lams) div_le_dividend le_unat_uoi nat_le_linear word_arith_nat_defs(6)
+                                  word_arith_nat_mult)
+
+lemma newaxiom2:
+  " \<forall>bound \<le> Max us_to_ticks_bounds.
+        (\<forall>a b c d. bound = a * b + c * d
+        \<longrightarrow> (unat a * unat (us_to_ticks b) + unat c * unat (us_to_ticks d) < unat max_time))"
+  apply clarsimp
+  apply (rule_tac y="unat a * unat b * unat factor1 + unat c * unat d * unat factor1" in le_less_trans)
+using iript
+  apply (simp add: add_le_mono)
+using newaxiom
+  by presburger
+
+lemma nmvir:
+  " a div d + b  div d \<le> ((a :: nat) + b) div d "
+\<comment> \<open> \<close>
+  using div_add1_eq le_iff_add by blast
+
+lemma zxcpe:
+  "(a :: nat) * (b  div c) \<le> a * b div c"
+using div_mult1_eq le_iff_add by blast
+
+lemma unat_mult_lem':
+  "unat (x :: 64 word) * unat y \<le> unat max_time \<Longrightarrow> unat (x * y) = unat x * unat y"
+apply (rule unat_mult_lem[THEN iffD1])
+apply (clarsimp simp: max_word_def)
+done
+
+lemma zxcpe':
+  "\<lbrakk>unat a * unat b  \<le> unat max_time\<rbrakk> \<Longrightarrow> (a :: 64 word) * (b  div c) \<le> a * b div c"
+apply (clarsimp simp: word_le_nat_alt)
+apply (subst unat_div)+
+apply (subst unat_mult_lem')
+apply (prop_tac "unat (b div c) \<le> unat b")
+using div_le_dividend word_le_nat_alt
+  apply (simp add: uno_simps(2) word_arith_nat_div)
+apply (rule_tac y="unat a * unat b" in order_trans)
+  apply simp
+  apply (metis le_trans more_arith_simps(5) mult.commute mult_le_mono1)
+apply (prop_tac "unat (of_nat (unat a * unat b)::64 word) = unat a * unat b \<or> unat c = 0")
+  apply (metis Groups.mult_ac(2) div_le_dividend le_unat_uoi nonzero_mult_div_cancel_left)
+  by (metis (no_types, hide_lams) div_by_0 uno_simps(2) word_arith_nat_defs(2) word_arith_nat_defs(6) zxcpe)
+
+lemma nmvir':
+  "unat a + unat b \<le> unat max_time \<Longrightarrow>  a div d + b  div d \<le> ((a :: 64 word) + b) div d "
+\<comment> \<open> \<close>
+apply (clarsimp simp: word_le_nat_alt)
+thm unat_div
+apply (subst unat_div)+
+apply (subst unat_add_lem'')
+apply (rule_tac y="unat a + unat b" in order_trans)
+using div_le_dividend
+  apply (simp add: add_le_mono uno_simps(2) word_arith_nat_defs(6))
+apply simp
+apply (prop_tac "unat (a + b) = unat a + unat b")
+apply (subst unat_add_lem'')
+apply simp
+apply simp
+apply clarsimp
+using nmvir
+  by (simp add: uno_simps(2) word_arith_nat_defs(6))
+
+lemma newaxiom4:
+  "unat a * unat b * unat factor1 \<le> unat max_time
+   \<Longrightarrow> unat a * unat (us_to_ticks b) \<le> unat (a * us_to_ticks b)"
+apply (case_tac "a=0")
+  apply simp
+  apply (clarsimp simp: us_to_ticks_def)
+  apply (subst unat_mult_lem'| subst unat_div)+
+apply (prop_tac "Suc 0 \<le> unat a")
+  apply (metis Suc_le_mono le0 not0_implies_Suc unat_0 word_unat.Rep_inverse)
+  apply (metis (no_types, hide_lams) le_trans more_arith_simps(5) mult_le_mono1 numeral_nat(7))
+apply (prop_tac "unat b * unat factor1 div unat factor2 \<le> unat b * unat factor1")
+using div_le_dividend
+  apply presburger
+  apply (metis (no_types, hide_lams) div_le_dividend le_trans mult.commute mult.left_commute mult_le_mono2)
+  apply (subst unat_mult_lem'| subst unat_div)+
+apply (prop_tac "Suc 0 \<le> unat a")
+  apply (metis Suc_le_mono le0 not0_implies_Suc unat_0 word_unat.Rep_inverse)
+  apply (metis (no_types, hide_lams) le_trans more_arith_simps(5) mult_le_mono1 numeral_nat(7))
+  apply (subst unat_mult_lem'| subst unat_div)+
+apply (prop_tac "Suc 0 \<le> unat a")
+  apply (metis Suc_le_mono le0 not0_implies_Suc unat_0 word_unat.Rep_inverse)
+  apply (metis (no_types, hide_lams) le_trans more_arith_simps(5) mult_le_mono1 numeral_nat(7))
+  by blast
+
+lemma newaxiom4':
+  "unat a * unat b * unat factor1 \<le> unat max_time
+   \<Longrightarrow> unat a * unat (us_to_ticks b) \<le> unat (us_to_ticks (a*b))"
+apply (case_tac "a=0")
+  apply simp
+  apply (clarsimp simp: us_to_ticks_def)
+  apply (subst unat_mult_lem'| subst unat_div)+
+apply (prop_tac "Suc 0 \<le> unat a")
+  apply (metis Suc_le_mono le0 not0_implies_Suc unat_0 word_unat.Rep_inverse)
+  apply (metis (no_types, hide_lams) le_trans more_arith_simps(5) mult_le_mono1 numeral_nat(7))
+  apply (subst unat_mult_lem'| subst unat_div)+
+using us_to_ticks_non_zero
+  apply (metis (no_types, hide_lams) Groups.mult_ac(2) Suc_le_mono le0 le_trans mult.left_neutral
+mult_le_mono1 not0_implies_Suc numeral_nat(7) unat_0 word_unat.Rep_inverse)
+apply simp
+  apply (subst unat_mult_lem'| subst unat_div)+
+using us_to_ticks_non_zero
+  apply (metis (no_types, hide_lams) Groups.mult_ac(2) Suc_le_mono le0 le_trans mult.left_neutral
+mult_le_mono1 not0_implies_Suc numeral_nat(7) unat_0 word_unat.Rep_inverse)
+  by (metis semiring_normalization_rules(18) zxcpe)
+
+lemma newaxiom5:
+  " unat a * unat factor1 + unat b * unat factor1 \<le> unat max_time
+   \<Longrightarrow> unat (us_to_ticks a) + unat (us_to_ticks b) \<le> unat (us_to_ticks (a + b))"
+apply (case_tac "a=0")
+apply clarsimp
+  apply (simp add: us_to_ticks_zero)
+apply (case_tac "b=0")
+apply clarsimp
+  apply (simp add: us_to_ticks_zero)
+apply (clarsimp simp: us_to_ticks_def)
+apply (subst unat_div)+
+thm nmvir'
+apply (prop_tac "(a + b) * factor1 = a * factor1 + b * factor1")
+  apply (metis Rat.sign_simps(18) Rat.sign_simps(5) word_arith_nat_defs(2))
+
+apply simp
+apply (subst unat_mult_lem')+
+  apply linarith
+apply (rule_tac y="unat (a * factor1) div unat factor2 + unat (b * factor1) div unat factor2" in order_trans)
+apply (subst unat_mult_lem')
+  apply linarith
+apply (subst unat_mult_lem')+
+apply linarith
+
+apply (subst unat_mult_lem')+
+apply linarith
+  apply blast
+  by (metis (no_types, hide_lams) add_leE le_unat_uoi nmvir unat_add_lem'' word_arith_nat_defs(2))
+
+
+
+lemma newaxiom3:
+  " \<forall>bound \<le> Max us_to_ticks_bounds.
+        (\<forall>a b c d. bound = a * b + c * d
+        \<longrightarrow> (unat a * unat (us_to_ticks b) + unat c * unat (us_to_ticks d) \<le> unat (us_to_ticks bound)))"
+  apply clarsimp
+apply (case_tac "a=0 \<or> c=0")
+apply (elim disjE)
+apply clarsimp
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+apply (drule_tac x="c * d" in spec)
+apply clarsimp
+  apply (metis Groups.mult_ac(2) arith_simps(50) linorder_not_le mult_zero_right nat_le_linear unat_0)
+apply clarsimp
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+apply (drule_tac x="a * b" in spec)
+apply clarsimp
+  apply (metis Groups.mult_ac(2) arith_simps(50) linorder_not_le mult_zero_right nat_le_linear unat_0)
+
+apply clarsimp
+apply (case_tac "b=0 \<or> d=0")
+apply (elim disjE)
+apply clarsimp
+apply (clarsimp simp: us_to_ticks_zero)
+
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+apply (drule_tac x="c * d" in spec)
+apply clarsimp
+  apply (metis Groups.mult_ac(2) arith_simps(50) linorder_not_le mult_zero_right nat_le_linear unat_0)
+apply (clarsimp simp: us_to_ticks_zero)
+
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+apply (drule_tac x="c * d" in spec)
+apply clarsimp
+  apply (metis Groups.mult_ac(2) arith_simps(50) linorder_not_le mult_zero_right nat_le_linear unat_0)
+apply clarsimp
+
+apply (rule_tac y="unat (us_to_ticks (a * b)) + unat (us_to_ticks (c * d))" in order_trans)
+apply (rule add_le_mono)
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+  apply fastforce
+apply (rule newaxiom4')
+  apply (insert newaxiom)
+  apply fastforce
+
+apply (rule newaxiom5)
+apply (subst unat_mult_lem')+
+apply clarsimp
+thm unat_gt_0
+apply (insert us_to_ticks_non_zero)
+apply (clarsimp simp: unat_gt_0[symmetric])
+
+
+
+find_theorems "?A < ?B" "?A \<le> ?B"
+
+
+apply (drule_tac x="a * b + c * d" in spec)
+apply (elim impE)
+  apply simp
+  apply (metis (no_types, hide_lams) Suc_leI add_leE add_lessD1 linorder_not_le mult.commute mult.left_neutral mult_le_mono semiring_norm(175))
+apply (subst unat_mult_lem')+
+apply clarsimp
+apply (drule_tac x="a * b + c * d" in spec)
+apply (elim impE)
+  apply simp
+apply (clarsimp simp: unat_gt_0[symmetric])
+  apply (metis (no_types, hide_lams) Suc_leI add.commute add_leE add_lessD1 linorder_not_le
+mult.commute mult.left_neutral mult_le_mono semiring_norm(175))
+apply clarsimp
+  by fastforce
+
+
+lemma main_helper:
+  "unat (- (us_to_ticks (getCurrentTime_buffer_US) + 1))
+    + unat kernelWCET_ticks +  5 * unat MAX_PERIOD
+   \<le> unat max_time"
+apply (subst unat_minus_plus_one')
+apply (insert us_to_ticks_upper_bound)[1]
+apply (drule_tac x=getCurrentTime_buffer_US in spec)
+apply (elim impE)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+apply (clarsimp simp: us_to_ticks_def)
+apply (subst unat_div)
+
+  apply (metis (no_types, hide_lams) div_le_dividend le_def le_unat_uoi nat_less_le
+unat_bounded_above word_arith_nat_defs(2))
+apply (insert newaxiom2)
+apply (drule_tac x=getCurrentTime_buffer_US in spec)
+apply (elim impE)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+apply (drule_tac x=1 in spec)
+apply (drule_tac x=kernelWCET_us in spec)
+apply (drule_tac x=5 in spec)
+apply (drule_tac x=MAX_PERIOD_US in spec)
+apply clarsimp
+apply (subst unat_add_lem'')
+
+\<comment> \<open>1\<close>
+apply clarsimp
+apply (subst Suc_leI)
+apply (insert us_to_ticks_upper_bound)[1]
+apply (drule_tac x=getCurrentTime_buffer_US in spec)
+apply (elim impE)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+apply (clarsimp simp: us_to_ticks_def)
+apply (subst unat_div)
+
+  apply (metis (no_types, hide_lams) div_le_dividend le_def le_unat_uoi nat_less_le
+unat_bounded_above word_arith_nat_defs(2))
+apply simp
+apply clarsimp
+apply (prop_tac " 5 * unat MAX_PERIOD \<le> unat max_time")
+apply (insert newaxiom3)[1]
+apply (clarsimp simp: us_to_ticks_bounds_def)
+  apply (metis (mono_tags, hide_lams) MAX_PERIOD_def add_le_mono comm_monoid_add_class.add_0
+nat_le_iff_add nat_less_le not_le unat_bounded_above)
+apply (prop_tac "unat (us_to_ticks kernelWCET_us) + 5 * unat (us_to_ticks MAX_PERIOD_US) \<le>
+unat (us_to_ticks getCurrentTime_buffer_US)")
+ apply (insert newaxiom3)
+apply (drule_tac x=getCurrentTime_buffer_US in spec)
+apply (elim impE)
+apply (clarsimp simp: us_to_ticks_bounds_def)
+apply (drule_tac x=1 in spec)
+apply (drule_tac x=kernelWCET_us in spec)
+apply (drule_tac x=5 in spec)
+apply (drule_tac x=MAX_PERIOD_US in spec)
+apply clarsimp
+  by (simp add: MAX_PERIOD_def kernelWCET_ticks_def)
+
 lemma valid_machine_time_refill_ready_buffer:
   "valid_machine_time s \<Longrightarrow> cur_time s \<le> cur_time s + kernelWCET_ticks"
-  apply (clarsimp simp: valid_machine_time_def)
-  apply (insert getCurrentTime_buffer_minus)
-  by (metis (no_types, hide_lams) Groups.add_ac(2) olen_add_eqv plus_minus_no_overflow_ab
-                                  uminus_add_conv_diff word_n1_ge word_plus_mono_right2)
+
+  apply_trace (clarsimp simp: valid_machine_time_def)
+  apply (subst  unat_sum_bound_equiv[symmetric])
+apply (insert main_helper)
+
+apply (prop_tac "unat (- (us_to_ticks (kernelWCET_us + 5 * MAX_PERIOD_US) + 1)) + unat kernelWCET_ticks
+\<le> unat max_time")
+  apply linarith
+  by (metis (no_types, hide_lams) add.commute add_left_mono_trans add_uminus_conv_diff more_arith_simps(9) unat_arith_simps(1))
 
 lemma released_sc_cur_time_increasing:
   "\<lbrakk>sc_refill_cfg_sc_at (released_sc (cur_time s)) scp s'; cur_time s \<le> cur_time s';
@@ -1048,9 +1368,11 @@ lemma update_time_stamp_is_refill_ready[wp]:
     apply (rule word_plus_mono_left, simp)
     apply (subst olen_add_eqv)
     apply (subst add.commute)
-    apply (rule no_plus_overflow_neg)
-    apply (insert getCurrentTime_buffer_minus')
-    apply fastforce
+apply (prop_tac "unat (- (us_to_ticks (kernelWCET_us + 5 * MAX_PERIOD_US) + 1)) + unat kernelWCET_ticks \<le> unat max_time")
+subgoal sorry
+apply (prop_tac "current_time \<le> - (1 + us_to_ticks (kernelWCET_us + 5 * MAX_PERIOD_US))")
+  apply (metis Groups.add_ac(2) add_uminus_conv_diff more_arith_simps(9))
+  apply (metis (no_types, hide_lams) Groups.add_ac(2) add_left_mono_trans unat_arith_simps(1) unat_sum_bound_equiv)
    apply wpsimp
   by simp
 

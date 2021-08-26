@@ -780,13 +780,6 @@ lemmas sum_list_elements_unat_sum = sum_list_elements_unat_sum'[rule_format]
 
 (***)
 
-lemma MIN_BUDGET_no_overflow:
-  "unat MIN_BUDGET = 2 * unat kernelWCET_ticks"
-  apply (simp add: MIN_BUDGET_def kernelWCET_ticks_def)
-  apply (rule replicate_no_overflow[where a="us_to_ticks kernelWCET_us" and n=2
-                                      and upper_bound=max_word, simplified])
-  using kernelWCET_ticks_no_overflow max_word_def by simp
-
 \<comment> \<open>Function definitions and lemmas for showing that the unat sum of the r_amounts of a refill list
     does not overflow, and is equal to the budget of the scheduling context\<close>
 
@@ -1878,6 +1871,25 @@ lemma decode_sched_context_inv_wf:
                         sc_yf_sc_at_def)
   done
 
+lemma less_eq_Max:
+  "(a :: ticks) \<in> A \<Longrightarrow> a \<le> Max A"
+  by simp
+
+lemma replicate_no_overflow:
+  "n * unat (a :: ticks) \<le> unat (upper_bound :: ticks)
+   \<Longrightarrow> unat (word_of_int n * a) = n * unat a"
+  by (metis (mono_tags, hide_lams) le_unat_uoi of_nat_mult word_of_nat word_unat.Rep_inverse)
+
+lemma us_to_ticks_lower_bound':
+       "\<forall>b \<in> {getCurrentTime_buffer_US, 2 * kernelWCET_us, 15 * \<mu>s_in_ms, 5 * MAX_PERIOD_US, MAX_PERIOD_US}.
+                      0 < us_to_ticks b"
+sorry
+
+lemma us_to_ticks_mono':
+  "\<lbrakk>a \<le> b; b \<le> Max {getCurrentTime_buffer_US, 4 * kernelWCET_us, 15 * \<mu>s_in_ms, 5 * MAX_PERIOD_US, MAX_PERIOD_US}\<rbrakk>
+   \<Longrightarrow> us_to_ticks a \<le> us_to_ticks b"
+sorry
+
 lemma decode_sched_control_inv_wf:
   "\<lbrace>invs and
      (\<lambda>s. \<forall>x\<in>set excaps. s \<turnstile> x) and
@@ -1897,10 +1909,31 @@ lemma decode_sched_control_inv_wf:
   apply (case_tac ko; simp)
   apply (clarsimp simp: valid_refills_number_def max_refills_cap_def
                         MIN_BUDGET_def MIN_BUDGET_US_def MAX_PERIOD_def not_less
-                        us_to_ticks_mono[simplified mono_def] kernelWCET_ticks_def)
-  apply (insert us_to_ticks_mult)
-  using kernelWCET_ticks_no_overflow apply clarsimp
-  using mono_def apply blast
+                        us_to_ticks_mono[simplified mono_def] kernelWCET_ticks_def cong: conj_cong)
+apply (intro conjI impI)
+apply (rule us_to_ticks_mono')
+  apply blast
+
+apply (rule less_eq_Max)
+  apply blast
+
+apply (rule us_to_ticks_mono')
+  apply blast
+apply (rule_tac y="MAX_PERIOD_US" in order_trans)
+  apply blast
+apply (rule less_eq_Max)
+  apply blast
+
+apply (rule us_to_ticks_mono')
+  apply blast
+apply (rule less_eq_Max)
+  apply blast
+apply (rule us_to_ticks_mono')
+  apply blast
+apply (rule_tac y="MAX_PERIOD_US" in order_trans)
+  apply blast
+apply (rule less_eq_Max)
+  apply blast
   done
 
 end
