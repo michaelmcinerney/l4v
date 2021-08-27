@@ -597,10 +597,10 @@ lemma non_empty_sc_replies_nonz_cap:
       ; clarsimp simp: live_def live_sc_def)
 
 lemma unat_minus'':
-   fixes x :: "'a :: len word"
-   shows "x \<noteq> 0 \<Longrightarrow> unat (-x) = unat (max_word :: 'a :: len word) + 1  - unat x"
-   using unat_minus'
-   by (metis Suc_eq_plus1 power_two_max_word_fold)
+  fixes x :: "'a :: len word"
+  shows "x \<noteq> 0 \<Longrightarrow> unat (-x) = unat (max_word :: 'a :: len word) + 1  - unat x"
+  using unat_minus'
+  by (metis Suc_eq_plus1 power_two_max_word_fold)
 
 lemma iepqdcv:
    "\<lbrakk>a \<noteq> 0; (b :: 64 word) < a\<rbrakk> \<Longrightarrow> unat (-a) + unat b \<le> unat max_time"
@@ -1090,7 +1090,7 @@ lemma update_time_stamp_cur_time_monotonic:
   apply (clarsimp simp: update_time_stamp_def)
   apply (rule hoare_seq_ext[OF _ gets_sp])
   apply (rule_tac B="\<lambda>rv s. cur_time s \<le> rv \<and> rv \<le> - getCurrentTime_buffer
-                            \<and> cur_time s = val \<and> cur_time s = prev_time"
+                            \<and> cur_time s = val \<and> cur_time s = previous_time"
                in hoare_seq_ext[rotated])
    apply (wpsimp wp: dmo_getCurrentTime_sp)+
   done

@@ -1942,7 +1942,7 @@ lemma decode_sched_control_inv_wf:
  apply (intro conjI impI)
  apply (rule us_to_ticks_mono)
    apply blast
-using MAX_RELEASE_TIME_bound
+using getCurrentTime_bound
   apply linarith
 
 thm replicate_no_overflow
@@ -1953,19 +1953,27 @@ thm replicate_no_overflow
 thm hppoz
 apply (rule order_trans[OF hppoz])
 apply (rule us_to_ticks_mono)
+find_theorems kernelWCET_us
 apply simp
-apply (insert MAX_RELEASE_TIME_bound)
+apply (insert getCurrentTime_bound)
 apply (clarsimp simp: word_le_nat_alt)
 apply (prop_tac "unat MAX_PERIOD_US \<le> 5 * unat MAX_PERIOD_US")
 apply linarith
-  apply (meson le_trans mult_le_mono1 nat_less_le)
+apply (drule order_class.order.strict_implies_order)+
+apply (insert kernelWCET_us_pos)
+apply (clarsimp simp: word_less_nat_alt)
+apply (rule_tac y="unat MAX_PERIOD_US * unat factor1" in order_trans)
+  apply simp
+  apply linarith
 apply (rule us_to_ticks_mono)
   apply blast
   apply linarith
 apply (rule us_to_ticks_mono)
   apply force
 apply (clarsimp simp: word_le_nat_alt)
-  by (metis (no_types, hide_lams) MAX_RELEASE_TIME_bound Suc_leI arith_extra_simps(5) le_trans
-mult.left_neutral mult_le_mono1 nat_less_le semiring_norm(175) zero_less_numeral)
+apply (drule order_class.order.strict_implies_order)+
+apply (rule_tac y=" unat MAX_PERIOD_US * unat factor1" in order_trans)
+  apply fastforce
+  by linarith
 
 end

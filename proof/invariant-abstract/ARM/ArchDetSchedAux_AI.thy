@@ -60,7 +60,7 @@ lemma valid_machine_time_getCurrentTime[DetSchedAux_AI_assms]:
 lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
   "\<lbrace>valid_machine_time\<rbrace>
    do_machine_op getCurrentTime
-   \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer - 1)\<rbrace>"
+   \<lbrace>\<lambda>rv s. (cur_time s \<le> rv) \<and> (rv \<le> - getCurrentTime_buffer)\<rbrace>"
   supply minus_add_distrib[simp del]
   apply (wpsimp simp: do_machine_op_def)
   apply (clarsimp simp: valid_machine_time_def getCurrentTime_def in_monad)
@@ -70,10 +70,7 @@ lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
       apply (rule_tac order.trans, assumption)
       apply (rule_tac order.trans, assumption)
       apply (rule preorder_class.eq_refl)
-      apply (subst group_add_class.diff_conv_add_uminus)
-      apply (subst minus_one_norm_num)
       apply clarsimp
-      apply (insert getCurrentTime_buffer_no_overflow')
       done
    subgoal for s
      apply (subst (asm) linorder_class.not_le)
@@ -86,39 +83,9 @@ lemma dmo_getCurrentTime_vmt_sp[wp, DetSchedAux_AI_assms]:
      apply (rule_tac order.trans)
       apply (rule order_class.order.strict_implies_order, assumption)
      by (metis unat_minus_one_word word_le_nat_alt word_n1_ge)
-  apply (clarsimp simp: min_def, intro conjI impI)
    subgoal
-     apply (rule preorder_class.eq_refl)
-     apply (subst group_add_class.diff_conv_add_uminus)
-     apply (subst minus_one_norm_num)
-     apply clarsimp
-     apply (insert getCurrentTime_buffer_no_overflow')
-     done
-  subgoal for s
-    apply (subst (asm) linorder_class.not_le)
-    apply (rule_tac b="of_nat (unat (last_machine_time (machine_state s)) +
-      time_oracle (Suc (time_state (machine_state s))))" in order.trans[rotated])
-     apply (rule Word_Lemmas.word_of_nat_le)
-     apply (rule_tac order.trans)
-      apply (rule order.strict_implies_order, assumption)
-     apply (subst group_add_class.diff_conv_add_uminus)
-     apply (subst minus_one_norm_num)
-     apply clarsimp
-     apply (subst unat_sub)
-      apply (rule order.trans[OF word_up_bound])
-      apply (rule preorder_class.eq_refl)
-      apply simp
-     apply simp
-     apply (subst unat_minus_plus_one)
-      apply (insert getCurrentTime_buffer_no_overflow getCurrentTime_buffer_no_overflow')
-      apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def)
-     apply (insert getCurrentTime_buffer_no_overflow'_stronger)
-     apply (subst unat_add_lem')
-      apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def max_word_def)
-     apply fastforce
-    apply force
-    done
-  done
+  by (simp add: word_of_nat_le)
+done
 
 lemma update_time_stamp_valid_machine_time[wp, DetSchedAux_AI_assms]:
   "update_time_stamp \<lbrace>valid_machine_time\<rbrace>"
@@ -303,8 +270,8 @@ lemma kernelWCET_us_non_zero:
 
 lemma kernelWCET_ticks_non_zero:
   "kernelWCET_ticks \<noteq> 0"
-  using kernelWCET_us_non_zero us_to_ticks_nonzero
-  by (fastforce simp: kernelWCET_ticks_def)
+  apply (clarsimp simp: kernelWCET_ticks_def)
+  using kernelWCET_pos' by simp
 
 end
 end

@@ -40,20 +40,123 @@ lemma current_time_bounded_strengthen:
   unfolding current_time_bounded_def
   by (erule order_trans[rotated], clarsimp)
 
+lemma gCT_buffer:
+  "getCurrentTime_buffer = kernelWCET_ticks + 5 * MAX_PERIOD"
+sorry
+
+lemma unat_max_word:
+   "2 ^ LENGTH('a) - 1 = unat (max_word :: 'a :: len word)"
+  apply (rule Suc_inject)
+  apply (simp add: power_two_max_word_fold)
+  done
+
+lemma unat_add_lem'':
+  "(unat (x :: 'a :: len word) + unat y \<le> unat (max_word :: 'a :: len word))
+   \<Longrightarrow> (unat (x + y) = unat x + unat y)"
+  apply (rule unat_add_lem')
+  apply (clarsimp simp: less_Suc_eq_le[symmetric] unat_max_word[symmetric])
+  done
+
+lemma MAX_PERIOD_mult:
+  "unat (5 * MAX_PERIOD) = 5 * unat MAX_PERIOD"
+  apply (insert getCurrentTime_bound)
+  apply (insert replicate_no_overflow[where n=5 and a=MAX_PERIOD and upper_bound=max_time, atomized])
+apply (elim impE)
+apply (clarsimp simp: MAX_PERIOD_def us_to_ticks_def)
+apply (drule less_imp_le)
+apply (subst unat_div | subst unat_mult_lem')+
+  apply simp
+  apply (metis (no_types, hide_lams) add_leE div_le_dividend le_trans mult_le_mono2 semiring_normalization_rules(18))
+  by force
+
+
+lemma MAX_PERIOD_mult':
+  "(n :: 64 word) \<le> 5 \<Longrightarrow> unat (n * MAX_PERIOD) = unat n * unat MAX_PERIOD"
+  apply (insert getCurrentTime_bound)
+  apply (insert replicate_no_overflow[where n="unat n" and a=MAX_PERIOD and upper_bound=max_time, atomized])
+apply (elim impE)
+apply (clarsimp simp: MAX_PERIOD_def us_to_ticks_def)
+apply (drule less_imp_le)
+apply (subst unat_div | subst unat_mult_lem')+
+  apply simp
+
+apply (prop_tac "unat n \<le> (5 :: nat)")
+apply (clarsimp simp: word_le_nat_alt)
+apply (prop_tac "unat MAX_PERIOD_US * unat factor1 div unat factor2 \<le> unat MAX_PERIOD_US * unat factor1")
+  using div_le_dividend apply blast
+apply (prop_tac "5 * unat MAX_PERIOD_US * unat factor1 \<le> unat max_time")
+  apply linarith
+apply (prop_tac "5 * (unat MAX_PERIOD_US * unat factor1) \<le> unat max_time")
+  apply linarith
+  apply (metis (no_types, hide_lams) le_trans mult.commute mult_le_mono1)
+  by (metis word_of_nat word_unat.Rep_inverse)
+
+lemma asdf:
+  " unat (kernelWCET_ticks + 5 * MAX_PERIOD) = unat kernelWCET_ticks + 5 * unat MAX_PERIOD"
+apply (subst unat_add_lem'')
+apply (insert getCurrentTime_bound factor1_non_zero)
+apply (clarsimp simp: MAX_PERIOD_mult kernelWCET_ticks_def)
+  apply (metis MAX_PERIOD_mult gCT_buffer getCurrentTime_buffer_def getCurrentTime_buffer_relation
+kernelWCET_ticks_def linorder_le_cases linorder_not_le unat_sum_bound_equiv)
+apply (clarsimp simp: MAX_PERIOD_mult kernelWCET_ticks_def)
+done
+
+lemma bound':
+  "unat  kernelWCET_ticks + 5 * unat MAX_PERIOD < unat max_time"
+  apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def us_to_ticks_def)
+  apply (insert getCurrentTime_bound)
+
+apply (subst unat_div | subst unat_mult_lem' | simp)+
+apply (prop_tac "5 * (unat MAX_PERIOD_US * unat factor1 div unat factor2) \<le> 5 * unat MAX_PERIOD_US * unat factor1")
+  apply simp
+apply (prop_tac "unat kernelWCET_us * unat factor1 div unat factor2 \<le> unat kernelWCET_us * unat factor1")
+  apply fastforce
+  by linarith
+
 lemma update_time_stamp_current_time_bounded_5:
   "\<lbrace>\<top>\<rbrace> update_time_stamp \<lbrace>\<lambda>_. current_time_bounded 5\<rbrace>"
   supply minus_add_distrib[simp del]
   apply (clarsimp simp: update_time_stamp_def getCurrentTime_def)
   apply wpsimp
-  apply (clarsimp simp: current_time_bounded_def max_word_def)
-  apply (rule_tac y="unat (-(getCurrentTime_buffer + 1))
+  apply (subst gCT_buffer)
+  apply (clarsimp simp: current_time_bounded_def)
+  apply (rule_tac y="unat (-(getCurrentTime_buffer))
                      + unat kernelWCET_ticks + 5 * unat MAX_PERIOD"
-               in order_trans)
-   apply (prop_tac "min (unat (-(getCurrentTime_buffer + 1)))
+               in le_less_trans)
+   apply (prop_tac "min (unat (-(getCurrentTime_buffer)))
                         (unat (last_machine_time_of s) + time_oracle (Suc (time_state_of s)))
-                    \<le> unat (-(getCurrentTime_buffer + 1))")
+                    \<le> unat (-(getCurrentTime_buffer))")
     apply (force simp: minus_add_distrib)
    apply clarsimp
+using gCT_buffer
+  apply (metis linorder_min_same2 min.left_idem word_le_nat_alt word_of_nat_le)
+  apply (subst gCT_buffer)
+thm asdf
+(*   apply (meson linorder_min_same2 min.left_idem word_le_nat_alt word_of_nat_le)
+apply (subst unat_minus'') *)
+  apply (meson linorder_min_same2 min.left_idem word_le_nat_alt word_of_nat_le)
+apply (subst unat_minus'')
+using MachineOps.getCurrentTime_buffer_pos getCurrentTime_buffer_def
+  apply simp
+subgoal sorry
+apply (clarsimp simp: asdf)
+apply (insert bound')
+
+apply (clarsimp simp: getCurrentTime_buffer_def max_word_def asdf)
+
+thm unat_minus''
+find_theorems valid_machine_time cur_time
+find_theorems (240) do_machine_op valid
+apply (clarsimp simp: max_word_def getCurrentTime_buffer_def)
+apply (clarsimp simp: word_le_nat_alt)
+ apply (insert getCurrentTime_buffer_relation)
+ apply (frule iepqdcv[rotated])
+ subgoal sorry
+apply (clarsimp simp: kernelWCET_ticks_def)
+apply (clarsimp simp: max_word_def getCurrentTime_buffer_def)
+
+  using getCurrentTime_buffer_def unat_arith_simps(1) unat_sum_bound_equiv
+by fastforce
   apply (clarsimp simp: minus_add_distrib)
   apply (meson le_trans min.cobounded1 unat_of_nat_closure)
   apply (subst unat_minus_plus_one)
