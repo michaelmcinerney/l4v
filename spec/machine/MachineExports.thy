@@ -66,7 +66,7 @@ requalify_consts
   setDeadline
   timerPrecision
   max_time
-  \<mu>s_to_ms
+  \<mu>s_in_ms
   factor1
   factor2
   getCurrentTime_buffer
@@ -75,10 +75,9 @@ requalify_facts
   MAX_PERIOD_US_def
   MAX_PERIOD_def
   kernelWCET_ticks_def
-  \<mu>s_to_ms_def
+  \<mu>s_in_ms_def
   factor1_non_zero
   MIN_BUDGET_bound
-  MAX_RELEASE_TIME_bound
   kernelWCET_pos'
   domain_time_pos
   getCurrentTime_buffer_relation
@@ -86,6 +85,7 @@ requalify_facts
   MIN_BUDGET_pos'
   replicate_no_overflow
   us_to_ticks_def
+  getCurrentTime_bound
 
 definition "MAX_RELEASE_TIME = max_time - 5 * MAX_PERIOD"
 
