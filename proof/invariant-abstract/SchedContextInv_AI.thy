@@ -785,7 +785,12 @@ lemma MIN_BUDGET_no_overflow:
   apply (simp add: MIN_BUDGET_def kernelWCET_ticks_def)
   apply (rule replicate_no_overflow[where a="us_to_ticks kernelWCET_us" and n=2
                                       and upper_bound=max_word, simplified])
-  using kernelWCET_ticks_no_overflow max_word_def by simp
+  apply (clarsimp simp: us_to_ticks_def)
+  apply (insert MIN_BUDGET_bound)
+  apply (subst unat_div | subst unat_mult_lem')+
+   apply linarith
+  apply (rule_tac y="2 * unat kernelWCET_us * unat factor1" in order_trans; fastforce)
+  done
 
 \<comment> \<open>Function definitions and lemmas for showing that the unat sum of the r_amounts of a refill list
     does not overflow, and is equal to the budget of the scheduling context\<close>
@@ -1895,12 +1900,23 @@ lemma decode_sched_control_inv_wf:
   apply (clarsimp simp add: valid_cap_def obj_at_def is_sc_obj_def split: cap.split_asm)
   apply (rename_tac ko)
   apply (case_tac ko; simp)
-  apply (clarsimp simp: valid_refills_number_def max_refills_cap_def
-                        MIN_BUDGET_def MIN_BUDGET_US_def MAX_PERIOD_def not_less
-                        us_to_ticks_mono[simplified mono_def] kernelWCET_ticks_def)
-  apply (insert us_to_ticks_mult)
-  using kernelWCET_ticks_no_overflow apply clarsimp
-  using mono_def apply blast
-  done
+  apply (clarsimp simp: valid_refills_number_def max_refills_cap_def MAX_PERIOD_def not_less
+                  cong: conj_cong)
+  apply (insert getCurrentTime_buffer_bound)
+  apply (intro conjI impI; (fastforce intro: us_to_ticks_mono)?)
+   apply (clarsimp simp: MIN_BUDGET_def MIN_BUDGET_US_def kernelWCET_ticks_def)
+   apply (rule order_trans[OF MIN_BUDGET_helper])
+   apply (rule us_to_ticks_mono)
+    apply simp
+   apply (clarsimp simp: word_le_nat_alt)
+   apply (rule_tac y="unat MAX_PERIOD_US * unat factor1" in order_trans)
+    apply simp
+   apply linarith
+  apply (rule us_to_ticks_mono)
+   apply force
+  apply (clarsimp simp: word_le_nat_alt)
+  apply (rule_tac y=" unat MAX_PERIOD_US * unat factor1" in order_trans)
+   apply fastforce
+  by linarith
 
 end
