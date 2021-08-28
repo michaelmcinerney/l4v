@@ -109,25 +109,29 @@ and
  where
    "MAX_PERIOD_US \<equiv> 60 * 60 * 1000 * 1000"
 
-axiomatization
-  us_to_ticks :: "ticks \<Rightarrow> ticks"
-where
-  us_to_ticks_mono[intro!]: "mono us_to_ticks"
+definition "\<mu>s_in_ms = 1000"
+
+consts' factor1 :: ticks
+consts' factor2 :: ticks
+
+definition
+  "us_to_ticks us = (us * factor1) div factor2"
+
+axiomatization where
+  factor1_non_zero: "factor1 \<noteq> 0"
 and
-  us_to_ticks_zero[iff]: "us_to_ticks 0 = 0"
+  MIN_BUDGET_bound: "2 * unat kernelWCET_us * unat factor1 < unat max_time"
 and
-  us_to_ticks_nonzero: "y \<noteq> 0 \<Longrightarrow> us_to_ticks y \<noteq> 0"
+  getCurrentTime_buffer_bound:
+    "unat kernelWCET_us * unat factor1 + 5 * unat MAX_PERIOD_US * unat factor1 < unat max_time"
 and
-  kernelWCET_ticks_no_overflow: "4 * unat (us_to_ticks kernelWCET_us) \<le> unat max_time"
+  kernelWCET_pos': "0 < us_to_ticks kernelWCET_us"
 and
-  getCurrentTime_buffer_no_overflow:
-    "unat (us_to_ticks kernelWCET_us) + 5 * unat (us_to_ticks MAX_PERIOD_US)
-     < unat max_time"
+  MIN_BUDGET_pos': "0 < 2 * us_to_ticks kernelWCET_us"
 and
-  us_to_ticks_mult: "unat n * unat (us_to_ticks a) \<le> unat max_time
-                     \<Longrightarrow> n * us_to_ticks a = us_to_ticks (n * a)"
+  domain_time_pos: "0 < us_to_ticks (15 * \<mu>s_in_ms)"
 and
-  getCurrentTime_buffer_nonzero: "0 < us_to_ticks kernelWCET_us + 5 * (us_to_ticks MAX_PERIOD_US)"
+  getCurrentTime_buffer_pos: "0 < us_to_ticks kernelWCET_us + 5 * us_to_ticks MAX_PERIOD_US"
 
 definition "MAX_PERIOD = us_to_ticks MAX_PERIOD_US"
 
@@ -136,7 +140,7 @@ axiomatization
 
 end_qualify
 
-context Arch begin global_naming RISCV64
+context Arch begin global_naming ARM
 
 definition
   "kernelWCET_ticks = us_to_ticks (kernelWCET_us)"
@@ -150,53 +154,84 @@ lemma replicate_no_overflow:
   by (metis (mono_tags, hide_lams) le_unat_uoi of_nat_mult word_of_nat word_unat.Rep_inverse)
 
 lemma kernelWCET_ticks_pos2: "0 < 2 * kernelWCET_ticks"
-  apply (simp add: kernelWCET_ticks_def word_less_nat_alt)
-  apply (subgoal_tac "unat (2 * us_to_ticks kernelWCET_us) = 2 * unat (us_to_ticks kernelWCET_us)")
-   using RISCV64.kernelWCET_us_pos2 RISCV64.us_to_ticks_nonzero unat_gt_0 apply force
-  apply (subgoal_tac "2 * unat (us_to_ticks kernelWCET_us) \<le> unat (max_word :: ticks)")
-   using replicate_no_overflow apply fastforce
-  using kernelWCET_ticks_no_overflow by force
+  apply (simp add: kernelWCET_ticks_def)
+  using MIN_BUDGET_pos' by simp
 
 lemma getCurrentTime_buffer_nonzero':
   "0 < getCurrentTime_buffer"
-  apply (insert getCurrentTime_buffer_nonzero)
+  apply (insert getCurrentTime_buffer_pos)
   apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def)
   done
 
-lemma getCurrentTime_buffer_no_overflow':
-  "unat kernelWCET_ticks + 5 * unat MAX_PERIOD = unat (kernelWCET_ticks + 5 * MAX_PERIOD)"
-  apply (prop_tac "5 * unat (us_to_ticks MAX_PERIOD_US) = unat (5 * us_to_ticks MAX_PERIOD_US)")
-   apply (prop_tac "5 * unat (us_to_ticks MAX_PERIOD_US) \<le> unat (max_word :: 64 word)")
-    using getCurrentTime_buffer_no_overflow apply linarith
-   apply (fastforce dest: replicate_no_overflow[where a="us_to_ticks MAX_PERIOD_US" and n=5])
-  apply (insert getCurrentTime_buffer_no_overflow)
-  apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def)
-  apply (subst unat_add_lem')
-   apply (clarsimp simp: max_word_def)
-  apply simp
-  done
+lemma us_to_ticks_helper:
+  "unat a * unat factor1 \<le> unat max_time \<Longrightarrow> unat (us_to_ticks a) \<le> unat a * unat factor1"
+  apply (clarsimp simp: us_to_ticks_def)
+  by (subst unat_div | subst unat_mult_lem' | simp)+
+
+lemma less_mono:
+  "\<lbrakk>a \<le> a'; b \<le> b'; a' + b' < c\<rbrakk> \<Longrightarrow> a + b < (c :: nat)"
+  by fastforce
+
+lemma le_mono:
+  "\<lbrakk>a \<le> a'; b \<le> b'; a' + b' \<le> c\<rbrakk> \<Longrightarrow> a + b \<le> (c :: nat)"
+  by fastforce
+
+lemma getCurrentTime_buffer_no_overflow:
+  "unat kernelWCET_ticks + 5 * unat MAX_PERIOD < unat max_time"
+  apply (insert getCurrentTime_buffer_bound)
+  by (rule_tac a'="unat kernelWCET_us * unat factor1"
+           and b'="5 * unat MAX_PERIOD_US * unat factor1"
+            in less_mono
+      ; fastforce simp: kernelWCET_ticks_def MAX_PERIOD_def
+                 intro: us_to_ticks_helper)
 
 lemma MAX_PERIOD_mult:
-  "unat (5 * MAX_PERIOD) = 5 * unat MAX_PERIOD"
-  apply (insert getCurrentTime_buffer_no_overflow')
-  apply (insert replicate_no_overflow[where n=5 and a=MAX_PERIOD and upper_bound=max_time, atomized])
-  using MAX_PERIOD_def getCurrentTime_buffer_no_overflow by auto
-
-lemma MAX_PERIOD_mult':
   "(n :: 64 word) \<le> 5 \<Longrightarrow> unat (n * MAX_PERIOD) = unat n * unat MAX_PERIOD"
-  apply (insert getCurrentTime_buffer_no_overflow')
-  apply (insert replicate_no_overflow[where n="unat n" and a=MAX_PERIOD and upper_bound=max_time])
-  apply (prop_tac "word_of_int (int (unat n)) = n")
-   apply (metis word_of_nat word_unat.Rep_inverse)
-  by (metis (mono_tags, hide_lams) MAX_PERIOD_mult le_trans max_word_max mult_le_mono1
-                                   of_nat_numeral unat_le_helper word_le_nat_alt)
+  apply (insert getCurrentTime_buffer_bound)
+  apply (insert replicate_no_overflow[where n="unat n" and a=MAX_PERIOD and upper_bound=max_time, atomized])
+  apply (elim impE)
+   apply (clarsimp simp: MAX_PERIOD_def)
+   apply (prop_tac "unat n \<le> (5 :: nat)")
+    apply (clarsimp simp: word_le_nat_alt)
+   apply (prop_tac "unat (us_to_ticks MAX_PERIOD_US) \<le> unat MAX_PERIOD_US * unat factor1")
+  apply (simp add: us_to_ticks_helper)
+   apply (prop_tac "5 * (unat MAX_PERIOD_US * unat factor1) \<le> unat max_time")
+    apply linarith
+   apply (metis (no_types, hide_lams) le_trans mult.commute mult_le_mono1)
+  by (metis word_of_nat word_unat.Rep_inverse)
+
+lemma getCurrentTime_buffer_no_overflow':
+  "unat kernelWCET_ticks + 5 * unat MAX_PERIOD = unat getCurrentTime_buffer"
+  apply (subst unat_add_lem'')
+   apply (insert getCurrentTime_buffer_bound)
+   apply (clarsimp simp: MAX_PERIOD_mult[where n=5] kernelWCET_ticks_def MAX_PERIOD_def)
+   apply (drule less_imp_le)
+   apply (rule_tac a'="unat kernelWCET_us * unat factor1"
+               and b'="5 * unat MAX_PERIOD_US * unat factor1"
+                in le_mono)
+     apply (fastforce simp: us_to_ticks_helper)
+    apply (subst unat_div | subst unat_mult_lem')+
+     apply (metis MAX_PERIOD_def MAX_PERIOD_mult add.left_neutral order_refl unat_plus_simple
+                  unat_sum_boundE word_zero_le)
+    apply (fastforce simp: us_to_ticks_helper)
+   apply simp
+  apply (clarsimp simp: MAX_PERIOD_mult kernelWCET_ticks_def)
+  done
 
 lemma getCurrentTime_buffer_no_overflow'_stronger:
   "unat (kernelWCET_ticks + 5 * MAX_PERIOD + 1) = unat kernelWCET_ticks + unat (5 * MAX_PERIOD) + 1"
-  apply (subst unat_add_lem')
-   apply (insert getCurrentTime_buffer_no_overflow' getCurrentTime_buffer_no_overflow)
-   apply (clarsimp simp: kernelWCET_ticks_def MAX_PERIOD_def max_word_def)
-  apply (fastforce simp: MAX_PERIOD_mult)
+  apply (subst unat_add_lem'')
+   apply (subst getCurrentTime_buffer_no_overflow'[symmetric])
+   apply (insert getCurrentTime_buffer_bound)
+   apply (prop_tac "unat kernelWCET_ticks \<le> unat kernelWCET_us * unat factor1")
+    apply (fastforce intro: us_to_ticks_helper
+                      simp: kernelWCET_ticks_def)
+   apply (prop_tac "5 * unat MAX_PERIOD \<le> 5 * unat MAX_PERIOD_US * unat factor1")
+    apply (fastforce intro: us_to_ticks_helper
+                      simp: MAX_PERIOD_def)
+  apply fastforce
+  apply (insert getCurrentTime_buffer_no_overflow')
+  apply (clarsimp simp: MAX_PERIOD_mult kernelWCET_ticks_def)
   done
 
 lemma getCurrentTime_buffer_minus:
@@ -214,8 +249,45 @@ lemma getCurrentTime_buffer_minus':
   "- kernelWCET_ticks - 5 * MAX_PERIOD - 1 < - kernelWCET_ticks"
   apply (insert getCurrentTime_buffer_minus)
   apply (prop_tac "kernelWCET_ticks \<noteq> 0")
-   using us_to_ticks_nonzero kernelWCET_ticks_def kernelWCET_us_pos apply fastforce
+   using kernelWCET_pos' kernelWCET_ticks_def apply simp
   by (simp add: word_leq_minus_one_le)
+
+lemma us_to_ticks_zero:
+  "us_to_ticks 0 = 0"
+  apply (clarsimp simp: us_to_ticks_def)
+  done
+
+lemma unat_div_helper:
+  "a * factor1 \<le> b * factor1
+   \<Longrightarrow> unat (a * factor1 div factor2) \<le> unat (b * factor1 div factor2)"
+  by (simp add: word_le_nat_alt div_le_mono uno_simps(2) word_arith_nat_div)
+
+lemma us_to_ticks_mono:
+  "\<lbrakk>a \<le> b; unat b * unat factor1 \<le> unat max_time\<rbrakk>
+    \<Longrightarrow> us_to_ticks a \<le> us_to_ticks b"
+  apply (simp add: us_to_ticks_def)
+  apply (clarsimp simp: word_le_nat_alt)
+  apply (rule unat_div_helper)
+  apply (clarsimp simp: word_le_nat_alt)
+  by (metis (no_types, hide_lams) le_unat_uoi mult_le_mono1 word_arith_nat_defs(2))
+
+lemma divide_le_helper:
+  "\<lbrakk>unat a * unat b  \<le> unat (max_word :: 'a :: len word)\<rbrakk>
+   \<Longrightarrow> (a :: 'a :: len word) * (b  div c) \<le> a * b div c"
+  apply (clarsimp simp: word_le_nat_alt)
+  apply (subst unat_div | subst unat_mult_lem')+
+  apply (blast intro: div_le_dividend le_trans mult_le_mono2)
+  apply (subst unat_div | subst unat_mult_lem' | simp)+
+  by (metis (no_types, hide_lams) Groups.mult_ac(3) arith_extra_simps(19) div_by_0 div_le_mono
+                                  mult_le_mono2 nonzero_mult_div_cancel_left thd)
+
+lemma MIN_BUDGET_helper:
+  "2 * us_to_ticks kernelWCET_us \<le> us_to_ticks (2 * kernelWCET_us)"
+  apply (clarsimp simp: us_to_ticks_def)
+  apply (insert MIN_BUDGET_bound)
+  apply (rule_tac order_trans[OF divide_le_helper])
+   apply (subst unat_mult_lem' | simp)+
+  by (metis (no_types, hide_lams) Rat.sign_simps(5) Rat.sign_simps(6) order_refl)
 
 text \<open>
 This encodes the following assumptions:
