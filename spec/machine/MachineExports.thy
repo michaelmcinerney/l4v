@@ -9,6 +9,69 @@ theory MachineExports
 imports "./$L4V_ARCH/MachineOps"
 begin
 
+lemma mult_le_mono':
+  "\<lbrakk>a \<le> a'; b \<le> b'; a' * b' \<le> c\<rbrakk> \<Longrightarrow> a * b \<le> (c :: nat)"
+  using le_trans mult_le_mono by blast
+
+notepad begin
+
+define factor1 :: "64 word" where "factor1 = of_nat 50"
+define factor2 :: "64 word" where "factor2 = of_nat 1"
+define kernelWCET_us :: "64 word" where "kernelWCET_us = of_nat 100"
+define MAX_PERIOD_US :: "64 word" where "MAX_PERIOD_US = 60 * 60 * 1000 * 1000"
+define \<mu>s_in_ms :: "64 word" where "\<mu>s_in_ms = 1000"
+
+have factor1_non_zero: "factor1 \<noteq> 0" using factor1_def by simp
+
+have MIN_BUDGET_bound: "2 * unat kernelWCET_us * unat factor1 < unat max_time"
+  apply (subst unat_max_word[symmetric])
+  apply clarsimp
+  apply (prop_tac "unat kernelWCET_us \<le> 100")
+   apply (fastforce simp: kernelWCET_us_def)
+  apply (prop_tac "unat factor1 \<le> 50")
+   apply (fastforce simp: factor1_def)
+  apply (rule_tac y="10000" in le_less_trans)
+   apply (rule_tac a'=200 and b'=50 in mult_le_mono'; fastforce)
+  apply simp
+  done
+
+have getCurrentTime_buffer_bound:
+  "unat kernelWCET_us * unat factor1 + 5 * unat MAX_PERIOD_US * unat factor1 < unat max_time"
+  apply (subst unat_max_word[symmetric])
+  apply clarsimp
+  apply (rule_tac a'=5000 and b'="5 * 60 * 60 * 1000 * 1000 * 50" in less_mono)
+    apply (fastforce simp: kernelWCET_us_def factor1_def)
+   apply (fastforce simp: kernelWCET_us_def factor1_def MAX_PERIOD_US_def)
+  apply linarith
+  done
+
+have kernelWCET_pos': "0 < (kernelWCET_us * factor1) div factor2"
+  apply (clarsimp simp: word_less_nat_alt)
+  apply (subst unat_mult_lem' | subst unat_div
+         | fastforce simp: kernelWCET_us_def factor1_def factor2_def max_word_def)+
+  done
+
+have MIN_BUDGET_pos': "0 < 2 * ((kernelWCET_us * factor1) div factor2)"
+  apply (clarsimp simp: word_less_nat_alt)
+  apply (subst unat_mult_lem' | subst unat_div
+         | fastforce simp: kernelWCET_us_def factor1_def factor2_def max_word_def)+
+  done
+
+have domain_time_pos: "0 < ((15 * \<mu>s_in_ms) * factor1) div factor2"
+  apply (clarsimp simp: word_less_nat_alt)
+  apply (subst unat_mult_lem' | subst unat_div
+         | fastforce simp: \<mu>s_in_ms_def factor1_def factor2_def max_word_def)+
+  done
+
+have getCurrentTime_buffer_pos:
+  "0 < (kernelWCET_us * factor1) div factor2 + 5 * (MAX_PERIOD_US * factor1 div factor2)"
+  apply (clarsimp simp: word_less_nat_alt)
+  apply (subst unat_add_lem'' | subst unat_mult_lem' | subst unat_div
+         | fastforce simp: kernelWCET_us_def MAX_PERIOD_US_def factor1_def factor2_def max_word_def)+
+  done
+
+end
+
 context begin interpretation Arch .
 
 (* Check consistency of machine_word and machine_word_len. *)
@@ -67,8 +130,8 @@ requalify_consts
   timerPrecision
   max_time
   getCurrentTime_buffer
-  factor1
-  factor2
+  ticks_per_timer_unit
+  timer_unit
   \<mu>s_in_ms
 
 requalify_facts
@@ -82,16 +145,13 @@ requalify_facts
   getCurrentTime_buffer_minus
   getCurrentTime_buffer_minus'
   MAX_PERIOD_mult
-  factor1_non_zero
+  ticks_per_timer_unit_non_zero
   MIN_BUDGET_bound
   getCurrentTime_buffer_bound
   kernelWCET_pos'
   MIN_BUDGET_pos'
   domain_time_pos
   getCurrentTime_buffer_pos
-  unat_max_word
-  unat_add_lem''
-  unat_mult_lem'
   us_to_ticks_def
   getCurrentTime_buffer_no_overflow
   us_to_ticks_mono
