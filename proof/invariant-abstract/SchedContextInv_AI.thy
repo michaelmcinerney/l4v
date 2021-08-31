@@ -785,11 +785,8 @@ lemma MIN_BUDGET_no_overflow:
   apply (simp add: MIN_BUDGET_def kernelWCET_ticks_def)
   apply (rule replicate_no_overflow[where a="us_to_ticks kernelWCET_us" and n=2
                                       and upper_bound=max_word, simplified])
-  apply (clarsimp simp: us_to_ticks_def)
   apply (insert MIN_BUDGET_bound)
-  apply (subst unat_div | subst unat_mult_lem')+
-   apply linarith
-  apply (rule_tac y="2 * unat kernelWCET_us * unat factor1" in order_trans; fastforce)
+  apply (fastforce intro: order_trans[OF mult_left_mono, OF us_to_ticks_helper])
   done
 
 \<comment> \<open>Function definitions and lemmas for showing that the unat sum of the r_amounts of a refill list
@@ -1906,17 +1903,10 @@ lemma decode_sched_control_inv_wf:
   apply (intro conjI impI; (fastforce intro: us_to_ticks_mono)?)
    apply (clarsimp simp: MIN_BUDGET_def MIN_BUDGET_US_def kernelWCET_ticks_def)
    apply (rule order_trans[OF MIN_BUDGET_helper])
-   apply (rule us_to_ticks_mono)
-    apply simp
-   apply (clarsimp simp: word_le_nat_alt)
-   apply (rule_tac y="unat MAX_PERIOD_US * unat factor1" in order_trans)
-    apply simp
-   apply linarith
-  apply (rule us_to_ticks_mono)
-   apply force
-  apply (clarsimp simp: word_le_nat_alt)
-  apply (rule_tac y=" unat MAX_PERIOD_US * unat factor1" in order_trans)
-   apply fastforce
-  by linarith
+   apply (fastforce intro: order_trans[OF mult_le_mono1] us_to_ticks_mono
+                     simp: word_le_nat_alt)
+  apply (fastforce intro: order_trans[OF mult_le_mono1] us_to_ticks_mono
+                    simp: word_le_nat_alt)
+  done
 
 end
