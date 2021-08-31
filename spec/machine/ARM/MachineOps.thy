@@ -252,7 +252,7 @@ axiomatization
 
 end_qualify
 
-context Arch begin global_naming RISCV64
+context Arch begin global_naming ARM
 
 definition
   "kernelWCET_ticks = us_to_ticks (kernelWCET_us)"
