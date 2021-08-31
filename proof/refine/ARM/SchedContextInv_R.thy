@@ -149,12 +149,10 @@ lemma decodeSchedControlInvocation_wf:
    apply (rule_tac order_trans[OF MIN_BUDGET_helper])
    apply (rule us_to_ticks_mono)
     apply blast
-   apply (clarsimp simp: word_le_nat_alt)
-   apply (rule_tac y="unat MAX_PERIOD_US * unat factor1" in order_trans; fastforce)
-  apply (rule us_to_ticks_mono)
-   apply blast
-  apply (clarsimp simp: word_le_nat_alt)
-  apply (rule_tac y="unat MAX_PERIOD_US * unat factor1" in order_trans; fastforce)
+   apply (fastforce intro: order_trans[OF mult_le_mono1]
+                     simp: word_le_nat_alt)
+  apply (fastforce intro: order_trans[OF mult_le_mono1] us_to_ticks_mono
+                    simp: word_le_nat_alt)
   done
 
 lemma decodeSchedcontext_Bind_corres:
