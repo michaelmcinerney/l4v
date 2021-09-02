@@ -1280,13 +1280,6 @@ lemma refillFull_sp:
   apply (clarsimp simp: obj_at'_def)
   done
 
-lemma length_refills_map_is_scRefillCount:
-  "sc_valid_refills' sc
-   \<Longrightarrow> (length (refills_map (scRefillHead sc) (scRefillCount sc) (scRefillMax sc) (scRefills sc)))
-        = scRefillCount sc"
-  apply (clarsimp simp: valid_sched_context'_def refillTailIndex_def refills_map_def)
-  done
-
 lemma refillFull_corres:
   "sc_ptr = scPtr
    \<Longrightarrow> corres (=) (sc_at sc_ptr and pspace_aligned and pspace_distinct)
@@ -1299,8 +1292,7 @@ lemma refillFull_corres:
   apply (rule corres_split'[rotated 2, OF get_sched_context_sp get_sc_sp'])
    apply (corressimp corres: get_sc_corres)
   apply (corressimp corres: corres_return_eq_same)
-  apply (fastforce simp: length_refills_map_is_scRefillCount sc_relation_def obj_at_simps
-                         valid_refills'_def opt_map_red)
+  apply (fastforce simp: sc_relation_def obj_at_simps valid_refills'_def opt_map_red)
   done
 
 lemma update_refill_tl_is_active_sc2[wp]:
@@ -1342,19 +1334,19 @@ lemma scheduleUsed_corres:
   apply (rule_tac F="empty = (sc_refills sc = [])" in corres_req)
    apply (fastforce dest: length_sc_refills_cross[where P="\<lambda>l. 0 = l"]
                     simp: valid_refills'_def obj_at_simps opt_map_red)
-  apply (rule corres_if4; (solves simp)?)
+  apply (rule corres_if_split; (solves simp)?)
    apply (corressimp corres: refillAddTail_corres simp: refill_map_def)
    apply (clarsimp simp: valid_refills'_def obj_at_simps opt_map_red)
   apply (rule_tac F="sc_valid_refills' sc'" in corres_req)
    apply (clarsimp simp: valid_refills'_def obj_at_simps opt_map_red)
-  apply (rule corres_if4; (solves simp)?)
+  apply (rule corres_if_split; (solves simp)?)
     apply (fastforce dest: refills_tl_equal
                      simp: refill_map_def can_merge_refill_def)
    apply (corressimp corres: updateRefillTl_corres
                        simp: refill_map_def)
   apply (rule corres_split'[rotated 2, OF refill_full_sp refillFull_sp])
    apply (corressimp corres: refillFull_corres)
-  apply (rule corres_if4; (solves simp)?)
+  apply (rule corres_if_split; (solves simp)?)
    apply (corressimp corres: refillAddTail_corres)
    apply (clarsimp simp: refill_map_def obj_at_simps opt_map_red)
   apply (corressimp corres: updateRefillTl_corres simp: refill_map_def)
