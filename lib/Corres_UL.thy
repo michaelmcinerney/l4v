@@ -537,7 +537,7 @@ lemmas corres_when2 =
                 and Q="\<top>" and Q'="\<top>" and r=dc, unfolded if_apply_def2, simplified,
                 folded when_def]
 
-lemma corres_if4:
+lemma corres_if_split:
   "\<lbrakk> G = G';
      G \<Longrightarrow> corres_underlying sr nf nf' r P P' a c;
      \<not>G \<Longrightarrow> corres_underlying sr nf nf' r P P' b d \<rbrakk>
