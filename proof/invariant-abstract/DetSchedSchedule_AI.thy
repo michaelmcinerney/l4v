@@ -7850,12 +7850,6 @@ lemma head_insufficient_loop_refills_window:
   apply clarsimp
   done
 
-lemma ordered_disjoint_no_overflow_implies_sorted:
-  "\<lbrakk>ordered_disjoint refills; no_overflow refills; k < length refills; l < length refills; k \<le> l\<rbrakk>
-   \<Longrightarrow> unat (r_time (refills ! k)) \<le> unat (r_time (refills ! l))"
-  apply (case_tac "k = l", simp)
-  by (frule ordered_disjoint_non_adjacent[where refills=refills and k=k and l=l]; clarsimp)
-
 lemma head_insufficient_loop_hd_r_time:
   "\<lbrace>\<lambda>s. pred_map (\<lambda>cfg. unat (r_time (last (scrc_refills cfg))) \<le> P (cur_time s))
                  (sc_refill_cfgs_of s) sc_ptr
@@ -8335,29 +8329,6 @@ lemma schedule_used_release_time_bounded:
   apply (case_tac "sc_refills sc"; fastforce)
   done
 
-lemma unat_max_time:
-  "2 ^ LENGTH(64) - 1 = unat max_time"
-  apply (clarsimp simp: max_word_def)
-  done
-
-lemma unat_add_lem'':
-  "(unat (x :: time) + unat (y :: time) \<le> unat max_time) \<Longrightarrow>
-    (unat (x + y) = unat x + unat y)"
-  apply (rule unat_add_lem')
-  using unat_max_time by force
-
-lemma refills_unat_sum_cons:
-  "refills_unat_sum (a # b) = unat (r_amount a) + refills_unat_sum b"
-  by (clarsimp simp: refills_unat_sum_def)
-
-lemma refills_unat_sum_length_one[simp]:
-  "refills_unat_sum [a] = unat (r_amount a)"
-  by (clarsimp simp: refills_unat_sum_def)
-
-lemma refills_unat_sum_append:
-  "refills_unat_sum (a @ b) = refills_unat_sum a + refills_unat_sum b"
-  by (clarsimp simp: refills_unat_sum_def)
-
 lemma schedule_used_refills_unat_sum:
   "\<lbrace>\<lambda>s. pred_map (\<lambda>cfg. refills_unat_sum ((scrc_refills cfg) @ [new]) = unat (scrc_budget cfg))
                  (sc_refill_cfgs_of s) (cur_sc s)
@@ -8460,12 +8431,12 @@ lemma schedule_used_no_overflow:
      apply (rule_tac left="[a]" and right="[new]" in no_overflow_append; fastforce?)
     apply (clarsimp simp: no_overflow_def can_merge_refill_def)
     apply (subst unat_add_lem'')
-     apply (fastforce simp: unat_max_time word_le_nat_alt)
+     apply (fastforce simp: unat_max_word word_le_nat_alt)
     apply (clarsimp simp: word_le_nat_alt not_le)
     apply (subst unat_sub)
      apply (prop_tac "unat (r_time a + r_amount a) = unat (r_time a) + unat (r_amount a)")
       apply (subst unat_add_lem'')
-       apply (fastforce simp: unat_max_time word_le_nat_alt)
+       apply (fastforce simp: unat_max_word word_le_nat_alt)
       apply simp
      apply (clarsimp simp: word_le_nat_alt not_le)
     apply linarith
@@ -8482,7 +8453,7 @@ lemma schedule_used_no_overflow:
    apply (prop_tac "unat (r_time (last lista) + r_amount (last lista))
                     = unat (r_time (last lista)) + unat (r_amount (last lista))")
     apply (subst unat_add_lem'')
-     apply (fastforce simp: unat_max_time word_le_nat_alt)
+     apply (fastforce simp: unat_max_word word_le_nat_alt)
     apply blast
    apply (clarsimp simp: not_le word_le_nat_alt)
   apply linarith
@@ -8804,11 +8775,6 @@ lemma handle_overrun_loop_refills_unat_sum_equals_budget:
                     handle_overrun_loop_body_nonzero_refills)
   done
 
-(* FIXME RT: move? *)
-lemma hd_tl_nth:
-  "Suc 0 < length list \<Longrightarrow> hd (tl list) = list ! 1"
-  by (cases list; simp add: hd_conv_nth)
-
 lemma handle_overrun_loop_body_window:
   "\<lbrace>\<lambda>s. pred_map (\<lambda>cfg. window (scrc_refills cfg) (scrc_period cfg)) (sc_refill_cfgs_of s) (cur_sc s)
         \<and> pred_map (\<lambda>cfg. ordered_disjoint (scrc_refills cfg)) (sc_refill_cfgs_of s) (cur_sc s)
@@ -8859,7 +8825,7 @@ lemma handle_overrun_loop_body_window:
    apply (rule word_add_le_mono1)
     apply (clarsimp simp: word_le_nat_alt)
    apply (subst power_two_max_word_fold)
-   apply (clarsimp simp: unat_max_time word_le_nat_alt)
+   apply (clarsimp simp: unat_max_word word_le_nat_alt)
   apply (clarsimp simp: word_le_nat_alt)
   done
 
@@ -8987,15 +8953,6 @@ method schedule_used_simple
           simp: update_refill_hd_rewrite update_sched_context_set_refills_rewrite schedule_used_defs
      , clarsimp simp: round_robin_def vs_all_heap_simps obj_at_def sc_valid_refills_def)
 
-lemma ordered_disjoint_last:
-  "\<lbrakk>ordered_disjoint list; no_overflow list; list \<noteq> []\<rbrakk>
-   \<Longrightarrow> \<forall>refill \<in> set list. unat (r_time refill) \<le> unat (r_time (last list))"
-  apply (clarsimp simp: in_set_conv_nth)
-  apply (subst last_conv_nth)
-   apply fastforce
-  apply (frule_tac k=i and l="length list - 1" in ordered_disjoint_no_overflow_implies_sorted; simp)
-  done
-
 lemma handle_overrun_loop_head_bound:
   "\<lbrace>\<lambda>s. cur_sc_offset_ready 0 s \<and> valid_refills (cur_sc s) s \<and> current_time_bounded 5 s
         \<and> \<not> round_robin (cur_sc s) s
@@ -9111,7 +9068,7 @@ lemma handle_overrun_loop_head_bound:
     apply (frule (1) ordered_disjoint_last)
      apply metis
     apply (subst power_two_max_word_fold)
-    apply (clarsimp simp: unat_max_time word_le_nat_alt)
+    apply (clarsimp simp: unat_max_word word_le_nat_alt)
     apply (rule le_imp_less_Suc)
     apply (fastforce simp: window_def)
    apply (fastforce simp: window_def word_le_nat_alt)

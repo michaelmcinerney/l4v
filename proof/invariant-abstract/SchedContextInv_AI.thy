@@ -673,6 +673,21 @@ lemma ordered_disjoint_non_adjacent:
     apply (fastforce simp: ordered_disjoint_def)+
   done
 
+lemma ordered_disjoint_no_overflow_implies_sorted:
+  "\<lbrakk>ordered_disjoint refills; no_overflow refills; k < length refills; l < length refills; k \<le> l\<rbrakk>
+   \<Longrightarrow> unat (r_time (refills ! k)) \<le> unat (r_time (refills ! l))"
+  apply (case_tac "k = l", simp)
+  by (frule ordered_disjoint_non_adjacent[where refills=refills and k=k and l=l]; clarsimp)
+
+lemma ordered_disjoint_last:
+  "\<lbrakk>ordered_disjoint list; no_overflow list; list \<noteq> []\<rbrakk>
+   \<Longrightarrow> \<forall>refill \<in> set list. unat (r_time refill) \<le> unat (r_time (last list))"
+  apply (clarsimp simp: in_set_conv_nth)
+  apply (subst last_conv_nth)
+   apply fastforce
+  apply (frule_tac k=i and l="length list - 1" in ordered_disjoint_no_overflow_implies_sorted; simp)
+  done
+
 (* FIXME maybe move? *)
 lemma refills_sum_cons[simp]: "refills_sum (a#rs) =  r_amount a + refills_sum rs"
   by (clarsimp simp: refills_sum_def)
@@ -802,6 +817,18 @@ lemma refills_unat_sum_member_bound:
    apply fastforce
   apply (fastforce dest!: member_le_sum_list)
   done
+
+lemma refills_unat_sum_cons:
+  "refills_unat_sum (a # b) = unat (r_amount a) + refills_unat_sum b"
+  by (clarsimp simp: refills_unat_sum_def)
+
+lemma refills_unat_sum_length_one[simp]:
+  "refills_unat_sum [a] = unat (r_amount a)"
+  by (clarsimp simp: refills_unat_sum_def)
+
+lemma refills_unat_sum_append:
+  "refills_unat_sum (a @ b) = refills_unat_sum a + refills_unat_sum b"
+  by (clarsimp simp: refills_unat_sum_def)
 
 fun
   refill_list_to_intervals :: "refill list \<Rightarrow> (nat set) list"
