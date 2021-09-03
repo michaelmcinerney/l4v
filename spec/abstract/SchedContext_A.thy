@@ -304,13 +304,12 @@ where
      usage' \<leftarrow> handle_overrun_loop usage;
 
      refills \<leftarrow> get_refills sc_ptr;
-     new_head_amount \<leftarrow> return (r_amount (hd refills));
 
      when (usage' > 0 \<and> r_time (hd refills) < MAX_RELEASE_TIME) $ do
        sc \<leftarrow> get_sched_context sc_ptr;
-       period \<leftarrow> return (sc_period sc);
-       used \<leftarrow> return \<lparr>r_time = r_time (hd (sc_refills sc)) + period, r_amount = usage'\<rparr>;
-       update_refill_hd sc_ptr (r_time_update (\<lambda>t. t + usage') o (r_amount_update (\<lambda>m. m - usage')));
+       used \<leftarrow> return \<lparr>r_time = r_time (hd (sc_refills sc)) + sc_period sc, r_amount = usage'\<rparr>;
+       set_refill_hd sc_ptr \<lparr>r_time = r_time (refill_hd sc) + usage',
+                             r_amount = r_amount (refill_hd sc) - usage'\<rparr>;
        schedule_used sc_ptr used
      od;
 
