@@ -229,7 +229,7 @@ lemma refill_budget_check_valid_objs[wp]:
   "refill_budget_check usage \<lbrace>valid_objs\<rbrace>"
   apply (clarsimp simp: refill_budget_check_def)
   apply (rule hoare_seq_ext_skip, solves wpsimp)+
-  apply (wpsimp wp: set_refills_valid_objs simp: update_refill_hd_def)
+  apply (wpsimp wp: set_refills_valid_objs simp: set_refill_hd_def update_refill_hd_def)
   done
 
 (* FIXME RT: move to Invariants_AI *)
@@ -529,7 +529,7 @@ lemma refill_budget_check_if_live_then_nonz_cap[wp]:
   "refill_budget_check usage \<lbrace>if_live_then_nonz_cap\<rbrace>"
   apply (wpsimp wp: whileLoop_wp' get_refills_wp hoare_drop_imps
                     hoare_vcg_all_lift hoare_vcg_if_lift2
-              simp: refill_budget_check_def update_refill_hd_def)
+              simp: refill_budget_check_def update_refill_hd_def set_refill_hd_def)
   done
 
 crunches refill_budget_check
@@ -578,7 +578,7 @@ crunches head_insufficient_loop, handle_overrun_loop
 
 lemma refill_budget_check_refs_of[wp]:
   "refill_budget_check usage \<lbrace>\<lambda>s. P (state_refs_of s)\<rbrace>"
-  unfolding refill_budget_check_def is_round_robin_def
+  unfolding refill_budget_check_def is_round_robin_def set_refill_hd_def
   apply (wpsimp wp: whileLoop_wp' update_sched_context_refs_of_same get_refills_wp
                     hoare_drop_imps hoare_vcg_all_lift
          split_del: if_split)
@@ -833,7 +833,7 @@ crunches head_insufficient_loop, handle_overrun_loop
 
 lemma refill_budget_check_valid_replies[wp]:
   "refill_budget_check usage \<lbrace> valid_replies_pred P \<rbrace>"
-  apply (wpsimp simp: refill_budget_check_def
+  apply (wpsimp simp: refill_budget_check_def set_refill_hd_def
                   wp: get_refills_wp whileLoop_wp' hoare_drop_imps
                       hoare_vcg_all_lift hoare_vcg_if_lift2)
   done
@@ -939,7 +939,7 @@ crunches handle_overrun_loop, head_insufficient_loop
 
 lemma refill_budget_check_bound_sc_tcb_at_ct[wp]:
   "refill_budget_check usage \<lbrace>\<lambda>s. bound_sc_tcb_at P (cur_thread s) s\<rbrace>"
-  unfolding refill_budget_check_def
+  unfolding refill_budget_check_def set_refill_hd_def
   apply (wpsimp wp: whileLoop_wp' get_refills_wp hoare_drop_imps hoare_vcg_all_lift
                     hoare_vcg_if_lift2)
   done
@@ -982,7 +982,7 @@ crunches head_insufficient_loop, handle_overrun_loop
 
 lemma refill_budget_check_valid_idle:
   "refill_budget_check usage \<lbrace>valid_idle\<rbrace>"
-  unfolding refill_budget_check_def
+  unfolding refill_budget_check_def set_refill_hd_def
   apply (wpsimp wp: whileLoop_wp' get_refills_wp hoare_drop_imps hoare_vcg_all_lift
                     hoare_vcg_if_lift2)
   done
@@ -1060,7 +1060,7 @@ crunches head_insufficient_loop, handle_overrun_loop
 
 lemma refill_budget_check_ct_in_state[wp]:
   "refill_budget_check usage \<lbrace> ct_in_state t \<rbrace>"
-  unfolding refill_budget_check_def
+  unfolding refill_budget_check_def set_refill_hd_def
   apply (wpsimp wp: whileLoop_wp' get_refills_wp hoare_drop_imps hoare_vcg_all_lift
                     hoare_vcg_if_lift2)
   done
