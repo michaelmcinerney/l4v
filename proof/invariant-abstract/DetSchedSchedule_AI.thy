@@ -9132,7 +9132,8 @@ lemma handle_overrun_loop_head_bound:
    apply wpsimp
 
   apply (rule_tac f=cur_sc in hoare_lift_Pf2; (solves wpsimp)?)
-  apply (rule_tac R1="\<lambda>s. pred_map (\<lambda>cfg. no_overflow (scrc_refills cfg)) (sc_refill_cfgs_of s) x"
+  apply (rename_tac sc_ptr)
+  apply (rule_tac R1="\<lambda>s. pred_map (\<lambda>cfg. no_overflow (scrc_refills cfg)) (sc_refill_cfgs_of s) sc_ptr"
                in hoare_pre_add[THEN iffD2, simplified pred_conj_def])
    apply (fastforce dest!: head_time_buffer_implies_no_overflow[rotated 1]
                      simp: vs_all_heap_simps)
@@ -9140,12 +9141,13 @@ lemma handle_overrun_loop_head_bound:
   apply (rule hoare_seq_ext[OF _ gets_sp])
   apply (rule hoare_seq_ext[OF _ refill_single_sp])
   apply (rule hoare_seq_ext[OF _ get_sched_context_sp])
-  apply (rule_tac B="\<lambda>_ s. pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg))) + 4 * unat MAX_PERIOD \<le> unat max_time)
-                   (sc_refill_cfgs_of s) x
+  apply (rule_tac B="\<lambda>_ s. pred_map (\<lambda>cfg. unat (r_time (hd (scrc_refills cfg))) + 4 * unat MAX_PERIOD
+                                            \<le> unat max_time)
+                                    (sc_refill_cfgs_of s) sc_ptr
                            \<and> pred_map (\<lambda>cfg. scrc_period cfg \<le> MAX_PERIOD)
-                                       (sc_refill_cfgs_of s) x
+                                       (sc_refill_cfgs_of s) sc_ptr
                            \<and> pred_map (\<lambda>cfg. window (scrc_refills cfg) (scrc_period cfg))
-                                       (sc_refill_cfgs_of s) x"
+                                       (sc_refill_cfgs_of s) sc_ptr"
                in hoare_seq_ext)
    apply wpsimp
 
