@@ -9983,10 +9983,10 @@ lemma refill_budget_check_valid_refills[wp]:
    apply (intro hoare_vcg_conj_lift_pre_fix
           ; (solves schedule_used_simple)?)
 
-         apply (find_goal \<open>match conclusion in "\<lbrace>_\<rbrace> head_insufficient_loop _ \<lbrace>\<lambda>_. _\<rbrace>" \<Rightarrow> \<open>-\<close>\<close>)
-         apply (rule_tac Q="\<lambda>_ s. \<not> round_robin sc_ptr s \<and> sp_valid_refills_unbundled sc_ptr s"
-                      in hoare_strengthen_post[rotated])
-          apply (fastforce simp: valid_refills_def vs_all_heap_simps)
+          apply (find_goal \<open>match conclusion in "\<lbrace>_\<rbrace> head_insufficient_loop _ \<lbrace>\<lambda>_. _\<rbrace>" \<Rightarrow> \<open>-\<close>\<close>)
+          apply (rule_tac Q="\<lambda>_ s. \<not> round_robin sc_ptr s \<and> sp_valid_refills_unbundled sc_ptr s"
+                       in hoare_strengthen_post[rotated])
+           apply (fastforce simp: valid_refills_def vs_all_heap_simps)
           apply (intro hoare_vcg_conj_lift_pre_fix
                  ; (solves head_insufficient_loop_simple)?)
                 apply (wpsimp wp: head_insufficient_loop_refills_sum)
@@ -10003,14 +10003,15 @@ lemma refill_budget_check_valid_refills[wp]:
            apply (clarsimp simp: vs_all_heap_simps word_le_nat_alt)
           apply (wpsimp wp: head_insufficient_loop_non_zero_refills)
           apply (clarsimp simp: vs_all_heap_simps word_le_nat_alt)
-          apply (wpsimp wp: refill_budget_check_refills_sum_helper)
-         apply (wpsimp wp: refill_budget_check_ordered_disjoint_helper', fastforce+)
-        apply (wpsimp wp: refill_budget_check_no_overflow', fastforce+)
-       apply (wpsimp wp: refill_budget_check_window_helper, fastforce+)
-      apply (wpsimp wp: refill_budget_check_length_helper)
-     apply (wpsimp wp: refill_budget_check_non_zero_refills_helper)
-    apply (wpsimp wp: refill_budget_check_refills_unat_sum_helper, fastforce+)
+         apply (wpsimp wp: refill_budget_check_refills_sum_helper)
+        apply (wpsimp wp: refill_budget_check_ordered_disjoint_helper', fastforce+)
+       apply (wpsimp wp: refill_budget_check_no_overflow', fastforce+)
+      apply (wpsimp wp: refill_budget_check_window_helper, fastforce+)
+     apply (wpsimp wp: refill_budget_check_length_helper)
+    apply (wpsimp wp: refill_budget_check_non_zero_refills_helper)
     apply (clarsimp simp: obj_at_def)
+   apply (wpsimp wp: refill_budget_check_refills_unat_sum_helper, fastforce+)
+   apply (clarsimp simp: obj_at_def)
   apply (wpsimp wp: set_refills_wp get_refills_wp
               simp: vs_all_heap_simps update_sched_context_set_refills_rewrite update_refill_hd_rewrite)
   done
@@ -11661,15 +11662,16 @@ lemma refill_budget_check_bounded_release_time:
     apply ( clarsimp simp: vs_all_heap_simps current_time_bounded_def)
    apply (rule hoare_seq_ext[OF _ get_sched_context_sp])
    apply (intro hoare_vcg_conj_lift_pre_fix; (solves schedule_used_simple)?)
-            apply (wpsimp wp: refill_budget_check_refills_sum_helper)
-           apply (wpsimp wp: refill_budget_check_ordered_disjoint_helper', fastforce+)
-          apply (wpsimp wp: refill_budget_check_no_overflow', fastforce+)
-         apply (wpsimp wp: refill_budget_check_window_helper, fastforce+)
-        apply (wpsimp wp: refill_budget_check_length_helper)
-       apply (wpsimp wp: refill_budget_check_non_zero_refills_helper)
-      apply (wpsimp wp: refill_budget_check_refills_unat_sum_helper, fastforce+)
+           apply (wpsimp wp: refill_budget_check_refills_sum_helper)
+          apply (wpsimp wp: refill_budget_check_ordered_disjoint_helper', fastforce+)
+         apply (wpsimp wp: refill_budget_check_no_overflow', fastforce+)
+        apply (wpsimp wp: refill_budget_check_window_helper, fastforce+)
+       apply (wpsimp wp: refill_budget_check_length_helper)
+      apply (wpsimp wp: refill_budget_check_non_zero_refills_helper)
       apply (clarsimp simp: obj_at_def)
-     apply wpsimp
+     apply (wpsimp wp: refill_budget_check_refills_unat_sum_helper, fastforce+)
+     apply (clarsimp simp: obj_at_def)
+    apply wpsimp
    apply (wpsimp wp: refill_budget_check_schedule_used_r_time_helper, fastforce+)
   apply (rule_tac Q="\<lambda>_ s. pred_map (\<lambda>cfg. unat (r_time (scrc_refill_hd cfg)) + 2 * unat MAX_PERIOD
                                            \<le> unat max_time) (sc_refill_cfgs_of s) sc_ptr"
