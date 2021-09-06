@@ -3951,13 +3951,79 @@ lemma setNextInterrupt_corres:
   apply (clarsimp simp: state_relation_def release_queue_relation_def)
   done
 
+crunches setReprogramTimer
+  for valid_tcbs'[wp]: valid_tcbs'
+
+lemma checkDomainTime_corres:
+  "corres dc (valid_tcbs and weak_valid_sched_action and pspace_aligned and pspace_distinct)
+             (valid_tcbs' and valid_queues and valid_queues' and valid_release_queue_iff)
+             check_domain_time
+             checkDomainTime"
+  apply (clarsimp simp: check_domain_time_def checkDomainTime_def)
+  apply (rule corres_guard_imp)
+    apply (rule corres_split[OF isCurDomainExpired_corres])
+      apply (rule corres_when)
+       apply simp
+      apply (rule corres_split[OF setReprogramTimer_corres])
+        apply (rule rescheduleRequired_corres)
+       apply (wpsimp wp: hoare_drop_imps simp: isCurDomainExpired_def)+
+  done
+
+lemma getCurrentThread_sp:
+  "\<lbrace>P\<rbrace> getCurThread \<lbrace>\<lambda>rv s. rv = ksCurThread s \<and> P s\<rbrace>"
+  by wpsimp
+
 lemma schedule_corres:
   "corres dc (invs and valid_sched and valid_list) invs' (Schedule_A.schedule) ThreadDecls_H.schedule"
   supply tcbSchedEnqueue_invs'[wp del]
   supply tcbSchedEnqueue_invs'_not_ResumeCurrentThread[wp del]
   supply setSchedulerAction_direct[wp]
   supply if_split[split del]
+(*
+crunches awaken
+  for weak_sch_act_wf[wp]: "\<lambda>s'. weak_sch_act_wf (ksSchedulerAction s') s'"
+  (wp: crunch_wps simp: awakenBody_def) *)
+
+thm weak_sch_act_wf_at_cross
+(*   apply (rule_tac Q="\<lambda>s'. weak_sch_act_wf (ksSchedulerAction s') s'" in corres_cross_add_guard)
+    apply (fastforce intro: weak_sch_act_wf_at_cross) *)
+
   apply (clarsimp simp: Schedule_A.schedule_def Thread_H.schedule_def)
+  apply (rule corres_split_skip)
+apply (wpsimp wp: awaken_valid_sched)
+apply (wpsimp wp: awaken_invs')
+apply (corressimp corres: awaken_corres)
+
+apply (fastforce intro: weak_sch_act_wf_at_cross simp: invs_def valid_state_def)
+
+apply (rule corres_split_skip)
+apply wpsimp
+apply wpsimp
+apply (corressimp corres: checkDomainTime_corres)
+ apply (fastforce intro: weak_sch_act_wf_at_cross simp: invs_def valid_state_def)
+
+
+apply (rule corres_split'[rotated 2, OF gets_sp getCurrentThread_sp])
+apply corressimp
+apply (rule corres_split'[rotated 2, OF is_schedulable_sp isSchedulable_sp])
+apply (corressimp corres: isSchedulable_corres)
+apply (fastforce intro: weak_sch_act_wf_at_cross simp: invs_def valid_state_def state_relation_def cur_tcb_def)
+
+apply (rule corres_split'[rotated 2, OF gets_sp getSchedulerAction_sp])
+apply (corressimp corres: get_sa_corres)
+apply (case_tac action; clarsimp simp:)
+thm get_sa_corres
+thm getSchedulerAction_sp
+find_theorems getSchedulerAction name: sp
+
+thm is_schedulable_sp isSchedulable_sp
+thm isSchedulable_corres
+find_theorems getCurThread corres
+
+find_theorems weak_sch_act_wf -valid
+find_theorems valid_tcbs -valid
+find_theorems awaken invs'
+find_theorems Schedule_A.awaken valid_sched
   sorry (* schedule_corres *) (*
   apply (subst thread_get_test)
   apply (subst thread_get_comm)
