@@ -8836,7 +8836,7 @@ lemma handle_overrun_loop_refills_unat_sum_equals_budget:
    handle_overrun_loop usage
    \<lbrace>\<lambda>_ s. pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg) = unat (scrc_budget cfg))
                    (sc_refill_cfgs_of s) sc_ptr\<rbrace>"
-  (is "valid ?pre _ _")
+  (is "\<lbrace>?pre\<rbrace> _ \<lbrace>_\<rbrace>")
   apply (clarsimp simp: handle_overrun_loop_def)
   apply (rule_tac I="\<lambda>_. ?pre" in valid_whileLoop; fastforce?)
   apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget
@@ -8856,7 +8856,7 @@ lemma handle_overrun_loop_body_window:
         else pred_map (\<lambda>cfg. window (scrc_refills cfg) (scrc_period cfg)) (sc_refill_cfgs_of s) sc_ptr\<rbrace>
    handle_overrun_loop_body usage
    \<lbrace>\<lambda>_ s. pred_map (\<lambda>cfg. window (scrc_refills cfg) (scrc_period cfg)) (sc_refill_cfgs_of s) sc_ptr\<rbrace>"
-  (is "valid _ _ (\<lambda>_ s. ?post s)")
+  (is "\<lbrace>_\<rbrace> _ \<lbrace>(\<lambda>_ s. ?post s)\<rbrace>")
   apply (clarsimp simp: handle_overrun_loop_body_def)
   apply (rule hoare_seq_ext[OF _ gets_sp])
   apply (rule hoare_seq_ext[OF _ refill_single_sp])
@@ -9672,13 +9672,13 @@ lemma handle_overrun_loop_body_non_zero_refills:
   apply (rule_tac B="\<lambda>_. ?Q" in hoare_seq_ext)
    apply wpsimp
   apply (rule hoare_if)
-   apply (wpsimp wp: schedule_used_non_zero_refills update_sched_context_wp get_refills_wp
-               simp: update_refill_hd_def refill_pop_head_def refill_single_def refill_size_def)
-   apply (clarsimp simp: vs_all_heap_simps obj_at_def refills_unat_sum_def)
-  apply (wpsimp wp: schedule_used_non_zero_refills )
-   apply (clarsimp simp: refill_pop_head_def)
-   apply (wpsimp wp: update_sched_context_wp get_refills_wp)
+   apply (wpsimp wp: update_sched_context_wp
+               simp: update_refill_hd_def)
+   apply (clarsimp simp: vs_all_heap_simps obj_at_def)
+  apply (wpsimp wp: schedule_used_non_zero_refills update_sched_context_wp get_refills_wp
+              simp: refill_pop_head_def)
   apply (clarsimp simp: vs_all_heap_simps obj_at_def refills_unat_sum_def)
+  apply (rename_tac sc n)
   apply (case_tac "sc_refills sc"; clarsimp)
   done
 
@@ -9759,14 +9759,13 @@ lemma head_insufficient_loop_non_zero_refills:
    head_insufficient_loop sc_ptr'
    \<lbrace>\<lambda>_ s. pred_map (\<lambda>cfg. \<forall>refill \<in> set (scrc_refills cfg). 0 < unat (r_amount refill))
                    (sc_refill_cfgs_of s) sc_ptr\<rbrace>"
-  (is "valid ?P _ _")
+  (is "\<lbrace>?P\<rbrace> _ \<lbrace>_\<rbrace>")
   apply (clarsimp simp: head_insufficient_loop_def)
   apply (rule_tac I="\<lambda>_. ?P" in valid_whileLoop; fastforce?)
    apply (rule hoare_vcg_if_lift_helper)
      apply (intro hoare_vcg_conj_lift_pre_fix; (solves non_overlapping_merge_refills_simple)?)
        apply (wpsimp wp: non_overlapping_merge_refills_non_zero_refills)
       apply (wpsimp wp: non_overlapping_merge_refills_refills_unat_sum_lower_bound)
-      apply (clarsimp simp: vs_all_heap_simps)
       apply (fastforce dest!: head_insufficient_length_at_least_two[rotated]
                         simp: vs_all_heap_simps)
      apply (wpsimp wp: non_overlapping_merge_refills_refills_unat_sum_equals_budget)
@@ -10111,7 +10110,7 @@ lemma merge_refills_refills_unat_sum_equals_unat_budget:
   apply (subst unat_add_lem'')
    apply (prop_tac "unat (r_amount (hd list)) \<le> sum_list (map unat (map r_amount list))")
     apply (fastforce intro: member_le_sum_list)
-    apply (rule_tac y="unat (sc_budget sc)" in order_trans)
+   apply (rule_tac y="unat (sc_budget sc)" in order_trans)
     apply fastforce
    apply simp
   apply (case_tac list; simp)
@@ -10165,7 +10164,7 @@ lemma refill_head_overlapping_loop_non_zero_refills:
    refill_head_overlapping_loop sc_ptr'
    \<lbrace>\<lambda>_ s. pred_map (\<lambda>cfg. \<forall>refill \<in> set (scrc_refills cfg). 0 < unat (r_amount refill))
                    (sc_refill_cfgs_of s) sc_ptr\<rbrace>"
-  (is "valid ?P _ _")
+  (is "\<lbrace>?P\<rbrace> _ \<lbrace>_\<rbrace>")
   apply (clarsimp simp: refill_head_overlapping_loop_def)
   apply (rule_tac I="\<lambda>_. ?P" in valid_whileLoop; fastforce?)
    apply (rule hoare_vcg_if_lift_helper)
@@ -10178,7 +10177,7 @@ lemma refill_head_overlapping_loop_non_zero_refills:
     apply refill_head_overlapping_loop_simple
    apply wpsimp
   apply (clarsimp split: if_splits)
- done
+  done
 
 lemma refill_unblock_check_valid_refills[wp]:
    "\<lbrace>valid_refills p and current_time_bounded 1\<rbrace>
