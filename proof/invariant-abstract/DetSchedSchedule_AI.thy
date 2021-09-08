@@ -8925,7 +8925,7 @@ lemma handle_overrun_loop_body_ordered_disjoint:
 lemma hoare_imp_helper:
   "\<lbrakk> \<lbrace>P and Q\<rbrace> f \<lbrace>\<lambda>rv s. R rv s\<rbrace>; f \<lbrace>\<lambda>s. \<not> Q s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s\<rbrace> f \<lbrace>\<lambda>rv s. Q s \<longrightarrow> R rv s\<rbrace>"
   apply (rule hoare_weaken_pre)
-  apply (rule hoare_vcg_imp_lift')
+   apply (rule hoare_vcg_imp_lift')
     apply fastforce
    apply fastforce
   apply (clarsimp simp: pred_conj_def valid_def)
