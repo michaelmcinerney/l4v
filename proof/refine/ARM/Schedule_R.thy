@@ -2676,7 +2676,7 @@ lemma refillBudgetCheck_valid_objs':
   apply (rule hoare_seq_ext[OF _ scActive_sp])
   apply (rule hoare_seq_ext[OF _ assert_sp])
   apply (wpsimp wp: headInsufficientLoop_valid_objs' handleOverrunLoop_valid_objs'
-                    hoare_vcg_all_lift setRefillHd_valid_objs' hoare_vcg_if_lift2 hoare_drop_imps)
+                    hoare_vcg_all_lift updateRefillHd_valid_objs' hoare_vcg_if_lift2 hoare_drop_imps)
   apply (clarsimp simp: active_sc_at'_def obj_at'_def)
   done
 
@@ -2717,11 +2717,10 @@ lemma refillBudgetCheck_if_live_then_nonz_cap'[wp]:
 
 lemma refillBudgetCheck_valid_idle'[wp]:
   "refillBudgetCheck usage \<lbrace>valid_idle'\<rbrace>"
-  apply (clarsimp simp: refillBudgetCheck_def isRoundRobin_def refillReady_def updateSchedContext_def
+  apply (clarsimp simp: refillBudgetCheck_def isRoundRobin_def refillReady_def
                         setReprogramTimer_def updateRefillHd_def setRefillHd_def)
   apply (rule hoare_seq_ext_skip, solves wpsimp)+
-  apply wpsimp
-  apply (fastforce simp: valid_idle'_def obj_at'_def)
+  apply (wpsimp wp: updateSchedContext_valid_idle')
   done
 
 lemma handleOverrunLoop_valid_machine_state'[wp]:
