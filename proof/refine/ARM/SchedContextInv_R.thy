@@ -1845,8 +1845,7 @@ lemma refillBudgetCheck_corres:
        apply (clarsimp simp: refills_unat_sum_def)
       apply (case_tac "sc_refills sc"; clarsimp simp: refills_unat_sum_cons)
     apply schedule_used_simple
-   apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
-  apply (wpsimp wp: updateRefillHd_valid_objs')
+   apply (wpsimp wp: updateRefillHd_valid_objs')
 
   apply (rule_tac F="rAmount (refillHd sc') = r_amount (refill_hd sc)
                      \<and> rTime (refillHd sc') = r_time (refill_hd sc)"
