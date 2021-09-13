@@ -372,14 +372,6 @@ lemma getCurTime_sp:
   "\<lbrace>P\<rbrace> getCurTime \<lbrace>\<lambda>rv. P and (\<lambda>s. rv = ksCurTime s)\<rbrace>"
   by (wpsimp simp: getCurTime_def)
 
-lemma isRoundRobin_corres:
-  "corres (=) (sc_at sc_ptr) (sc_at' sc_ptr)
-              (is_round_robin sc_ptr) (isRoundRobin sc_ptr)"
-  apply (clarsimp simp: is_round_robin_def isRoundRobin_def)
-  apply (corressimp corres: get_sc_corres
-                      simp: sc_relation_def)
-  done
-
 lemma valid_obj'_scPeriod_update[simp]:
   "valid_obj' (KOSchedContext (scPeriod_update (\<lambda>_. period) sc')) = valid_obj' (KOSchedContext sc')"
   by (fastforce simp: valid_obj'_def valid_sched_context'_def valid_sched_context_size'_def objBits_simps)
@@ -452,17 +444,6 @@ lemma refillAddTail_corres:
     apply (clarsimp simp: objBits_simps)
    apply (clarsimp simp: obj_at_def is_sc_obj)
   apply (clarsimp simp: obj_at'_def projectKOs opt_map_red)
-  done
-
-lemma isRoundRobin_sp:
-  "\<lbrace>P\<rbrace>
-   isRoundRobin scPtr
-   \<lbrace>\<lambda>rv s. P s \<and> (\<exists>sc. ko_at' sc scPtr s \<and> rv = (scPeriod sc = 0))\<rbrace>"
-  apply (simp add: isRoundRobin_def)
-  apply (rule hoare_seq_ext[rotated])
-   apply (rule get_sc_sp')
-  apply (wp hoare_return_sp)
-  apply (clarsimp simp: obj_at'_def projectKOs)
   done
 
 lemma maybeAddEmptyTail_corres:

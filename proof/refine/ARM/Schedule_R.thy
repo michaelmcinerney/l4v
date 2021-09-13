@@ -3954,6 +3954,179 @@ lemma setNextInterrupt_corres:
 crunches setReprogramTimer
   for valid_tcbs'[wp]: valid_tcbs'
 
+lemma refillUnblockCheck_corres':
+   "corres dc
+      (sc_at scp and is_active_sc2 scp and pspace_aligned and pspace_distinct
+       and (\<lambda>s. ((\<lambda>sc. 0 < length (sc_refills sc)) |< scs_of2 s) scp))
+      (valid_refills' scp)
+         (refill_unblock_check scp) (refillUnblockCheck scp)"
+sorry
+
+lemma refillBudgetCheck_corres:
+  "usage = usage'
+   \<Longrightarrow> corres dc ((\<lambda>s. sc_at (cur_sc s) s \<and> is_active_sc (cur_sc s) s
+                       \<and> valid_objs  s
+                       \<and> pspace_aligned s \<and> pspace_distinct s)
+                   and (\<lambda>s. \<not> round_robin (cur_sc s) s \<and> valid_refills (cur_sc s) s))
+                 (\<lambda>s'. valid_refills' (ksCurSc s') s')
+                 (refill_budget_check usage)
+                 (refillBudgetCheck usage')"
+sorry
+
+lemma corres_when3:
+   "\<lbrakk>G = G'; G \<Longrightarrow> corres_underlying sr nf nf' dc P P' a c\<rbrakk>
+    \<Longrightarrow> corres_underlying sr nf nf' dc P P' (when G a) (when G' c)"
+   apply (frule corres_when2)
+    apply (fastforce simp: corres_underlying_def when_def)+
+   done
+
+lemma help_me:
+  "scConsumed_update (\<lambda>_. scConsumed sc + consumed) sc
+    = scConsumed_update (\<lambda>c. c + consumed) sc"
+  apply (fastforce intro: sched_context.expand)
+  done
+
+lemma scConsumed_update_corres2:
+  "x = y \<Longrightarrow>
+   corres dc (sc_at scPtr) (ko_at' sc' scPtr)
+          (set_sc_obj_ref sc_consumed_update scPtr x)
+          (setSchedContext scPtr (scConsumed_update (\<lambda>_. y) sc'))"
+sorry
+
+crunches refill_budget_check_round_robin
+  for sc_at[wp]: "sc_at sc_ptr"
+  and valid_objs[wp]: valid_objs
+  and pspace_aligned[wp]: pspace_aligned
+  and pspace_distinct[wp]: pspace_distinct
+
+lemma refill_budget_check_round_robin_round_robin[wp]:
+  "refill_budget_check_round_robin usage \<lbrace>\<lambda>s. Q (round_robin sc_ptr s)\<rbrace>"
+  apply (clarsimp simp: refill_budget_check_round_robin_def update_refill_tl_def
+                        update_refill_hd_def)
+  apply (wpsimp wp: update_sched_context_wp)
+  apply (clarsimp simp: obj_at_def round_robin_def vs_all_heap_simps)
+  done
+
+lemma handle_overrun_loop_round_robin[wp]:
+  "handle_overrun_loop sc_ptr \<lbrace>\<lambda>s. P (round_robin sc_ptr' s)\<rbrace>"
+  apply handle_overrun_loop_simple
+  done
+
+lemma head_insufficient_loop_round_robin[wp]:
+  "head_insufficient_loop sc_ptr \<lbrace>\<lambda>s. P (round_robin sc_ptr' s)\<rbrace>"
+  apply head_insufficient_loop_simple
+  done
+
+lemma refill_budget_check_round_robin[wp]:
+  "refill_budget_check usage \<lbrace>\<lambda>s. Q (round_robin sc_ptr s)\<rbrace>"
+  apply (clarsimp simp: refill_budget_check_def  update_refill_hd_def schedule_used_defs)
+  apply (rule hoare_seq_ext_skip, solves wpsimp)+
+  apply (wpsimp wp: update_sched_context_wp get_refills_wp
+              simp: refill_add_tail_def update_refill_tl_def)
+  apply (clarsimp simp: obj_at_def round_robin_def vs_all_heap_simps)
+  done
+
+crunches refillBudgetCheck, refillBudgetCheckRoundRobin
+  for typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
+  and sc_at'_n[wp]: "\<lambda>s. P (sc_at'_n n p s)"
+
+end
+
+global_interpretation
+  refillBudgetCheckRoundRobin: typ_at_all_props' "refillBudgetCheckRoundRobin usage"
+  by typ_at_props'
+
+global_interpretation
+  refillBudgetChec: typ_at_all_props' "refillBudgetCheck usage"
+  by typ_at_props'
+
+context begin interpretation Arch . (*FIXME: arch_split*)
+
+lemma isRoundRobin_sp:
+  "\<lbrace>P\<rbrace>
+   isRoundRobin scPtr
+   \<lbrace>\<lambda>rv s. P s \<and> (\<exists>sc. ko_at' sc scPtr s \<and> rv = (scPeriod sc = 0))\<rbrace>"
+  apply (simp add: isRoundRobin_def)
+  apply (rule hoare_seq_ext[rotated])
+   apply (rule get_sc_sp')
+  apply (wp hoare_return_sp)
+  apply (clarsimp simp: obj_at'_def projectKOs)
+  done
+
+lemma isRoundRobin_corres:
+  "corres (=) (sc_at sc_ptr) (sc_at' sc_ptr)
+              (is_round_robin sc_ptr) (isRoundRobin sc_ptr)"
+  apply (clarsimp simp: is_round_robin_def isRoundRobin_def)
+  apply (corressimp corres: get_sc_corres
+                      simp: sc_relation_def)
+  done
+
+lemma refillBudgetCheckRoundRobin_corres:
+  "corres dc
+          (cur_sc_active and (\<lambda>s. sc_at (cur_sc s) s))
+          (valid_objs' and (\<lambda>s'. sc_at' (ksCurSc s') s'))
+          (refill_budget_check_round_robin usage) (refillBudgetCheckRoundRobin usage)"
+sorry
+
+lemma commitTime_corres:
+  "corres dc (\<lambda>s. sc_at (cur_sc s) s \<and> is_active_sc (cur_sc s) s
+                  \<and> valid_objs s
+                  \<and> pspace_aligned s \<and> pspace_distinct s
+                  \<and> \<not> round_robin (cur_sc s) s \<and> valid_refills (cur_sc s) s)
+             (\<lambda>s'. valid_refills' (ksCurSc s') s')
+             commit_time
+             commitTime"
+  apply (rule_tac Q="\<lambda>s'. sc_at' (ksCurSc s') s'" in corres_cross_add_guard)
+   apply (fastforce intro: sc_at_cross simp: state_relation_def)
+  apply (clarsimp simp: commit_time_def commitTime_def liftM_def)
+  apply (rule corres_split'[rotated 2, OF gets_sp getCurSc_sp])
+   apply (corressimp corres: getCurSc_corres)
+  apply clarsimp
+  apply (rule corres_split'[rotated 2, OF get_sched_context_sp get_sc_sp'])
+   apply (corressimp corres: get_sc_corres)
+  apply (rule corres_split'[rotated])
+     apply (rule setConsumedTime_corres)
+     apply simp
+    apply wpsimp
+   apply wpsimp
+  apply (rule corres_when3)
+   apply (clarsimp simp: sc_relation_def active_sc_def)
+  apply (rule corres_split'[rotated 2, OF gets_sp getConsumedTime_sp])
+   apply corressimp
+  apply clarsimp
+  apply (rename_tac consumed n)
+  apply (rule_tac Q="\<lambda>_ s. sc_at scPtr s"
+              and Q'="\<lambda>_ s'. sc_at' scPtr s'"
+               in corres_split'[rotated, where r'=dc])
+     apply (clarsimp simp: updateSchedContext_def)
+     apply (rule corres_symb_exec_r[rotated, OF get_sc_sp'])
+       apply wpsimp
+      apply wpsimp
+     apply (rename_tac sc')
+     apply (prop_tac "(\<lambda>sc. sc\<lparr>sc_consumed := sc_consumed sc + consumed\<rparr> )
+                      = sc_consumed_update (\<lambda>c. c + consumed)")
+      apply force
+     apply (prop_tac "scConsumed_update (\<lambda>_. scConsumed sc' + consumed) sc'
+                      = scConsumed_update (\<lambda>c. c + consumed) sc'")
+      apply (fastforce intro: sched_context.expand)
+     apply (rule_tac P="\<lambda>t. corres dc _ _ (update_sched_context scPtr t) _" in subst[OF sym])
+      apply assumption
+     apply (rule_tac P="\<lambda>t. corres dc _ _ _ (setSchedContext scPtr t)" in subst[OF sym])
+      apply assumption
+     apply (rule corres_guard_imp)
+       apply (rule_tac f="\<lambda>c. c + consumed" and f'="(\<lambda>c. c + consumed)" in scConsumed_update_corres)
+       apply (clarsimp simp: sc_relation_def opt_map_red opt_map_def active_sc_def)
+      apply fastforce
+     apply simp
+    apply wpsimp
+   apply (wpsimp simp: isRoundRobin_def)
+  apply (clarsimp simp: ifM_def)
+  apply (rule corres_when3; (solves simp)?)
+  apply (rule corres_split'[rotated 2, OF is_round_robin_sp isRoundRobin_sp])
+   apply (corressimp corres: isRoundRobin_corres)
+  apply (corressimp corres: refillBudgetCheckRoundRobin_corres refillBudgetCheck_corres)
+  done
+
 lemma checkDomainTime_corres:
   "corres dc (valid_tcbs and weak_valid_sched_action and pspace_aligned and pspace_distinct)
              (valid_tcbs' and valid_queues and valid_queues' and valid_release_queue_iff)
@@ -3975,12 +4148,52 @@ lemma getCurrentThread_sp:
   by wpsimp
 find_theorems switch_sched_context
 lemma switchSchedContext_corres:
-  "corres dc P Q switch_sched_context switchSchedContext"
+  "corres dc (\<lambda>s. invs s \<and> bound_sc_tcb_at bound (cur_thread s) s)
+             invs'
+             switch_sched_context
+             switchSchedContext"
   apply (clarsimp simp: switch_sched_context_def switchSchedContext_def)
   apply (rule corres_split'[rotated 2, OF gets_sp getCurSc_sp])
    apply (corressimp corres: getCurSc_corres)
   apply (rule corres_split'[rotated 2, OF gets_sp getCurrentThread_sp])
    apply corressimp
+thm get_tcb_obj_ref_corres
+thm gsc_sp
+thm threadGet_sp
+apply (rule corres_split'[rotated 2, OF gsc_sp threadGet_sp, where r'="(=)"])
+apply clarsimp
+apply (rule corres_guard_imp)
+apply (rule get_tcb_obj_ref_corres)
+apply (clarsimp simp: tcb_relation_def)
+  apply fastforce
+  apply fastforce
+
+apply (rule corres_symb_exec_l[rotated])
+apply wpsimp
+apply (clarsimp simp: obj_at_def pred_tcb_at_def)
+apply (rule assert_opt_sp)
+apply wpsimp
+apply (clarsimp simp: obj_at_def pred_tcb_at_def)
+
+
+
+(*   apply (rule_tac Q="\<lambda>s'. sc_at' (ksCurSc s') s'" in corres_cross_add_guard) *)
+   apply (fastforce intro: sc_at_cross simp: state_relation_def)
+
+  apply (rule corres_split'[rotated 2, OF get_sched_context_sp get_sc_sp'])
+   apply (corressimp corres: get_sc_corres)
+
+
+   apply (fastforce simp: invs_def cur_sc_tcb_def state_relation_def obj_at_def pred_tcb_at_def
+sc_at_pred_n_def
+is_sc_obj_def valid_state_def
+intro: sc_at_cross valid_objs_valid_sched_context_size)
+
+
+thm invs'_def
+thm get_tcb_obj_ref_corres
+find_theorems threadGet name: sp
+find_theorems threadGet corres
 
 lemma scAndTimer_corres:
   "corres dc ((\<lambda>s. active_sc_tcb_at (cur_thread s) s) and valid_release_q and valid_objs
