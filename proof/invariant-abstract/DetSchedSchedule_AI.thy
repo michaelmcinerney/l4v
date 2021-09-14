@@ -8937,9 +8937,8 @@ lemma handle_overrun_loop_body_ordered_disjoint:
   apply (subst unat_add_lem'; fastforce simp: max_word_def window_def last_tl)
   done
 
-(* FIXME RT: keep? move? *)
-lemma hoare_imp_helper:
-  "\<lbrakk> \<lbrace>P and Q\<rbrace> f \<lbrace>\<lambda>rv s. R rv s\<rbrace>; f \<lbrace>\<lambda>s. \<not> Q s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s\<rbrace> f \<lbrace>\<lambda>rv s. Q s \<longrightarrow> R rv s\<rbrace>"
+lemma hoare_vcg_imp_lift_pre_add:
+  "\<lbrakk> \<lbrace>P and Q\<rbrace> f \<lbrace>\<lambda>rv s. R rv s\<rbrace>; f \<lbrace>\<lambda>s. \<not> Q s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q s \<longrightarrow> R rv s\<rbrace>"
   apply (rule hoare_weaken_pre)
    apply (rule hoare_vcg_imp_lift')
     apply fastforce
@@ -8967,7 +8966,7 @@ lemma handle_overrun_loop_ordered_disjoint:
     apply (wpsimp wp: handle_overrun_loop_body_ordered_disjoint)
     apply (fastforce dest: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
                      simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
-  apply (rule hoare_imp_helper; (solves handle_overrun_loop_body_simple)?)
+  apply (rule hoare_vcg_imp_lift_pre_add; (solves handle_overrun_loop_body_simple)?)
   apply (intro hoare_vcg_conj_lift_pre_fix
          ; (solves handle_overrun_loop_body_simple)?)
    apply wpsimp
@@ -9007,7 +9006,7 @@ lemma handle_overrun_loop_window:
    apply (fastforce intro!: head_time_buffer_implies_no_overflow
                      dest!: head_time_buffer_true_imp_unat_buffer[THEN iffD1, rotated]
                       simp: vs_all_heap_simps unat_MAX_RELEASE_TIME)
-  apply (rule hoare_imp_helper; (solves handle_overrun_loop_body_simple)?)
+  apply (rule hoare_vcg_imp_lift_pre_add; (solves handle_overrun_loop_body_simple)?)
   apply (intro hoare_vcg_conj_lift_pre_fix
          ; (solves handle_overrun_loop_simple)?)
     apply (rule hoare_weaken_pre)
@@ -9610,7 +9609,7 @@ lemma handle_overrun_loop_non_zero_refills:
   apply (intro hoare_vcg_conj_lift_pre_fix; (solves handle_overrun_loop_body_simple)?)
    apply (wpsimp wp: handle_overrun_loop_body_non_zero_refills)
    apply (clarsimp split: if_splits)
-  apply (rule hoare_imp_helper; (solves simp)?)
+  apply (rule hoare_vcg_imp_lift_pre_add; (solves simp)?)
    apply (wpsimp wp: handle_overrun_loop_body_refills_unat_sum_equals_budget)
   apply (wpsimp wp: handle_overrun_loop_body_non_zero_refills)
   done
@@ -9665,7 +9664,7 @@ lemma head_insufficient_loop_non_zero_refills:
   apply (rule_tac I="\<lambda>_. ?P" in valid_whileLoop; fastforce?)
   apply (intro hoare_vcg_conj_lift_pre_fix; (solves non_overlapping_merge_refills_simple)?)
    apply (wpsimp wp: non_overlapping_merge_refills_non_zero_refills)
-  apply (rule hoare_imp_helper)
+  apply (rule hoare_vcg_imp_lift_pre_add)
    apply (intro hoare_vcg_conj_lift_pre_fix; (solves non_overlapping_merge_refills_simple)?)
     apply (wpsimp wp: non_overlapping_merge_refills_refills_unat_sum_lower_bound)
     apply (fastforce dest!: head_insufficient_length_at_least_two[rotated]
@@ -10062,7 +10061,7 @@ lemma refill_head_overlapping_loop_non_zero_refills:
   apply (intro hoare_vcg_conj_lift_pre_fix; (solves merge_refills_simple)?)
    apply (wpsimp wp: merge_refills_non_zero_refills)
    apply (clarsimp simp: vs_all_heap_simps)
-  apply (rule hoare_imp_helper; (solves merge_refills_simple)?)
+  apply (rule hoare_vcg_imp_lift_pre_add; (solves merge_refills_simple)?)
   apply (intro hoare_vcg_conj_lift_pre_fix; (solves merge_refills_simple)?)
   apply (wpsimp wp: merge_refills_refills_unat_sum_equals_unat_budget)
   apply (fastforce dest: refill_head_overlapping_true_imp_length_at_least_two
