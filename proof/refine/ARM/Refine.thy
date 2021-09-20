@@ -324,6 +324,26 @@ lemma valid_sched_init[simp]:
                     init_global_pd_def  ct_not_in_q_def not_queued_def
                     valid_sched_action_def is_activatable_def
                     ct_in_cur_domain_2_def  valid_idle_etcb_def etcb_at'_def)
+apply (intro conjI impI allI)
+apply (clarsimp simp: valid_ready_qs_def)
+apply (clarsimp simp: ready_or_release_2_def in_queues_2_def)
+apply (clarsimp simp: in_queues_2_def)
+apply (clarsimp simp: vs_all_heap_simps kernel_base_def idle_sc_ptr_def)
+apply (clarsimp simp: vs_all_heap_simps kernel_base_def idle_sc_ptr_def valid_blocked_defs split: if_splits)
+apply (clarsimp simp: vs_all_heap_simps kernel_base_def idle_sc_ptr_def valid_blocked_defs
+default_domain_def
+minBound_word
+split: if_splits)
+apply (clarsimp simp: vs_all_heap_simps released_ipc_queues_defs)
+apply (clarsimp simp: vs_all_heap_simps active_reply_scs_def active_if_reply_sc_at_2_def active_sc_def MIN_REFILLS_def)
+apply (clarsimp simp: vs_all_heap_simps active_sc_valid_refills_def)
+apply safe
+apply (clarsimp simp: vs_all_heap_simps cfg_valid_refills_def rr_valid_refills_def sp_valid_refills_def active_sc_def MIN_REFILLS_def
+idle_sc_ptr_def)
+apply (clarsimp simp: vs_all_heap_simps cfg_valid_refills_def rr_valid_refills_def sp_valid_refills_def active_sc_def MIN_REFILLS_def
+idle_sc_ptr_def bounded_release_time_def sc_refill_cfg_of_def default_sched_context_def)
+term default_sched_context
+thm bounded_release_time_def
   sorry
 
 lemma valid_domain_list_init[simp]:
