@@ -355,6 +355,24 @@ lemma decode_sc_ctrl_inv_corres:
              split: cap.splits)
   done
 
+lemma schedContextBindNtfn_corres:
+  "\<lbrakk>sc_ptr = scPtr; ntfn_ptr = ntfnPtr\<rbrakk>
+   \<Longrightarrow>  corres dc (sc_at sc_ptr and ntfn_at ntfn_ptr and pspace_aligned and pspace_distinct)
+                  Q
+                  (sched_context_bind_ntfn sc_ptr ntfn_ptr)
+                  (schedContextBindNtfn scPtr ntfnPtr)"
+  apply (rule corres_cross[where Q' = "sc_at' scPtr", OF sc_at'_cross_rel], fastforce)
+  apply (rule corres_cross[where Q' = "ntfn_at' ntfnPtr", OF ntfn_at'_cross_rel], fastforce)
+  apply (clarsimp simp: sched_context_bind_ntfn_def schedContextBindNtfn_def)
+  apply (simp add: update_sk_obj_ref_def update_sched_context_def bind_assoc)
+thm get_simple_ko_sp
+ apply (rule corres_split'[rotated 2, OF get_simple_ko_sp get_ntfn_sp'])
+apply (corressimp corres: get_ntfn_corres)
+
+thm get_ntfn_corres
+find_theorems getNotification name: sp
+term sched_context_bind_ntfn
+
 (* FIXME RT: preconditions can be reduced, this is what is available at the call site: *)
 lemma invoke_sched_context_corres:
   "sc_inv_rel sc_inv sc_inv' \<Longrightarrow>
@@ -364,6 +382,27 @@ lemma invoke_sched_context_corres:
           (invoke_sched_context sc_inv)
           (invokeSchedContext sc_inv')"
   apply (simp add: invoke_sched_context_def invokeSchedContext_def)
+find_theorems sched_context_bind_ntfn corres
+term valid_sched_context_inv
+find_consts name: valid name: inv
+  apply (cases sc_inv; clarsimp)
+thm setConsumed_corres
+apply (corressimp corres: setConsumed_corres)
+apply (intro conjI impI)
+  apply fastforce
+      apply (clarsimp simp: obj_at_def)
+apply (case_tac x12; clarsimp)
+apply (clarsimp simp: invs_def valid_state_def in_user_frame_def)
+         apply (wp | simp add: valid_pspace_def)+
+
+       apply (simp add: dc_def[symmetric])
+       apply (rule do_fault_transfer_corres)
+      apply (clarsimp simp: obj_at_def )
+     apply (erule ignore_if)
+find_theorems lookup_ipc_buffer
+    apply (wp|simp add: obj_at_def is_tcb valid_pspace'_def)+
+find_theorems (100) in_user_frame -valid
+find_theorems setConsumed corres
   (* most of the next layer down should go into SchedContext_R, because some of these are
      reused in Finalise and IpcCancel *)
   sorry

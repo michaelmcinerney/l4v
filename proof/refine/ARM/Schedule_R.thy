@@ -4174,21 +4174,13 @@ apply (clarsimp simp: obj_at_def pred_tcb_at_def)
 apply (rule assert_opt_sp)
 apply wpsimp
 apply (clarsimp simp: obj_at_def pred_tcb_at_def)
-
-
-
-(*   apply (rule_tac Q="\<lambda>s'. sc_at' (ksCurSc s') s'" in corres_cross_add_guard) *)
-   apply (fastforce intro: sc_at_cross simp: state_relation_def)
-
   apply (rule corres_split'[rotated 2, OF get_sched_context_sp get_sc_sp'])
    apply (corressimp corres: get_sc_corres)
-
-
    apply (fastforce simp: invs_def cur_sc_tcb_def state_relation_def obj_at_def pred_tcb_at_def
 sc_at_pred_n_def
 is_sc_obj_def valid_state_def
 intro: sc_at_cross valid_objs_valid_sched_context_size)
-
+oops
 
 thm invs'_def
 thm get_tcb_obj_ref_corres
@@ -4202,8 +4194,7 @@ lemma scAndTimer_corres:
              sc_and_timer
              scAndTimer"
   apply (clarsimp simp: sc_and_timer_def scAndTimer_def)
-
-find_theorems switch_sched_context name: corres
+oops
 
 lemma schedule_corres:
   "corres dc (invs and valid_sched and valid_list) invs' (Schedule_A.schedule) ThreadDecls_H.schedule"
