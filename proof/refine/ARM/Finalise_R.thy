@@ -1389,7 +1389,7 @@ lemma deletedIRQHandler_ct_not_inQ[wp]:
   apply (simp add: comp_def)
   done
 
-crunch ct_not_inQ[wp]: emptySlot "ct_not_inQ"
+(* crunch ct_not_inQ[wp]: emptySlot "ct_not_inQ" *)
 
 crunch tcbDomain[wp]: emptySlot "obj_at' (\<lambda>tcb. P (tcbDomain tcb)) t"
 
