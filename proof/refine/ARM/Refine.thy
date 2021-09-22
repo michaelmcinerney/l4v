@@ -325,8 +325,7 @@ lemma valid_sched_init[simp]:
                         ct_in_cur_domain_2_def valid_idle_etcb_def etcb_at'_def
                         valid_ready_qs_def ready_or_release_2_def in_queues_2_def
                         idle_sc_ptr_def valid_blocked_defs default_domain_def minBound_word
-                        released_ipc_queues_defs active_reply_scs_def active_if_reply_sc_at_def
-                        active_sc_def MIN_REFILLS_def)
+                        released_ipc_queues_defs active_reply_scs_def active_if_reply_sc_at_def)
   apply (auto simp: vs_all_heap_simps active_sc_valid_refills_def cfg_valid_refills_def
                     rr_valid_refills_def MIN_REFILLS_def bounded_release_time_def
                     default_sched_context_def MAX_PERIOD_def
