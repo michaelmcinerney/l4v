@@ -4221,7 +4221,8 @@ lemma ovalid_readRefillReady'[rule_format, simp]:
 lemma refillReady_wp':
   "\<lbrace>\<lambda>s. sc_at' scp s \<longrightarrow>
         P (((\<lambda>sc'. rTime (refillHd sc') \<le> ksCurTime s + kernelWCETTicks) |< scs_of' s) scp) s\<rbrace>
-    refillReady scp \<lbrace>P\<rbrace>"
+   refillReady scp
+   \<lbrace>P\<rbrace>"
   unfolding refillReady_def
   by wpsimp (drule use_ovalid[OF ovalid_readRefillReady'])
 
@@ -4382,7 +4383,7 @@ lemma length_sc_refills_cross:
   apply (clarsimp simp: obj_at_simps is_sc_obj valid_refills'_def sc_relation_def opt_map_red)
   done
 
-lemma update_refill_hd_rewrite:
+lemma update_refill_hd_comp:
   "update_refill_hd scPtr (f \<circ> g)
    = do update_refill_hd scPtr g;
         update_refill_hd scPtr f
@@ -4464,7 +4465,7 @@ lemma nonOverlappingMergeRefills_corres:
          ; (solves wpsimp)?)
    apply (corressimp corres: refillPopHead_corres
                        simp: obj_at_def vs_all_heap_simps pred_map_simps sc_at_ppred_def)
-  apply (subst update_refill_hd_rewrite)
+  apply (subst update_refill_hd_comp)
   apply (rule corres_guard_imp)
      apply (rule corres_split'[OF updateRefillHd_corres])
          apply blast
@@ -4884,12 +4885,12 @@ lemma handle_overrun_loop_body_terminates_wf_helper:
   apply fastforce
   done
 
-method wp_proj for proj :: "_ \<Rightarrow> _" uses wp simp
-   = (rule hoare_weaken_pre
-      , rule hoare_lift_Pf2[where f=proj]
-      , wpsimp wp: wp simp: simp
-      , wpsimp
-      , wpsimp)
+method wps_conj_solves uses wp simp wps
+   = (clarsimp simp: pred_conj_def)?
+     , rule hoare_weaken_pre
+     , ((rule hoare_vcg_conj_lift, (solves \<open>(wpsimp wp: wp simp: simp | wps wps)+\<close>)?)+)?
+     , (solves \<open>(wpsimp wp: wp simp: simp | wps wps)+\<close>)?
+     , clarsimp?
 
 lemma handle_overrun_loop_body_terminates:
   "\<lbrakk>sc_at (cur_sc s) s;
@@ -4907,11 +4908,10 @@ lemma handle_overrun_loop_body_terminates:
    prefer 2
    apply (fastforce simp: handle_overrun_loop_body_terminates_wf_helper)
   apply (rename_tac r s')
-  apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
-      apply (wp_proj "cur_sc :: 'a state \<Rightarrow> _ "
-                     wp: handle_overrun_loop_body_non_zero_refills
-                         handle_overrun_loop_body_refills_unat_sum_equals_budget)+
-  apply (wpsimp simp: handle_overrun_loop_body_def)
+  apply (wps_conj_solves wp: handle_overrun_loop_body_non_zero_refills
+                             handle_overrun_loop_body_refills_unat_sum_equals_budget)
+   apply (wpsimp simp: handle_overrun_loop_body_def)
+  apply (clarsimp split: if_split)
   apply (rename_tac sc n)
   apply (subst unat_sub)
    apply (prop_tac "sc_at (cur_sc s') s'", simp)
@@ -4953,12 +4953,9 @@ lemma handleOverrunLoop_corres:
       apply (corressimp corres: handleOverrunLoopBody_corres)
      apply (wpsimp wp: handle_overrun_loop_body_no_fail)
      apply (clarsimp simp: vs_all_heap_simps)
-    apply (intro hoare_vcg_conj_lift_pre_fix
-           ; wp_proj "cur_sc :: det_ext state \<Rightarrow> _"
-                     wp: handle_overrun_loop_body_non_zero_refills
-                         handle_overrun_loop_body_refills_unat_sum_equals_budget)+
-   apply (clarsimp simp: pred_conj_def)
-   apply (intro hoare_vcg_conj_lift_pre_fix; wp_proj "ksCurSc :: kernel_state \<Rightarrow> _")
+    apply (wps_conj_solves wp: handle_overrun_loop_body_non_zero_refills
+                               handle_overrun_loop_body_refills_unat_sum_equals_budget)
+   apply wps_conj_solves
   apply (fastforce intro:  handle_overrun_loop_body_terminates)
   done
 
@@ -5030,7 +5027,7 @@ lemma refillBudgetCheck_corres:
     apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> handle_overrun_loop _ \<lbrace>Q\<rbrace>" for P Q \<Rightarrow> -\<close>)
     apply (clarsimp simp: pred_conj_def)
     apply (intro hoare_vcg_conj_lift_pre_fix; (solves \<open>wpsimp | handle_overrun_loop_simple\<close>)?)
-      apply (wp_proj "cur_sc :: det_ext state \<Rightarrow> _")
+      apply wps_conj_solves
      apply (wpsimp wp: handle_overrun_loop_refills_unat_sum_equals_budget)
      apply (fastforce intro: valid_refills_refills_unat_sum_equals_budget
                        simp: vs_all_heap_simps cfg_valid_refills_def round_robin_def
@@ -5099,7 +5096,7 @@ lemma refillBudgetCheck_corres:
   apply (rename_tac new_sc)
   apply (rule_tac F="new_sc=sc" in corres_req)
    apply (clarsimp simp: obj_at_def)
-  apply (subst update_refill_hd_rewrite)
+  apply (subst update_refill_hd_comp)
   apply (clarsimp simp: bind_assoc)
   apply (rule corres_guard_imp)
     apply (rule corres_split[OF updateRefillHd_corres])
