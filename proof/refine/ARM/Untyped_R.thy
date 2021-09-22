@@ -5225,8 +5225,27 @@ crunch valid_machine_state'[wp]: insertNewCap valid_machine_state'
 crunch pspace_domain_valid[wp]: insertNewCap pspace_domain_valid
   (wp: crunch_wps)
 
-crunch ct_not_inQ[wp]: insertNewCap "ct_not_inQ"
-  (wp: crunch_wps)
+crunches updateNewFreeIndex, updateTrackedFreeIndex
+  for ksSchedulerAction[wp]: "\<lambda>s. P (ksSchedulerAction s)"
+
+lemma updateTrackedFreeIndex_ct_not_inQ[wp]:
+  "updateTrackedFreeIndex slot idx \<lbrace>ct_not_inQ\<rbrace>"
+  apply (clarsimp simp: updateTrackedFreeIndex_def)
+  apply (wpsimp wp: ct_not_inQ_lift getSlotCap_inv)
+  done
+
+lemma updateNewFreeIndex_ct_not_inQ[wp]:
+  "updateNewFreeIndex slot \<lbrace>ct_not_inQ\<rbrace>"
+  apply (clarsimp simp: updateNewFreeIndex_def)
+  apply (wpsimp wp: getSlotCap_inv hoare_drop_imps)
+  done
+
+lemma insertNewCap_ct_not_inQ[wp]:
+  "insertNewCap parent slot cap \<lbrace>ct_not_inQ\<rbrace>"
+  apply (clarsimp simp: insertNewCap_def)
+  apply (wpsimp wp: getCTE_wp)
+  apply (clarsimp simp: cte_wp_at'_def)
+  done
 
 crunch tcbState_inv[wp]: insertNewCap "obj_at' (\<lambda>tcb. P (tcbState tcb)) t"
   (wp: crunch_simps hoare_drop_imps)
