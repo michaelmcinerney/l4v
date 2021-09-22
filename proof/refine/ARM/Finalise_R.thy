@@ -91,6 +91,7 @@ crunch inQ[wp]: clearUntypedFreeIndex "\<lambda>s. P (obj_at' (inQ d p) t s)"
 crunch tcbInReleaseQueue[wp]: clearUntypedFreeIndex "\<lambda>s. P (obj_at' (tcbInReleaseQueue) t s)"
 crunch tcbDomain[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbDomain tcb)) t"
 crunch tcbPriority[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbPriority tcb)) t"
+crunch tcbQueued[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbQueued tcb)) t"
 
 lemma emptySlot_queues [wp]:
   "\<lbrace>Invariants_H.valid_queues\<rbrace> emptySlot sl opt \<lbrace>\<lambda>rv. Invariants_H.valid_queues\<rbrace>"
@@ -1389,7 +1390,21 @@ lemma deletedIRQHandler_ct_not_inQ[wp]:
   apply (simp add: comp_def)
   done
 
-(* crunch ct_not_inQ[wp]: emptySlot "ct_not_inQ" *)
+crunch ct_not_inQ[wp]: postCapDeletion ct_not_inQ
+  (wp: crunch_wps simp: crunch_simps)
+
+lemma clearUntypedFreeIndex_ct_not_inQ[wp]:
+  "clearUntypedFreeIndex sl \<lbrace>ct_not_inQ\<rbrace>"
+  apply (rule ct_not_inQ_lift; (solves wpsimp)?)
+  apply (rule_tac f=ksCurThread in hoare_lift_Pf2)
+   apply wpsimp+
+  done
+
+lemma emptySlot_ct_not_inQ[wp]:
+  "emptySlot sl info \<lbrace>ct_not_inQ\<rbrace>"
+  apply (simp add: emptySlot_def case_Null_If)
+  apply wpsimp
+  done
 
 crunch tcbDomain[wp]: emptySlot "obj_at' (\<lambda>tcb. P (tcbDomain tcb)) t"
 

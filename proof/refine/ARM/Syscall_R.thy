@@ -1156,6 +1156,8 @@ lemma hinv_corres:
           (handleInvocation call blocking can_donate first_phase cptr')"
   apply add_ct_not_inQ
   apply (simp add: handle_invocation_def handleInvocation_def liftE_bindE)
+  apply (rule corres_stateAssertE_add_assertion[rotated])
+   apply (clarsimp simp: ct_not_inQ_asrt_def)
   apply (rule stronger_corres_guard_imp)
     apply (rule corres_split_eqr [OF _ gct_corres])
       apply (rule corres_split [OF get_mi_corres])
@@ -1205,14 +1207,14 @@ lemma hinv_corres:
                              elim!: st_tcb_weakenE)
              apply (wp sts_st_tcb_at' set_thread_state_simple_sched_action
                        set_thread_state_active_valid_sched set_thread_state_schact_is_rct_strong)
-            apply (rule_tac Q="\<lambda>rv. invs' and ct_not_inQ and valid_invocation' rve'
-                                    and (\<lambda>s. thread = ksCurThread s)
-                                    and st_tcb_at' active' thread
-                                    and (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)
-                                    and (\<lambda>s. vs_valid_duplicates' (ksPSpace s))"
+            apply (rule_tac Q="\<lambda>_. invs' and ct_not_inQ and valid_invocation' rve'
+                                   and (\<lambda>s. thread = ksCurThread s)
+                                   and st_tcb_at' active' thread
+                                   and (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)
+                                   and (\<lambda>s. vs_valid_duplicates' (ksPSpace s))"
                    in hoare_post_imp)
              apply (clarsimp simp: ct_in_state'_def)
-apply (fastforce dest: ct_not_ksQ)
+              apply (fastforce dest: ct_not_ksQ)
              apply (clarsimp)
             apply (wp setThreadState_nonqueued_state_update
                       setThreadState_st_tcb setThreadState_rct setThreadState_ct_not_inQ)
@@ -1278,13 +1280,15 @@ lemma rfk_ksQ[wp]:
   done
 
 lemma hinv_invs'[wp]:
-  "\<lbrace>invs' and ct_not_inQ and ct_isSchedulable and
+  "\<lbrace>invs' and ct_isSchedulable and
           (\<lambda>s. vs_valid_duplicates' (ksPSpace s)) and
           (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)\<rbrace>
      handleInvocation calling blocking can_donate first_phase cptr
    \<lbrace>\<lambda>rv. invs'\<rbrace>"
   apply (simp add: handleInvocation_def split_def
-                   ts_Restart_case_helper')
+                   ts_Restart_case_helper' ct_not_inQ_asrt_def)
+  apply (rule validE_valid)
+  apply (rule hoare_vcg_seqE[OF _ stateAssertE_sp])
   apply (wp syscall_valid' setThreadState_nonqueued_state_update rfk_invs'
             hoare_vcg_all_lift static_imp_wp)
          apply simp
@@ -1303,7 +1307,7 @@ lemma hinv_invs'[wp]:
                                 and st_tcb_at' active' thread"
                   in hoare_post_imp)
         apply (clarsimp simp: ct_in_state'_def)
-apply (fastforce dest: ct_not_ksQ)
+        apply (fastforce dest: ct_not_ksQ)
        apply (wp sts_invs_minor' setThreadState_st_tcb setThreadState_rct setThreadState_ct_not_inQ | simp)+
     apply (clarsimp)
     apply (fastforce simp add: tcb_at_invs' ct_in_state'_def
@@ -1342,7 +1346,7 @@ lemma hs_corres:
   done
 
 lemma hs_invs'[wp]:
-  "\<lbrace>invs' and ct_not_inQ and ct_isSchedulable and
+  "\<lbrace>invs' and ct_isSchedulable and
     (\<lambda>s. vs_valid_duplicates' (ksPSpace s)) and
     (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)\<rbrace>
    handleSend blocking \<lbrace>\<lambda>r. invs'\<rbrace>"
@@ -1598,7 +1602,7 @@ lemma hc_corres:
   done
 
 lemma hc_invs'[wp]:
-  "\<lbrace>invs' and ct_not_inQ and (\<lambda>s. vs_valid_duplicates' (ksPSpace s)) and
+  "\<lbrace>invs' and (\<lambda>s. vs_valid_duplicates' (ksPSpace s)) and
       (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread) and
       ct_isSchedulable\<rbrace>
    handleCall

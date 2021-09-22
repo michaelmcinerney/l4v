@@ -735,7 +735,7 @@ lemma threadSetPriority_onRunning_invs':
     threadSetPriority_onRunning t p
     \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (simp only: threadSetPriority_onRunning_def)
-  apply_trace (wpsimp wp: hoare_vcg_const_imp_lift rescheduleRequired_invs' hoare_vcg_all_lift)
+  apply (wpsimp wp: hoare_vcg_const_imp_lift rescheduleRequired_invs' hoare_vcg_all_lift)
        apply (wpsimp wp: threadGet_wp threadSetPriority_invs' tcbSchedDequeue_not_queued)+
   apply (drule invs_queues')
   apply (fastforce simp: ready_qs_runnable_def valid_queues'_def inQ_def

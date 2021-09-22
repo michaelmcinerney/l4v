@@ -375,9 +375,6 @@ definition state_refs_of' :: "kernel_state \<Rightarrow> word32 \<Rightarrow> re
 defs sym_refs_asrt_def:
   "sym_refs_asrt \<equiv> \<lambda>s. sym_refs (state_refs_of' s)"
 
-defs ct_not_inQ_asrt_def:
-  "ct_not_inQ_asert \<equiv> \<lambda>s. ct_not_inQ s"
-
 definition live_sc' :: "sched_context \<Rightarrow> bool" where
   "live_sc' sc \<equiv> bound (scTCB sc) \<and> scTCB sc \<noteq> Some idle_thread_ptr
                   \<or> bound (scYieldFrom sc) \<or> bound (scNtfn sc) \<or> scReply sc \<noteq> None"
@@ -1186,6 +1183,9 @@ definition ct_in_state' :: "(thread_state \<Rightarrow> bool) \<Rightarrow> kern
 definition
  "ct_not_inQ \<equiv> \<lambda>s. ksSchedulerAction s = ResumeCurrentThread
                      \<longrightarrow> obj_at' (Not \<circ> tcbQueued) (ksCurThread s) s"
+
+defs ct_not_inQ_asrt_def:
+  "ct_not_inQ_asrt \<equiv> \<lambda>s. ct_not_inQ s"
 
 abbreviation
   "idle' \<equiv> \<lambda>st. st = Structures_H.IdleThreadState"
