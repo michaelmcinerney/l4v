@@ -4885,18 +4885,17 @@ lemma handle_overrun_loop_body_terminates_wf_helper:
   apply fastforce
   done
 
-method wps_conj_solves2 uses wp simp wps
+\<comment> \<open>The following method can be used to try to solve Hoare triples in the following way.
+    Note that the method works best when the precondition is not schematic.
+    First, if the postcondition is not a conjunction, it will try to solve the goal with the
+    method given to `solves`. The goal will be left untouched if it cannot solve the goal.
+    If the postcondition is a conjunction, the method will pull it apart into all the conjuncts
+    using hoare_vcg_conj_lift_pre_fix. It will then attempt to solve each of these individually.\<close>
+method wps_conj_solves uses wp simp wps
    = (clarsimp simp: pred_conj_def)?
      , (intro hoare_vcg_conj_lift_pre_fix
         ; (solves \<open>rule hoare_weaken_pre, (wpsimp wp: wp simp: simp | wps wps)+\<close>)?)
        | (solves \<open>rule hoare_weaken_pre, (wpsimp wp: wp simp: simp | wps wps)+\<close>)?
-
-method wps_conj_solves uses wp simp wps
-   = (clarsimp simp: pred_conj_def)?
-     , rule hoare_weaken_pre
-     , ((rule hoare_vcg_conj_lift, (solves \<open>(wpsimp wp: wp simp: simp | wps wps)+\<close>)?)+)?
-     , (solves \<open>(wpsimp wp: wp simp: simp | wps wps)+\<close>)?
-     , clarsimp?
 
 lemma handle_overrun_loop_body_terminates:
   "\<lbrakk>sc_at (cur_sc s) s;
@@ -4914,7 +4913,7 @@ lemma handle_overrun_loop_body_terminates:
    prefer 2
    apply (fastforce simp: handle_overrun_loop_body_terminates_wf_helper)
   apply (rename_tac r s')
-  apply (wps_conj_solves2 wp: handle_overrun_loop_body_non_zero_refills
+  apply (wps_conj_solves wp: handle_overrun_loop_body_non_zero_refills
                              handle_overrun_loop_body_refills_unat_sum_equals_budget)
    apply (wpsimp simp: handle_overrun_loop_body_def)
   apply (rename_tac sc n)
@@ -4958,9 +4957,9 @@ lemma handleOverrunLoop_corres:
       apply (corressimp corres: handleOverrunLoopBody_corres)
      apply (wpsimp wp: handle_overrun_loop_body_no_fail)
      apply (clarsimp simp: vs_all_heap_simps)
-    apply (wps_conj_solves2 wp: handle_overrun_loop_body_non_zero_refills
+    apply (wps_conj_solves wp: handle_overrun_loop_body_non_zero_refills
                                 handle_overrun_loop_body_refills_unat_sum_equals_budget)
-   apply wps_conj_solves2
+   apply wps_conj_solves
   apply (fastforce intro:  handle_overrun_loop_body_terminates)
   done
 
@@ -5032,7 +5031,7 @@ lemma refillBudgetCheck_corres:
     apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> handle_overrun_loop _ \<lbrace>Q\<rbrace>" for P Q \<Rightarrow> -\<close>)
     apply (clarsimp simp: pred_conj_def)
     apply (intro hoare_vcg_conj_lift_pre_fix; (solves \<open>wpsimp | handle_overrun_loop_simple\<close>)?)
-      apply wps_conj_solves2
+      apply wps_conj_solves
      apply (wpsimp wp: handle_overrun_loop_refills_unat_sum_equals_budget)
      apply (fastforce intro: valid_refills_refills_unat_sum_equals_budget
                        simp: vs_all_heap_simps cfg_valid_refills_def round_robin_def
