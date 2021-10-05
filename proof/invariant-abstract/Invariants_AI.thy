@@ -1271,12 +1271,12 @@ definition
 
 definition
   "cur_tcb s \<equiv> tcb_at (cur_thread s) s"
-
+find_consts name: active
 definition
-  "cur_sc_tcb s \<equiv>
-     sc_tcb_sc_at
-       (\<lambda>t. scheduler_action s = resume_cur_thread \<longrightarrow> t = Some (cur_thread s))
-       (cur_sc s) s"
+  "cur_sc_tcb s \<equiv> is_sc_active (cur_sc s) s
+                   \<and> sc_tcb_sc_at
+                         (\<lambda>t. scheduler_action s = resume_cur_thread \<longrightarrow> t = Some (cur_thread s))
+                         (cur_sc s) s"
 
 definition valid_machine_time_2 :: "time \<Rightarrow> time \<Rightarrow> bool" where
    "valid_machine_time_2 ct lmt \<equiv> lmt \<le> - getCurrentTime_buffer - 1 \<and> ct \<le> lmt"

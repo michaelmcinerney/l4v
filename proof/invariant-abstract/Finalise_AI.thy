@@ -862,13 +862,26 @@ lemma sc_refill_max_update_cur_sc_tcb[wp]:
   "set_sc_obj_ref sc_refill_max_update b c \<lbrace>cur_sc_tcb\<rbrace>"
   unfolding cur_sc_tcb_def
   apply (wpsimp wp: update_sched_context_wp)
-  apply (clarsimp simp: sc_at_pred_n_def obj_at_def)
-  done
+  apply (clarsimp simp: sc_at_pred_n_def obj_at_def is_sc_active_def)
+  oops
 
 lemma sched_context_zero_refill_max_invs[wp]:
-  "\<lbrace>invs and K (p \<noteq> idle_sc_ptr)\<rbrace> sched_context_zero_refill_max p \<lbrace>\<lambda>_. invs\<rbrace>"
+  "\<lbrace>invs and K (p \<noteq> idle_sc_ptr) and (\<lambda>s. scheduler_action s \<noteq> resume_cur_thread)\<rbrace>
+   sched_context_zero_refill_max p
+   \<lbrace>\<lambda>_. invs\<rbrace>"
   apply (clarsimp simp: sched_context_zero_refill_max_def)
-  by (wpsimp wp: set_sc_obj_ref_invs_no_change)
+  apply (rule hoare_seq_ext_skip, wpsimp)
+
+  apply_trace (wpsimp simp: invs_def valid_state_def valid_pspace_def obj_at_def
+                  wp: update_sched_context_valid_objs_update valid_irq_node_typ
+                      update_sched_context_iflive_implies
+                      update_sched_context_refs_of_same
+                      update_sc_but_not_sc_replies_valid_replies_2
+                      update_sched_context_valid_idle
+                      update_sched_context_cur_sc_tcb_no_change
+            simp_del: fun_upd_apply)
+  apply (fastforce simp: valid_sched_context_def live_sc_def)
+  done
 
 lemma (in Finalise_AI_1) fast_finalise_invs:
   "\<lbrace>\<lambda>s. invs s \<and> (\<exists>slot. cte_wp_at ((=) cap) slot s)\<rbrace> fast_finalise cap final \<lbrace>\<lambda>_. invs\<rbrace>"

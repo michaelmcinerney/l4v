@@ -1249,7 +1249,7 @@ lemma maybe_return_sc_cur_sc_tcb[wp]:
   apply (intro conjI allI impI; clarsimp?)
   apply (frule get_tcb_SomeD, clarsimp)
   apply (subgoal_tac "sc_tcb xa = Some thread", simp)
-  apply (fastforce elim: bound_sc_tcb_bound_sc_at simp: pred_tcb_at_def obj_at_def)
+  apply (fastforce elim: bound_sc_tcb_bound_sc_at simp: pred_tcb_at_def obj_at_def is_sc_active_def)+
   done
 
 lemma maybe_return_sc_invs[wp]:
