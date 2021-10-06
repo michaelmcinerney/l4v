@@ -1660,6 +1660,7 @@ type_synonym valid_sched_t
      \<Rightarrow> domain
      \<Rightarrow> obj_ref
      \<Rightarrow> obj_ref
+     \<Rightarrow> obj_ref
      \<Rightarrow> (domain \<Rightarrow> priority \<Rightarrow> obj_ref list)
      \<Rightarrow> obj_ref list
      \<Rightarrow> scheduler_action
@@ -1673,7 +1674,7 @@ type_synonym valid_sched_t
 
 abbreviation valid_sched_pred :: "valid_sched_t \<Rightarrow> 'z::state_ext state \<Rightarrow> bool" where
   "valid_sched_pred P \<equiv>
-    \<lambda>s. P (cur_time s) (cur_domain s) (cur_thread s) (idle_thread s)
+    \<lambda>s. P (cur_time s) (cur_domain s) (cur_thread s) (cur_sc s) (idle_thread s)
           (ready_queues s) (release_queue s) (scheduler_action s)
           (etcbs_of s) (tcb_sts_of s) (tcb_scps_of s) (tcb_faults_of s)
           (sc_refill_cfgs_of s) (sc_replies_of s)"
@@ -2361,7 +2362,7 @@ lemma active_sc_valid_refills_lift_pre_conj:
 
 \<comment> \<open>Adapter for valid_sched_pred\<close>
 abbreviation (input) valid_sched_valid_ready_qs :: valid_sched_t where
-  "valid_sched_valid_ready_qs ctime cdom ct it rq rlq sa etcbs tcb_sts
+  "valid_sched_valid_ready_qs ctime cdom ct csc it rq rlq sa etcbs tcb_sts
                          tcb_scps tcb_faults sc_refill_cfgs sc_reps\<equiv>
     valid_ready_qs_2 rq ctime etcbs tcb_sts tcb_scps sc_refill_cfgs"
 
@@ -2443,7 +2444,7 @@ lemma ready_or_released_in_release_queue:
 
 \<comment> \<open>Adapter for valid_sched_pred\<close>
 abbreviation (input) valid_sched_valid_release_q :: "obj_ref set \<Rightarrow> valid_sched_t" where
-  "valid_sched_valid_release_q S ctime cdom ct it rq rlq sa etcbs tcb_sts
+  "valid_sched_valid_release_q S ctime cdom ct csc it rq rlq sa etcbs tcb_sts
                                tcb_scps tcb_faults sc_refill_cfgs sc_reps\<equiv>
     valid_release_q_except_set_2 S rlq tcb_sts tcb_scps sc_refill_cfgs"
 
@@ -2598,7 +2599,7 @@ lemma active_bound_sc_tcb_at:
 
 \<comment> \<open>Adapter for valid_sched_pred\<close>
 abbreviation (input) valid_sched_ipc_queues :: valid_sched_t where
-  "valid_sched_ipc_queues ctime cdom ct it rq rlq sa etcbs sts scps faults scrcs replies
+  "valid_sched_ipc_queues ctime cdom ct csc it rq rlq sa etcbs sts scps faults scrcs replies
    \<equiv> released_ipc_queues_2 ctime sts scps faults scrcs"
 
 (* FIXME RT: move *)
@@ -2889,7 +2890,7 @@ lemma valid_blockedD:
 
 \<comment> \<open>Adapter for valid_sched_pred\<close>
 abbreviation (input) valid_sched_valid_blocked :: "obj_ref set \<Rightarrow> valid_sched_t" where
-  "valid_sched_valid_blocked S ctime cdom ct it rq rlq sa etcbs tcb_sts
+  "valid_sched_valid_blocked S ctime cdom ct csc it rq rlq sa etcbs tcb_sts
                          tcb_scps tcb_faults sc_refill_cfgs sc_reps \<equiv>
     valid_blocked_except_set_2 S rq rlq sa ct tcb_sts tcb_scps sc_refill_cfgs"
 
@@ -3024,7 +3025,8 @@ lemma active_reply_scsE:
   using assms by (simp add: active_reply_scs_2_def active_if_reply_sc_at_2_def)
 
 definition valid_sched_2 where
-  "valid_sched_2 wk_vsa vbl riq ctime cdom ct it queues rlq sa etcbs tcb_sts tcb_scps tcb_faults sc_refill_cfgs sc_reps \<equiv>
+  "valid_sched_2 wk_vsa vbl riq ctime cdom ct csc it queues rlq sa etcbs tcb_sts tcb_scps tcb_faults
+                 sc_refill_cfgs sc_reps \<equiv>
     valid_ready_qs_2 queues ctime etcbs tcb_sts tcb_scps sc_refill_cfgs
     \<and> valid_release_q_2 rlq tcb_sts tcb_scps sc_refill_cfgs
     \<and> ready_or_release_2 queues rlq
@@ -3035,7 +3037,8 @@ definition valid_sched_2 where
     \<and> valid_idle_etcb_2 etcbs
     \<and> (riq \<longrightarrow> released_ipc_queues_2 ctime tcb_sts tcb_scps tcb_faults sc_refill_cfgs)
     \<and> active_reply_scs_2 sc_reps sc_refill_cfgs
-    \<and> active_sc_valid_refills_2 ctime sc_refill_cfgs"
+    \<and> active_sc_valid_refills_2 ctime sc_refill_cfgs
+    \<and> (heap_ref_eq csc ct tcb_scps \<longrightarrow> pred_map active_scrc sc_refill_cfgs csc)"
 
 abbreviation valid_sched :: "'z::state_ext state \<Rightarrow> bool" where
   "valid_sched \<equiv> valid_sched_pred (valid_sched_2 True True True)"
@@ -3535,6 +3538,11 @@ lemma active_reply_scs_lift_pre_conj:
   shows "\<lbrace>\<lambda>s. active_reply_scs s \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. active_reply_scs s\<rbrace>"
   unfolding active_reply_scs_2_def by (intro hoare_vcg_all_lift_N_pre_conj assms)
 
+\<comment> \<open>The current thread and current sc are bound (assuming sym_refs))\<close>
+
+abbreviation cur_sc_tcb_are_bound :: "'z state \<Rightarrow> bool" where
+  "cur_sc_tcb_are_bound s \<equiv> heap_ref_eq (cur_sc s) (cur_thread s) (tcb_scps_of s)"
+
 lemma valid_sched_lift_pre_conj:
   assumes "\<And>N P t. \<lbrace>\<lambda>s. N (pred_map P (tcb_sts_of s) t) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. N (pred_map P (tcb_sts_of s) t)\<rbrace>"
   assumes "\<And>P t. \<lbrace>\<lambda>s. P (active_sc_tcb_at t s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (active_sc_tcb_at t s)\<rbrace>"
@@ -3549,6 +3557,9 @@ lemma valid_sched_lift_pre_conj:
   assumes "\<And>P. \<lbrace>\<lambda>s. P (ready_queues s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (ready_queues s)\<rbrace>"
   assumes "\<And>P. \<lbrace>\<lambda>s. P (cur_domain s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_domain s)\<rbrace>"
   assumes "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+  assumes "\<lbrace>\<lambda>s. cur_sc_tcb_are_bound s \<longrightarrow> is_active_sc (cur_sc s) s \<and> R s\<rbrace>
+           f
+           \<lbrace>\<lambda>rv s. cur_sc_tcb_are_bound s \<longrightarrow> is_active_sc (cur_sc s) s\<rbrace>"
   assumes "\<And>P. \<lbrace>\<lambda>s. P (idle_thread s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (idle_thread s)\<rbrace>"
   assumes "\<And>P. \<lbrace>\<lambda>s. P (release_queue s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (release_queue s)\<rbrace>"
   assumes "\<And>P. \<lbrace>\<lambda>s. P (tcb_ready_times_of s) \<and> R s\<rbrace> f \<lbrace>\<lambda>rv s. P (tcb_ready_times_of s)\<rbrace>"
@@ -3646,11 +3657,6 @@ lemma invs_cur_sc_chargeableE:
 lemma schact_is_rct_sane[elim!]: "schact_is_rct s \<Longrightarrow> scheduler_act_sane s"
   apply (simp add: simple_sched_action_def scheduler_act_not_def)
   done
-
-\<comment> \<open>The current thread and current sc are bound (assuming sym_refs))\<close>
-
-abbreviation cur_sc_tcb_are_bound :: "'z state \<Rightarrow> bool" where
-  "cur_sc_tcb_are_bound s \<equiv> heap_ref_eq (cur_sc s) (cur_thread s) (tcb_scps_of s)"
 
 abbreviation ct_not_blocked where
   "ct_not_blocked s \<equiv> ct_in_state (\<lambda>x. \<not>ipc_queued_thread_state x) s"

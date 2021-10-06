@@ -275,6 +275,7 @@ lemma perform_asid_control_invocation_pred_map_sc_refill_cfgs_of:
 
 crunches perform_asid_control_invocation
   for valid_machine_time[wp]: "valid_machine_time"
+  and cur_sc[wp]: "\<lambda>s. P (cur_sc s)"
 
 lemma perform_asid_control_invocation_valid_sched:
   "\<lbrace>ct_active and (\<lambda>s. scheduler_action s = resume_cur_thread) and invs and valid_aci aci and
@@ -286,6 +287,58 @@ lemma perform_asid_control_invocation_valid_sched:
                       (\<lambda>s. scheduler_action s = resume_cur_thread) and valid_aci aci"
           in valid_sched_tcb_state_preservation_gen)
                  apply simp
+                 apply (wpsimp wp: perform_asid_control_invocation_st_tcb_at
+                                   perform_asid_control_invocation_pred_tcb_at_live
+                                   perform_asid_control_invocation_sc_at_pred_n_live[where Q="Not"]
+                                   perform_asid_control_etcb_at
+                                   perform_asid_control_invocation_sc_at_pred_n
+                                   perform_asid_control_invocation_valid_idle
+                                   perform_asid_control_invocation_pred_map_sc_refill_cfgs_of
+                                   hoare_vcg_all_lift
+                             simp: ipc_queued_thread_state_live live_sc_def)+
+
+
+apply (subst cur_sc_active_rewrite)+
+thm invoke_untyped_non_cspace_obj_at
+apply (rule hoare_drop_imp)
+find_theorems perform_asid_control_invocation
+thm perform_asid_control_invocation_pred_tcb_at_live
+
+
+apply (rule hoare_weaken_pre)
+
+
+apply (rule_tac f=cur_sc in hoare_lift_Pf2)
+
+
+apply (rule perform_asid_control_invocation_non_cspace_obj_at)
+apply (clarsimp simp: live_def )
+apply (clarsimp simp: cnode_agnostic_pred_def tcb_cnode_agnostic_pred_def)
+
+apply wpsimp
+apply clarsimp
+apply (intro conjI)
+apply (prop_tac "cur_sc_tcb_are_bound s")
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def valid_pspace_def)
+find_theorems sym_refs sc_tcb
+thm sym_ref_sc_tcb
+apply (frule_tac scp="cur_sc s" in sym_ref_sc_tcb)
+  apply fastforce
+  apply fastforce
+  apply fastforce
+
+apply (clarsimp simp: obj_at_def valid_sched_def active_sc_def vs_all_heap_simps)
+apply (clarsimp simp: obj_at_def valid_sched_def active_sc_def vs_all_heap_simps)
+apply (rule if_live_then_nonz_capD)
+  apply fastforce
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def)
+
+  apply fastforce
+apply (clarsimp simp: live_def live_sc_def)
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def live_sc_def)
                  apply (wpsimp wp: perform_asid_control_invocation_st_tcb_at
                                    perform_asid_control_invocation_pred_tcb_at_live
                                    perform_asid_control_invocation_sc_at_pred_n_live[where Q="Not"]

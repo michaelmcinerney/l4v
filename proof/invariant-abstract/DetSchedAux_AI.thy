@@ -646,6 +646,8 @@ lemma valid_sched_tcb_state_preservation_gen:
   assumes cur_time_nondecreasing:
     "\<And>val. \<lbrace>\<lambda>s. cur_time s = val \<and> valid_machine_time s\<rbrace> f \<lbrace>\<lambda>_ s. val \<le> cur_time s\<rbrace>"
   assumes cur_thread: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>r s. P (cur_thread s)\<rbrace>"
+  assumes cur_sc_active: "\<lbrace>\<lambda>s. (cur_sc_tcb_are_bound s \<longrightarrow> cur_sc_active s) \<and> I s\<rbrace>
+                          f \<lbrace>\<lambda>_ s. (cur_sc_tcb_are_bound s \<longrightarrow> cur_sc_active s)\<rbrace>"
   assumes idle_thread: "\<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> f \<lbrace>\<lambda>r s. P (idle_thread s)\<rbrace>"
   assumes valid_blocked: "\<lbrace>valid_blocked\<rbrace> f \<lbrace>\<lambda>_. valid_blocked\<rbrace>"
   assumes valid_idle: "\<lbrace>I\<rbrace> f \<lbrace>\<lambda>_. valid_idle\<rbrace>"
@@ -829,6 +831,8 @@ lemma valid_sched_tcb_state_preservation_gen:
    apply (frule (1) non_empty_sc_replies_nonz_cap)
    apply (rule use_valid, assumption, rule sc_refill_cfg)
    by (intro conjI; assumption)
+  apply (prop_tac "cur_sc_tcb_are_bound s' \<longrightarrow> cur_sc_active s'")
+   apply (frule use_valid[OF _ cur_sc_active], simp, simp)
   by simp
 
 lemma invoke_untyped_valid_idle:
@@ -1109,6 +1113,11 @@ lemma invoke_untyped_cur_time_monotonic:
                   wp: reset_untyped_cap_cur_time_monotonic mapM_x_wp_inv)
   done
 
+lemma cur_sc_active_rewrite:
+  "cur_sc_active s = obj_at (\<lambda>obj. \<exists>sc n. obj = SchedContext sc n \<and> sc_active sc) (cur_sc s) s"
+  apply (fastforce simp: obj_at_def is_active_sc_def vs_all_heap_simps active_sc_def)
+  done
+
 lemma invoke_untyped_valid_sched:
   "\<lbrace>valid_sched and valid_machine_time and invs and ct_active and valid_untyped_inv ui and
     (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace>
@@ -1127,6 +1136,50 @@ lemma invoke_untyped_valid_sched:
                                    invoke_untyped_cur_time_monotonic
                                    hoare_vcg_all_lift
                              simp: ipc_queued_thread_state_live live_sc_def)+
+
+apply (subst cur_sc_active_rewrite)+
+thm invoke_untyped_non_cspace_obj_at
+apply (rule valid_validE)
+apply (rule_tac f=cur_sc in hoare_lift_Pf2)
+apply (rule hoare_drop_imps)
+thm invoke_untyped_non_cspace_obj_at
+apply (rule invoke_untyped_non_cspace_obj_at)
+apply (clarsimp simp: cnode_agnostic_pred_def tcb_cnode_agnostic_pred_def)
+  apply fastforce
+apply wpsimp
+apply clarsimp
+apply (intro conjI)
+apply (prop_tac "cur_sc_tcb_are_bound s")
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def valid_pspace_def)
+find_theorems sym_refs sc_tcb
+thm sym_ref_sc_tcb
+apply (frule_tac scp="cur_sc s" in sym_ref_sc_tcb)
+  apply fastforce
+  apply fastforce
+  apply fastforce
+
+apply (clarsimp simp: obj_at_def valid_sched_def active_sc_def vs_all_heap_simps)
+apply (clarsimp simp: obj_at_def valid_sched_def active_sc_def vs_all_heap_simps)
+apply (rule if_live_then_nonz_capD)
+  apply fastforce
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def)
+
+  apply fastforce
+apply (clarsimp simp: live_def live_sc_def)
+apply (clarsimp simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def ct_in_state_def valid_idle_etcb_def
+pred_tcb_at_def etcb_at_def vs_all_heap_simps valid_state_def valid_idle_def)
+
+                 apply (wpsimp wp: invoke_untyped_st_tcb_at invoke_untyped_pred_tcb_at_live
+                                   invoke_untyped_sc_at_pred_n_live[where Q="Not"]
+                                   invoke_untyped_etcb_at invoke_untyped_sc_at_pred_n
+                                   invoke_untyped_pred_map_sc_refill_cfgs_of
+                                   invoke_untyped_valid_idle invoke_untyped_valid_sched_pred_misc
+                                   invoke_untyped_cur_time_monotonic
+                                   hoare_vcg_all_lift
+                             simp: ipc_queued_thread_state_live live_sc_def)+
+
   done
 
 end
