@@ -25699,7 +25699,7 @@ lemma sc_and_time_cur_sc_active[wp]:
    \<lbrace>\<lambda>_ s :: 'state_ext state. cur_sc_active s\<rbrace>"
   by (wpsimp simp: sc_and_timer_def)
 
-lemma switch_to_active_sc_tcb_at_cur_thread:
+lemma switch_to_thread_active_sc_tcb_at_cur_thread:
   "\<lbrace>active_sc_tcb_at thread\<rbrace>
    switch_to_thread thread
    \<lbrace>\<lambda>_ s :: 'state_ext state. active_sc_tcb_at (cur_thread s) s\<rbrace>"
@@ -25722,7 +25722,7 @@ lemma choose_thread_active_sc_tcb_at_cur_thread:
   apply (rule hoare_seq_ext[OF _ assert_opt_sp])
   apply (rule hoare_seq_ext[OF _ is_schedulable_sp])
   apply (rule hoare_seq_ext[OF _ assert_sp])
-  apply (wpsimp wp: switch_to_active_sc_tcb_at_cur_thread hoare_vcg_imp_lift')
+  apply (wpsimp wp: switch_to_thread_active_sc_tcb_at_cur_thread hoare_vcg_imp_lift')
   apply (frule hd_max_non_empty_queue_in_ready_queues)
   apply (prop_tac "tcb_at (hd (max_non_empty_queue (ready_queues s (cur_domain s)))) s")
    apply (clarsimp simp: obj_at_def is_tcb_def)
@@ -25760,7 +25760,7 @@ lemma schedule_cur_sc_active:
                            vs_all_heap_simps)
    apply (rule hoare_seq_ext_skip, solves wpsimp)+
    apply (wpsimp wp: schedule_choose_new_thread_active_sc_tcb_at_cur_thread
-                     switch_to_active_sc_tcb_at_cur_thread thread_get_wp)
+                     switch_to_thread_active_sc_tcb_at_cur_thread thread_get_wp)
   apply (wpsimp wp: schedule_choose_new_thread_active_sc_tcb_at_cur_thread)
   done
 

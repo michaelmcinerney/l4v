@@ -298,7 +298,7 @@ lemma perform_asid_control_invocation_valid_sched:
                              simp: ipc_queued_thread_state_live live_sc_def)+
   done
 
-lemma invoke_untyped_cur_sc_active:
+lemma perform_asid_control_invocation_cur_sc_active:
   "\<lbrace>cur_sc_active and invs and ct_active and schact_is_rct and valid_aci aci\<rbrace>
    perform_asid_control_invocation aci
    \<lbrace>\<lambda>_. cur_sc_active\<rbrace>"
