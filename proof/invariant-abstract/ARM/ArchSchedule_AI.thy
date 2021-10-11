@@ -51,6 +51,12 @@ lemma arch_stt_tcb [wp,Schedule_AI_asms]:
   apply (wp)
   done
 
+lemma arch_stt_sc_at[wp,Schedule_AI_asms]:
+  "arch_switch_to_thread t' \<lbrace>sc_at sc_ptr\<rbrace>"
+  apply (simp add: arch_switch_to_thread_def)
+  apply wp
+  done
+
 lemma arch_stt_runnable[Schedule_AI_asms]:
   "\<lbrace>st_tcb_at Q t\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>r . st_tcb_at Q t\<rbrace>"
   apply (simp add: arch_switch_to_thread_def)
@@ -64,6 +70,12 @@ lemma arch_stit_invs[wp, Schedule_AI_asms]:
 lemma arch_stit_tcb_at[wp, Schedule_AI_asms]:
   "\<lbrace>tcb_at t\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>r. tcb_at t\<rbrace>"
   apply (simp add: arch_switch_to_idle_thread_def )
+  apply wp
+  done
+
+lemma arch_stit_sc_at[wp, Schedule_AI_asms]:
+  "arch_switch_to_idle_thread \<lbrace>sc_at sc_ptr\<rbrace>"
+  apply (simp add: arch_switch_to_idle_thread_def)
   apply wp
   done
 
