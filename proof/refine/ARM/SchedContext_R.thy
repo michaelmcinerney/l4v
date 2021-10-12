@@ -170,6 +170,7 @@ lemma updateSchedContext_invs'_indep:
   apply (frule (1) invs'_ko_at_valid_sched_context', simp)
   done
 
+(* FIXME RT: move? *)
 lemma corres_fail':
    assumes no_fail: "\<And>s s'. \<not> P s \<or> \<not> P' s'"
    shows "corres_underlying sr nf nf' R P P' fail f"

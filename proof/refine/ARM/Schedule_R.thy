@@ -4870,8 +4870,11 @@ lemma refillBudgetCheck_corres:
 
 crunches setReprogramTimer
   for valid_tcbs'[wp]: valid_tcbs'
+  and valid_refills'[wp]: "valid_refills' scPtr"
+  and ksCurSc[wp]: "\<lambda>s. P (ksCurSc s)"
+  (simp: valid_refills'_def)
 
- lemma checkDomainTime_corres:
+lemma checkDomainTime_corres:
   "corres dc (valid_tcbs and weak_valid_sched_action and active_sc_valid_refills and pspace_aligned
               and pspace_distinct)
              (valid_tcbs' and valid_queues and valid_queues' and valid_release_queue_iff)
@@ -4895,9 +4898,7 @@ crunches refill_budget_check_round_robin
   and pspace_distinct[wp]: pspace_distinct
 
 lemma commitTime_corres:
-  "corres dc (\<lambda>s. sc_at (cur_sc s) s
-                  \<and> valid_objs s
-                  \<and> pspace_aligned s \<and> pspace_distinct s
+  "corres dc (\<lambda>s. sc_at (cur_sc s) s \<and> valid_objs s \<and> pspace_aligned s \<and> pspace_distinct s
                   \<and> (cur_sc_active s \<longrightarrow> valid_refills (cur_sc s) s))
              (\<lambda>s'. is_active_sc' (ksCurSc s') s' \<longrightarrow> valid_refills' (ksCurSc s') s')
              commit_time
@@ -4925,7 +4926,8 @@ lemma commitTime_corres:
   apply (rename_tac consumed)
   apply (rule_tac Q="\<lambda>_ s. sc_at scPtr s"
               and Q'="\<lambda>_ s'. sc_at' scPtr s'"
-               in corres_split'[rotated, where r'=dc])
+              and r'=dc
+               in corres_split'[rotated])
      apply (clarsimp simp: updateSchedContext_def)
      apply (rule corres_symb_exec_r[rotated, OF get_sc_sp'])
        apply wpsimp
@@ -4956,19 +4958,9 @@ lemma commitTime_corres:
                          is_active_sc'_def opt_map_red active_sc_def)
   done
 
-crunches if_cond_refill_unblock_check
-  for cur_sc[wp]: "\<lambda>s. P (cur_sc s)"
-  and is_active_sc[wp]: "\<lambda>s. P (is_active_sc sc_ptr s)"
-  (simp: crunch_simps)
-
 crunches ifCondRefillUnblockCheck
   for valid_objs'[wp]: valid_objs'
   (simp: crunch_simps)
-
-crunches setReprogramTimer
-  for valid_refills'[wp]: "valid_refills' scPtr"
-  and ksCurSc[wp]: "\<lambda>s. P (ksCurSc s)"
-  (simp: valid_refills'_def)
 
 lemma if_cond_refill_unblock_check_valid_refills[wp]:
   "\<lbrace>valid_refills p and current_time_bounded 1\<rbrace>
@@ -4977,8 +4969,8 @@ lemma if_cond_refill_unblock_check_valid_refills[wp]:
   by (wpsimp simp: if_cond_refill_unblock_check_def)
 
 lemma switchSchedContext_corres:
-  "corres dc (\<lambda>s. valid_state s \<and> cur_tcb s \<and> sc_at (cur_sc s) s  \<and> active_sc_valid_refills s \<and> current_time_bounded 1 s
-                  \<and> active_sc_tcb_at (cur_thread s) s)
+  "corres dc (\<lambda>s. valid_state s \<and> cur_tcb s \<and> sc_at (cur_sc s) s  \<and> active_sc_valid_refills s
+                  \<and> current_time_bounded 1 s \<and> active_sc_tcb_at (cur_thread s) s)
              valid_objs'
              switch_sched_context
              switchSchedContext"
@@ -5048,23 +5040,14 @@ crunches switch_sched_context
   and pspace_distinct[wp]: pspace_distinct
   (wp: crunch_wps simp: crunch_simps)
 
-crunches guarded_switch_to
-  for sc_at[wp]: "sc_at sc_ptr"
-  (wp: crunch_wps)
-
-lemma choose_thread_sc_at[wp]:
-  "choose_thread \<lbrace>sc_at sc_ptr\<rbrace>"
-  apply (clarsimp simp: choose_thread_def)
-  apply (wpsimp simp: switch_to_idle_thread_def)
-  done
-
 crunches schedule_choose_new_thread
   for sc_at[wp]: "sc_at sc_ptr"
   (wp: crunch_wps dxo_wp_weak simp: crunch_simps)
 
 lemma scAndTimer_corres:
-  "corres dc (\<lambda>s. valid_state s \<and> cur_tcb s \<and> sc_at (cur_sc s) s \<and> active_sc_valid_refills s
-                  \<and> valid_release_q s \<and> current_time_bounded 1 s \<and> active_sc_tcb_at (cur_thread s) s)
+  "corres dc (\<lambda>s. valid_state s \<and> cur_tcb s \<and> sc_at (cur_sc s) s
+                  \<and> active_sc_valid_refills s \<and> valid_release_q s
+                  \<and> current_time_bounded 1 s \<and> active_sc_tcb_at (cur_thread s) s)
              invs'
              sc_and_timer
              scAndTimer"
@@ -5138,7 +5121,7 @@ lemma schedule_switch_thread_branch_active_sc_tcb_at_cur_thread:
   "\<lbrace>\<lambda>s. active_sc_tcb_at candidate s \<and> valid_idle s\<rbrace>
    schedule_switch_thread_branch candidate ct ct_schedulable
    \<lbrace>\<lambda>_ s :: det_state. active_sc_tcb_at (cur_thread s) s\<rbrace>"
-  apply (subst K_bind_def)+
+  apply clarsimp
   apply (rule hoare_seq_ext_skip, solves wpsimp)+
   apply (wpsimp wp: schedule_choose_new_thread_active_sc_tcb_at_cur_thread
                     switch_to_thread_active_sc_tcb_at_cur_thread)
@@ -5180,12 +5163,14 @@ lemma schedule_corres:
                      simp: invs_def valid_state_def state_relation_def cur_tcb_def)
   apply (rule corres_split'[rotated 2, OF gets_sp getSchedulerAction_sp])
    apply (corressimp corres: get_sa_corres)
+
   apply (case_tac "action = resume_cur_thread"; clarsimp)
    apply (corressimp corres: scAndTimer_corres)
    subgoal by (fastforce intro: valid_sched_context_size_objsI
                           dest: schat_is_rct_ct_active_sc
                           simp: invs_def cur_sc_tcb_def sc_at_pred_n_def obj_at_def is_sc_obj_def
                                 valid_state_def valid_sched_def)
+
   apply (case_tac "action = choose_new_thread")
    apply (clarsimp simp: bind_assoc)
    apply (rule corres_guard_imp)
@@ -5207,6 +5192,7 @@ lemma schedule_corres:
                                   vs_all_heap_simps valid_sched_def)
    apply (fastforce simp: invs'_def isSchedulable_bool_def st_tcb_at'_def pred_map_simps
                           obj_at_simps cur_tcb'_def)
+
   apply (case_tac action; clarsimp)
   apply (rule corres_split'[OF _ scAndTimer_corres, where r'=dc])
 
