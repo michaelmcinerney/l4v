@@ -5258,7 +5258,7 @@ lemma schedule_corres:
       apply clarsimp
      apply (clarsimp simp: cur_tcb'_def)
 
-   apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
+    apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
     apply (wpsimp wp: thread_get_wp)
     apply (clarsimp simp: valid_sched_def valid_sched_action_def weak_valid_sched_action_def
                           in_queue_2_def)
