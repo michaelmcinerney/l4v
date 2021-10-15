@@ -364,6 +364,7 @@ global_interpretation DetSchedSchedule_AI_handle_hypervisor_fault?: DetSchedSche
   case 1 show ?case by (unfold_locales; wpsimp)
   qed
 
+
 global_interpretation DetSchedSchedule_AI_handle_hypervisor_fault_det_ext?: DetSchedSchedule_AI_handle_hypervisor_fault_det_ext
   proof goal_cases
   interpret Arch .
