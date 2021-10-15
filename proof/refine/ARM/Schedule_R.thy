@@ -5484,9 +5484,9 @@ lemma release_queue_corres:
   "corres (=) \<top> \<top> (gets release_queue) getReleaseQueue"
   by (simp add: getReleaseQueue_def state_relation_def release_queue_relation_def)
 
-lemma tcb_release_remove_corres:
-  "corres dc (pspace_aligned and pspace_distinct and tcb_at t) \<top>
-             (tcb_release_remove t) (tcbReleaseRemove t)"
+lemma tcbReleaseRemove_corres:
+  "t = t' \<Longrightarrow> corres dc (pspace_aligned and pspace_distinct and tcb_at t) \<top>
+                         (tcb_release_remove t) (tcbReleaseRemove t')"
   unfolding tcb_release_remove_def tcbReleaseRemove_def tcb_sched_dequeue_def setReleaseQueue_def
   apply clarsimp
   apply (rule stronger_corres_guard_imp)
