@@ -1457,7 +1457,7 @@ lemma guarded_switch_to_corres:
                 and valid_vspace_objs and pspace_aligned and pspace_distinct
                 and valid_vs_lookup and valid_global_objs
                 and unique_table_refs o caps_of_state
-                and is_schedulable_bool t and valid_ready_qs)
+                and schedulable t and valid_ready_qs)
              (valid_arch_state' and valid_pspace' and Invariants_H.valid_queues
                 and st_tcb_at' runnable' t and cur_tcb')
              (guarded_switch_to t) (switchToThread t)"
@@ -1472,7 +1472,7 @@ lemma guarded_switch_to_corres:
       apply (wpsimp wp: is_schedulable_wp)
      apply assumption
     apply (wpsimp wp: thread_get_wp')
-   apply (clarsimp simp: is_schedulable_bool_def2 tcb_at_kh_simps pred_map_def vs_all_heap_simps
+   apply (clarsimp simp: schedulable_def2 tcb_at_kh_simps pred_map_def vs_all_heap_simps
                          obj_at_def is_tcb)
   apply simp
   done
@@ -1589,19 +1589,19 @@ lemma isScActive_cross_rel:
   done
 
 lemma isSchedulable_bool_cross_rel:
-  "cross_rel (pspace_aligned and pspace_distinct and valid_objs and is_schedulable_bool t) (\<lambda>s'. valid_release_queue' s' \<longrightarrow> isSchedulable_bool t s')"
+  "cross_rel (pspace_aligned and pspace_distinct and valid_objs and schedulable t) (\<lambda>s'. valid_release_queue' s' \<longrightarrow> isSchedulable_bool t s')"
   apply (rule cross_rel_imp[OF isScActive_cross_rel[where t=t]])
    apply (rule cross_rel_imp[OF tcbInReleaseQueue_cross_rel[where t=t]])
     apply (rule cross_rel_imp[OF runnable_cross_rel[where t=t]])
      apply (clarsimp simp: isSchedulable_bool_def pred_map_conj[simplified pred_conj_def])
-    apply (clarsimp simp: is_schedulable_bool_def2)+
+    apply (clarsimp simp: schedulable_def2)+
   done
 
 lemmas tcb_at'_example = corres_cross[where Q' = "tcb_at' t" for t, OF tcb_at'_cross_rel]
 
 lemma guarded_switch_to_chooseThread_fragment_corres:
   "corres dc
-    (P and is_schedulable_bool t and invs and valid_ready_qs)
+    (P and schedulable t and invs and valid_ready_qs)
     (P' and invs' and tcb_at' t)
           (guarded_switch_to t)
           (do schedulable \<leftarrow> isSchedulable t;
@@ -1624,7 +1624,7 @@ lemma guarded_switch_to_chooseThread_fragment_corres:
       apply (wpsimp wp: is_schedulable_wp)
      apply (wpsimp wp: isSchedulable_wp)
     apply (prop_tac "st_tcb_at runnable t s \<and> bound_sc_tcb_at bound t s")
-     apply (clarsimp simp: is_schedulable_bool_def2 tcb_at_kh_simps pred_map_def vs_all_heap_simps)
+     apply (clarsimp simp: schedulable_def2 tcb_at_kh_simps pred_map_def vs_all_heap_simps)
     apply (clarsimp simp: st_tcb_at_tcb_at invs_def valid_state_def valid_pspace_def valid_sched_def
                           invs_valid_vs_lookup invs_unique_refs)
     apply (clarsimp simp: thread_get_def in_monad pred_tcb_at_def obj_at_def get_tcb_ko_at)
@@ -1680,7 +1680,7 @@ lemma chooseThread_corres:
            apply (rule corres_symb_exec_r)
               apply (rule_tac
                        P="\<lambda>s. ?PREI s \<and> queues = ready_queues s (cur_domain s) \<and>
-                              is_schedulable_bool (hd (max_non_empty_queue queues)) s" and
+                              schedulable (hd (max_non_empty_queue queues)) s" and
                        P'="\<lambda>s. (?PREH s ) \<and> st_tcb_at' runnable' (hd queue) s \<and>
                                l1 = ksReadyQueuesL1Bitmap s (ksCurDomain s) \<and>
                                l1 \<noteq> 0 \<and>
@@ -1703,7 +1703,7 @@ lemma chooseThread_corres:
              "ready_queues sa (cur_domain sa) (Max {prio. ready_queues sa (cur_domain sa) prio \<noteq> []}) \<noteq> []")
      apply (fastforce elim!: setcomp_Max_has_prop)
     apply (fastforce elim!: setcomp_Max_has_prop)
-   apply (clarsimp simp: tcb_at_kh_simps is_schedulable_bool_def2 released_sc_tcb_at_def)
+   apply (clarsimp simp: tcb_at_kh_simps schedulable_def2 released_sc_tcb_at_def)
    apply (subgoal_tac "in_ready_q a sa", fastforce simp: ready_or_release_def)
    apply (clarsimp simp: in_ready_q_def)
     apply (rule_tac x="cur_domain sa" in exI)
