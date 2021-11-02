@@ -5083,7 +5083,7 @@ lemma tcbSchedEnqueue_isSchedulable_bool[wp]:
 
 lemma schedule_switch_thread_branch_sc_at_cur_sc:
   "\<lbrace>valid_objs and cur_sc_tcb\<rbrace>
-   schedule_switch_thread_branch candidate ct ct_schedulable
+   schedule_switch_thread_branch candidate ct ct_schdlble
    \<lbrace>\<lambda>_ s. sc_at (cur_sc s) s\<rbrace>"
   apply (rule hoare_weaken_pre)
    apply (rule_tac f=cur_sc in hoare_lift_Pf2)
@@ -5093,7 +5093,7 @@ lemma schedule_switch_thread_branch_sc_at_cur_sc:
 
 lemma schedule_switch_thread_branch_valid_state_and_cur_tcb:
   "\<lbrace>\<lambda>s. invs s \<and> scheduler_action s = switch_thread candidate\<rbrace>
-   schedule_switch_thread_branch candidate ct ct_schedulable
+   schedule_switch_thread_branch candidate ct ct_schdlble
    \<lbrace>\<lambda>_ s. valid_state s \<and> cur_tcb s\<rbrace>"
   apply (wpsimp simp: schedule_switch_thread_fastfail_def set_scheduler_action_def
                   wp: switch_to_thread_invs thread_get_inv hoare_drop_imps)
@@ -5154,7 +5154,7 @@ lemma schedule_corres:
        apply (wpsimp wp: scheduleChooseNewThread_invs')
       apply (wpsimp | wps)+
     subgoal by (fastforce intro!: cur_sc_tcb_sc_at_cur_sc valid_sched_context_size_objsI
-                            simp: is_schedulable_bool_def2 pred_tcb_at_def obj_at_def get_tcb_def
+                            simp: schedulable_def2 pred_tcb_at_def obj_at_def get_tcb_def
                                   invs_def cur_tcb_def is_tcb_def ct_ready_if_schedulable_def
                                   vs_all_heap_simps valid_sched_def)
    apply (fastforce simp: invs'_def isSchedulable_bool_def st_tcb_at'_def pred_map_simps
@@ -5192,7 +5192,7 @@ lemma schedule_corres:
   apply (rename_tac candidate)
   apply (rule corres_split_skip[where r'="(=)"])
      apply wpsimp
-     apply (clarsimp simp: is_schedulable_bool_def2 pred_tcb_at_def obj_at_def valid_sched_def
+     apply (clarsimp simp: schedulable_def2 pred_tcb_at_def obj_at_def valid_sched_def
                            ct_ready_if_schedulable_def vs_all_heap_simps)
     apply wpsimp
     apply (clarsimp simp: invs'_def isSchedulable_bool_def st_tcb_at'_def pred_map_simps
