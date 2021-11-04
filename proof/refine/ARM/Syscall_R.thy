@@ -855,6 +855,165 @@ lemma threadSet_not_curthread_ct_domain:
   apply clarsimp
   done
 
+lemma schedContextBindNtfn_invs':
+  "\<lbrace>invs' and ex_nonz_cap_to' scPtr and ex_nonz_cap_to' ntfnPtr\<rbrace>
+   schedContextBindNtfn scPtr ntfnPtr
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (clarsimp simp: schedContextBindNtfn_def)
+  apply (wpsimp wp: setSchedContext_invs' setNotification_invs' hoare_vcg_imp_lift'
+                    hoare_vcg_all_lift getNotification_wp)
+  apply (rule conjI)
+   apply normalise_obj_at'
+   apply (frule ntfn_ko_at_valid_objs_valid_ntfn')
+    apply fastforce
+   apply (clarsimp simp: valid_ntfn'_def split: ntfn.splits)
+  apply (frule obj_at_ko_at')
+  apply clarsimp
+  apply (intro conjI impI)
+   apply (fastforce dest: sc_ko_at_valid_objs_valid_sc'
+                    simp: valid_sched_context'_def valid_sched_context_size'_def)
+  apply (frule sc_ko_at_valid_objs_valid_sc')
+   apply fastforce
+  apply (clarsimp simp: valid_sched_context_size'_def scBits_simps objBits_simps)
+ done
+
+lemma contextYieldToUpdateQueues_invs'_helper:
+   "\<lbrace>\<lambda>s. invs' s
+         \<and> sc_at' scPtr s \<and> valid_sched_context' sc s \<and> valid_sched_context_size' sc
+         \<and> ex_nonz_cap_to' scPtr s \<and> ex_nonz_cap_to' ctPtr s
+         \<and> tcb_at' ctPtr s\<rbrace>
+    do y \<leftarrow> threadSet (tcbYieldTo_update (\<lambda>_. Some scPtr)) ctPtr;
+       setSchedContext scPtr (scYieldFrom_update (\<lambda>_. Some ctPtr) sc)
+    od
+    \<lbrace>\<lambda>_. invs'\<rbrace>"
+   apply (clarsimp simp: invs'_def valid_pspace'_def valid_dom_schedule'_def)
+   apply (wp threadSet_valid_objs' threadSet_mdb' threadSet_sch_act threadSet_iflive'
+             threadSet_cap_to threadSet_ifunsafe'T  threadSet_idle'T threadSet_ctes_ofT
+             threadSet_valid_queues_new threadSet_valid_queues' threadSet_valid_release_queue
+             threadSet_valid_release_queue' threadSet_not_inQ
+             untyped_ranges_zero_lift valid_irq_node_lift valid_irq_handlers_lift''
+              hoare_vcg_const_imp_lift hoare_vcg_imp_lift'
+             threadSet_valid_replies'
+          | clarsimp simp: tcb_cte_cases_def cteCaps_of_def)+
+   apply (fastforce simp: obj_at_simps valid_tcb'_def tcb_cte_cases_def comp_def
+                          valid_sched_context'_def valid_sched_context_size'_def
+                          valid_release_queue'_def inQ_def)
+   done
+
+lemma setSchedContext_ct_in_state':
+  "\<lbrace>ct_in_state' P and sc_at' ptr\<rbrace> setSchedContext ptr sc \<lbrace>\<lambda>_. ct_in_state' P\<rbrace>"
+  apply (wpsimp wp: set_sc'.set_wp)
+  apply (fastforce simp: ct_in_state'_def st_tcb_at'_def obj_at_simps ps_clear_def)
+  done
+
+crunches schedContextResume
+  for bound_scTCB[wp]: "obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr"
+  (wp: crunch_wps simp: crunch_simps)
+
+lemma schedContextCancelYieldTo_bound_scTCB[wp]:
+  "schedContextCancelYieldTo tptr \<lbrace>obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextCancelYieldTo_def)
+  apply (rule hoare_seq_ext_skip, wpsimp)
+  apply (rule hoare_when_cases, simp)
+  apply (rule hoare_seq_ext[OF _ get_sc_sp'])
+  apply (wpsimp wp: set_sc'.obj_at' simp: updateSchedContext_def)
+  apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def split: if_split)
+  done
+
+lemma schedContextUpdateConsumed_bound_scTCB[wp]:
+  "schedContextUpdateConsumed tptr \<lbrace>obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextUpdateConsumed_def)
+  apply (wpsimp wp: set_sc'.obj_at' simp: updateSchedContext_def)
+  apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def split: if_split)
+  done
+
+crunches schedContextCompleteYieldTo
+  for bound_scTCB[wp]: "obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr"
+
+lemma contextYieldToUpdateQueues_invs':
+  "\<lbrace>invs' and (\<lambda>s. obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr s) and ct_active'
+    and ex_nonz_cap_to' scPtr and (\<lambda>s. tcb_at' (ksCurThread s) s)\<rbrace>
+   contextYieldToUpdateQueues scPtr
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (clarsimp simp: contextYieldToUpdateQueues_def)
+  apply (rule hoare_seq_ext[OF _ get_sc_sp'])
+  apply (rule hoare_seq_ext[OF _ isSchedulable_sp])
+  apply (rule hoare_if; (solves wpsimp)?)
+  apply (rule hoare_seq_ext[OF _ getCurThread_sp])
+  apply (rule hoare_seq_ext_skip, wpsimp)+
+  apply (rule hoare_if)
+   apply wpsimp
+   apply (erule isSchedulable_bool_runnableE)
+   apply (frule sc_ko_at_valid_objs_valid_sc')
+    apply fastforce
+   apply (clarsimp simp: valid_sched_context'_def valid_bound_obj'_def obj_at_simps opt_map_def)
+  apply (subst bind_dummy_ret_val[symmetric])
+  apply (subst bind_assoc[symmetric])
+  apply (rule_tac B="\<lambda>_. invs' and ct_active' and (\<lambda>s. st_tcb_at' runnable' (the (scTCB sc)) s)
+                         and (\<lambda>s. tcb_at' (ksCurThread s) s) and (\<lambda>s. ctPtr = ksCurThread s)"
+               in hoare_seq_ext[rotated])
+   apply (clarsimp simp: pred_conj_def)
+   apply (intro hoare_vcg_conj_lift_pre_fix)
+       apply (rule hoare_weaken_pre)
+        apply clarsimp
+        apply (rule contextYieldToUpdateQueues_invs'_helper)
+       apply (fastforce dest: sc_ko_at_valid_objs_valid_sc'
+                        simp: valid_sched_context'_def valid_sched_context_size'_def)
+      apply (wpsimp wp: threadSet_ct_in_state' setSchedContext_ct_in_state')
+     apply (wpsimp wp: threadSet_st_tcb_at2)
+     apply (erule isSchedulable_bool_runnableE)
+     apply (frule sc_ko_at_valid_objs_valid_sc')
+      apply fastforce
+     apply (frule sc_ko_at_valid_objs_valid_sc')
+      apply fastforce
+     apply (clarsimp simp: valid_sched_context'_def scBits_simps obj_at_simps)
+    apply (wpsimp | wps)+
+  apply (clarsimp simp: ct_in_state'_def st_tcb_at'_def obj_at_simps runnable_eq_active')
+  done
+
+crunches schedContextResume
+  for scTCBs_of[wp]: "\<lambda>s. P (scTCBs_of s)"
+  and st_tcb_at'[wp]: "st_tcb_at' P tptr"
+  (wp: crunch_wps threadSet_st_tcb_at2 mapM_wp_inv)
+
+crunches schedContextCompleteYieldTo
+  for ex_nonz_cap_to'[wp]: "ex_nonz_cap_to' ptr"
+  (simp: crunch_simps tcb_cte_cases_def wp: crunch_wps threadSet_cap_to)
+
+lemma schedContextYiedTo_invs':
+  "\<lbrace>invs' and ct_active' and ex_nonz_cap_to' scPtr
+    and (\<lambda>s. obj_at' (\<lambda>sc. \<exists>t. scTCB sc = Some t) scPtr s)\<rbrace>
+   schedContextYieldTo scPtr buffer
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (clarsimp simp: schedContextYieldTo_def)
+  apply (wpsimp wp: contextYieldToUpdateQueues_invs' setConsumed_invs'
+              simp: ct_in_state'_def
+         | wps)+
+  done
+
+lemma invokeSchedContext_invs':
+  "\<lbrace>invs' and  ct_active' and valid_sc_inv' iv\<rbrace>
+   invokeSchedContext iv
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (clarsimp simp: invokeSchedContext_def)
+  apply (cases iv; clarsimp)
+apply (wpsimp wp: setConsumed_invs')
+apply (case_tac x22; clarsimp)
+apply (wpsimp wp: schedContextBindTCB_invs')
+apply (clarsimp simp: pred_tcb_at'_def obj_at_simps)
+apply (wpsimp wp: schedContextBindNtfn_invs')
+apply (case_tac x32; clarsimp)
+apply (wpsimp wp: )
+using global'_sc_no_ex_cap
+  apply fastforce
+apply wpsimp
+apply wpsimp
+using global'_sc_no_ex_cap
+  apply fastforce
+apply (wpsimp wp: schedContextYiedTo_invs')
+apply (fastforce simp: obj_at_simps)
+done
+
 lemma setDomain_invs':
   "\<lbrace>invs' and tcb_at' ptr and K (domain \<le> maxDomain)\<rbrace>
    setDomain ptr domain
@@ -869,19 +1028,131 @@ lemma setDomain_invs':
   apply (clarsimp simp: isSchedulable_bool_def pred_map_simps st_tcb_at'_def obj_at_simps)
   done
 
+lemma invokeSchedControlConfigureFlags_invs':
+  " \<lbrace>invs' and ct_active' and valid_sc_ctrl_inv' iv\<rbrace>
+    invokeSchedControlConfigureFlags iv
+    \<lbrace>\<lambda>_. invs'\<rbrace>"
+apply (clarsimp simp: invokeSchedControlConfigureFlags_def)
+apply (cases iv; clarsimp)
+  apply (rename_tac sc_ptr budget period mrefills badge flag)
+apply (rule hoare_seq_ext[OF _ get_sc_sp'])
+apply (rule_tac B="\<lambda>_ s. invs' s \<and> sc_at' sc_ptr s \<and> valid_sc_ctrl_inv' iv s \<and> ex_nonz_cap_to' sc_ptr s" in hoare_seq_ext[rotated])
+    apply (wps_conj_solves wp: ct_in_state_thread_state_lift')
+      apply (wpsimp wp: setSchedContext_invs')
+      apply (frule sc_ko_at_valid_objs_valid_sc')
+  apply fastforce
+apply (clarsimp simp: valid_sched_context'_def valid_sched_context_size'_def scBits_simps objBits_simps)
+apply (rule hoare_seq_ext_skip)
+    apply (wps_conj_solves wp: ct_in_state_thread_state_lift')
+      apply (wpsimp wp: setSchedContext_invs')
+subgoal sorry \<comment> \<open>wait for spec change in invokeSchedControlConfigureFlags_corres\<close>
+apply (rule_tac B="\<lambda>_ s. invs' s \<and> sc_at' sc_ptr s \<and> valid_sc_ctrl_inv' iv s \<and> ex_nonz_cap_to' sc_ptr s" in hoare_seq_ext[rotated])
+apply (rule hoare_when_cases, simp)
+subgoal sorry \<comment> \<open>wait for spec change in invokeSchedControlConfigureFlags_corres\<close>
+apply (rule hoare_seq_ext[OF _ isRunnable_sp])
+apply (rule_tac B="\<lambda>_ s. invs' s" in hoare_seq_ext[rotated])
+apply (rule hoare_if)
+apply (wpsimp wp: refillNew_invs')
+subgoal sorry
+apply (rule hoare_seq_ext[OF _ get_sc_sp'])
+apply (rule hoare_if)
+apply (wpsimp wp: refillUpdate_invs')
+apply (clarsimp simp: obj_at_simps ko_wp_at'_def)
+apply (wpsimp wp: refillNew_invs')
+apply (clarsimp simp: obj_at_simps ko_wp_at'_def)
+apply (rule hoare_seq_ext[OF _ get_sc_sp'])
+apply (rule hoare_when_cases, simp)
+apply (rule_tac B="\<lambda>_ s. invs' s" in hoare_seq_ext[rotated])
+apply wpsimp
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply wpsimp \<comment> \<open>different instances of isRunnable in new spec\<close>
+sorry
+
+
 lemma performInv_invs'[wp]:
-  "\<lbrace>invs' and sch_act_simple
+  "\<lbrace>invs' and (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)
           and (\<lambda>s. \<forall>p. ksCurThread s \<notin> set (ksReadyQueues s p))
           and ct_active' and valid_invocation' i\<rbrace>
-     RetypeDecls_H.performInvocation block call can_donate i \<lbrace>\<lambda>rv. invs'\<rbrace>"
-  unfolding performInvocation_def
-  apply (cases i)
+   RetypeDecls_H.performInvocation block call can_donate i
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (clarsimp simp: performInvocation_def)
+  apply (cases i; clarsimp)
+
   apply ((clarsimp simp: simple_sane_strg sch_act_simple_def
-                         sch_act_sane_def
+                         sch_act_sane_def sym_refs_asrt_def
                   | wp tcbinv_invs' arch_performInvocation_invs'
-                       setDomain_invs'
-                  | rule conjI | erule active_ex_cap')+)
-  sorry (* FIXME RT: invokeSchedContext_invs and InvokeSchedControl_invs' *)
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+thm send_ipc_valid_sched
+find_theorems name: send_ipc_valid_sched
+apply (clarsimp simp: ct_in_state'_def)
+apply (rule conjI)
+subgoal sorry \<comment> \<open>add cur_sc_tcb' assert to sendIPC branch of performInvocation\<close>
+apply (rule active_ex_cap')
+apply simp
+  apply fastforce
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+subgoal sorry \<comment> \<open>add cur_tcb' assert to doReplyTransfer branch\<close>
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+apply (wpsimp wp: invokeSchedContext_invs')
+
+
+defer
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+
+  apply_trace ((clarsimp simp: simple_sane_strg sch_act_simple_def
+                         sch_act_sane_def sym_refs_asrt_def
+                  | wp tcbinv_invs' arch_performInvocation_invs'
+                       setDomain_invs' stateAssertE_wp stateAssertE_inv
+                  | rule conjI | erule active_ex_cap')+)[1]
+apply (wpsimp wp: invokeSchedControlConfigureFlags_invs')
+done
 
 lemma getSlotCap_to_refs[wp]:
   "\<lbrace>\<top>\<rbrace> getSlotCap ref \<lbrace>\<lambda>rv s. \<forall>r\<in>zobj_refs' rv. ex_nonz_cap_to' r s\<rbrace>"
