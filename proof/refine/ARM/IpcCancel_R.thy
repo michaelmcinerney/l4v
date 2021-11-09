@@ -694,7 +694,7 @@ lemma replyRemoveTCB_corres:
    apply (fastforce dest!: st_tcb_at_coerce_concrete elim!: pred_tcb'_weakenE)
   apply (clarsimp simp: reply_remove_tcb_def replyRemoveTCB_def isReply_def)
   apply (rule corres_guard_imp)
-    apply (rule corres_split[OF getThreadState_corres])
+    apply (rule corres_split[OF getThreadState_corres]; (solves simp)?)
       apply (rule corres_assert_gen_asm_l)
       apply (rule corres_assert_gen_asm2)
       apply (rule corres_assert_opt_assume)
@@ -1339,8 +1339,6 @@ lemma replyPop_corres:
                  apply (rule hoare_vcg_conj_lift)
                   apply (wpsimp wp: updateSchedContext_wp)
                  apply wpsimp
-                  apply (clarsimp simp: objBits_simps)
-                 apply wpsimp
                  apply (rule hoare_vcg_conj_lift)
                   apply (wpsimp wp: setSchedContext_local_sym_refs simp: updateSchedContext_def)
                  apply wpsimp
@@ -1757,7 +1755,7 @@ lemma cancel_ipc_corres:
                   apply (clarsimp simp: tcb_relation_def fault_rel_optionation_def)
                  apply simp+
        apply (wpsimp wp: thread_set_invs_fault_None thread_set_valid_ready_qs thread_set_no_change_tcb_state)
-      apply (wpsimp wp: threadSet_pred_tcb_no_state threadSet_invs_trivial)
+      apply (wpsimp wp: threadSet_pred_tcb_no_state threadSet_invs_trivial)+
      apply (wp gts_sp[where P="\<top>", simplified])+
     apply (rule hoare_strengthen_post)
      apply (rule gts_sp'[where P="\<top>"])
@@ -2457,41 +2455,40 @@ lemma (in delete_one) suspend_corres:
   apply (rule corres_guard_imp)
     apply (rule corres_split_nor[OF _ cancel_ipc_corres])
       apply (rule corres_split_deprecated[OF _ getThreadState_corres], rename_tac state state')
-        apply (simp only: when_def)
-        apply (rule corres_split_deprecated[OF _ corres_if])
-             apply (rule corres_split_deprecated[OF _ setThreadState_corres])
-                apply (rule corres_split_deprecated[OF _ tcbSchedDequeue_corres'])
-                  apply (rule corres_split_deprecated[OF _ tcb_release_remove_corres])
-                    apply (rule schedContextCancelYieldTo_corres)
-                   apply wpsimp+
-            apply (case_tac state; clarsimp?)
-           apply (clarsimp simp: update_restart_pc_def updateRestartPC_def)
-           apply (rule asUser_corres')
-           apply (simp add: ARM.nextInstructionRegister_def ARM.faultRegister_def
-                            ARM_H.nextInstructionRegister_def ARM_H.faultRegister_def
-                            ARM_H.Register_def)
-           apply (rule corres_underlying_trivial)
-           apply (wpsimp simp: ARM.setRegister_def ARM.getRegister_def)
-          apply (rule corres_rel_imp)
-           apply (rule corres_return_trivial)
-          apply simp
-         apply (wpsimp simp: update_restart_pc_def updateRestartPC_def)
-          apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs s \<and> tcb_at t s"], fastforce)
-          apply wp
+         apply (simp only: when_def)
+         apply (rule corres_split_deprecated[OF _ corres_if])
+              apply (rule corres_split_deprecated[OF _ setThreadState_corres])
+                 apply (rule corres_split_deprecated[OF _ tcbSchedDequeue_corres'])
+                   apply (rule corres_split_deprecated[OF _ tcbReleaseRemove_corres])
+                      apply (rule schedContextCancelYieldTo_corres)
+                     apply wpsimp+
+             apply (case_tac state; clarsimp?)
+            apply (clarsimp simp: update_restart_pc_def updateRestartPC_def)
+            apply (rule asUser_corres')
+            apply (simp add: ARM.nextInstructionRegister_def ARM.faultRegister_def
+                             ARM_H.nextInstructionRegister_def ARM_H.faultRegister_def
+                             ARM_H.Register_def)
+            apply (rule corres_underlying_trivial)
+            apply (wpsimp simp: ARM.setRegister_def ARM.getRegister_def)
+           apply (rule corres_rel_imp)
+            apply (rule corres_return_trivial)
+           apply simp
+          apply (wpsimp simp: update_restart_pc_def updateRestartPC_def)
+           apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs s \<and> tcb_at t s"], fastforce)
+           apply wp
+          apply wpsimp
+         apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs' s \<and> tcb_at' t s"])
+          apply (fastforce simp: invs'_def dest!: valid_queues_inQ_queues)
+         apply wp
+          apply (clarsimp simp: updateRestartPC_def)
+          apply wpsimp
          apply wpsimp
-        apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs' s \<and> tcb_at' t s"])
-         apply (fastforce simp: invs'_def dest!: valid_queues_inQ_queues)
-        apply wp
-         apply (clarsimp simp: updateRestartPC_def)
-         apply wpsimp
-        apply wpsimp
-       apply (wpsimp wp: gts_wp)
-      apply (wpsimp wp: gts_wp')
-     apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs s \<and> tcb_at t s"], fastforce)
-     apply wpsimp
-    apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs' s \<and> tcb_at' t s"], fastforce)
-    apply wpsimp
-   apply clarsimp+
+        apply (wpsimp wp: gts_wp)
+       apply (wpsimp wp: gts_wp')
+       apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs s \<and> tcb_at t s"], fastforce)
+       apply wpsimp
+      apply (rule hoare_post_imp[where Q = "\<lambda>rv s. invs' s \<and> tcb_at' t s"], fastforce)
+      apply (wpsimp wp: hoare_drop_imps)+
   done
 
 lemma (in delete_one) prepareThreadDelete_corres:
@@ -2961,7 +2958,8 @@ lemma cancelAllIPC_corres_helper:
           apply clarsimp
           apply (rename_tac t)
           apply (rule corres_guard_imp)
-            apply (rule corres_split_deprecated[OF _ getThreadState_corres], rename_tac st st')
+            apply (rule corres_split_deprecated[OF _ getThreadState_corres], rename_tac st st';
+                   (solves simp)?)
               apply (rule_tac P="\<lambda>s. blocked_on_send_recv_tcb_at t s \<and> t \<noteq> idle_thread s
                                      \<and> reply_unlink_ts_pred t s \<and> valid_sched s \<and> valid_tcbs s
                                      \<and> pspace_aligned s \<and> pspace_distinct s
@@ -3226,6 +3224,7 @@ lemma ntfn_cancel_corres_helper:
          apply (clarsimp simp: is_blocked_thread_state_defs)
          apply (case_tac "itcb_state tcb"; simp)
         apply clarsimp
+<<<<<<< HEAD
        apply clarsimp
        apply (rule conjI)
         apply (frule valid_sched_released_ipc_queues)
@@ -3241,6 +3240,25 @@ lemma refill_unblock_check_weak_valid_sched_action[wp]:
    \<lbrace>\<lambda>rv. weak_valid_sched_action\<rbrace>"
   apply (clarsimp simp: weak_valid_sched_action_def)
   apply (wpsimp wp: hoare_vcg_all_lift hoare_vcg_imp_lift'')
+=======
+        apply (rule corres_guard_imp)
+          apply (rule corres_split_deprecated[OF possibleSwitchTo_corres]; (solves simp)?)
+            apply (rule setThreadState_corres)
+            apply simp
+           apply (wp set_thread_state_valid_sched_action
+                     setThreadState_st_tcb)+
+         apply force
+        apply (clarsimp simp: valid_tcb_state'_def)
+       apply (wpsimp wp: set_thread_state_pred_map_tcb_sts_of)
+      apply (wpsimp wp: typ_at_lifts)
+     apply (clarsimp simp: pred_conj_def)
+     apply (wpsimp wp: set_thread_state_possible_switch_to_valid_sched
+                       hoare_vcg_const_Ball_lift set_thread_state_pred_map_tcb_sts_of)
+     apply (frule valid_sched_released_ipc_queues)
+     apply (fastforce simp: released_ipc_queues_defs)
+    apply (wpsimp wp: hoare_vcg_const_Ball_lift typ_at_lifts sts_st_tcb')
+    apply (auto simp: valid_tcb_state'_def)
+>>>>>>> aba61eaf9 (rt refine: rephrase some corres rules)
   done
 
 crunches if_cond_refill_unblock_check

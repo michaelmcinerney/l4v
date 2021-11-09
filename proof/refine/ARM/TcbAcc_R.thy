@@ -1905,8 +1905,9 @@ lemma asUser_setRegister_corres:
 end
 
 lemma getThreadState_corres:
-  "corres thread_state_relation (tcb_at t) (tcb_at' t)
-          (get_thread_state t) (getThreadState t)"
+  "t = t' \<Longrightarrow>
+   corres thread_state_relation (tcb_at t) (tcb_at' t)
+          (get_thread_state t) (getThreadState t')"
   apply (simp add: get_thread_state_def getThreadState_def)
   apply (rule threadGet_corres)
   apply (simp add: tcb_relation_def)

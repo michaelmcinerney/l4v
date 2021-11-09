@@ -57,7 +57,7 @@ lemma activateThread_corres:
           prefer 3
           apply (rule_tac R="\<lambda>ts s. (activatable ts) \<and> invs s \<and> st_tcb_at ((=) ts) thread s"
                       and R'="\<lambda>ts s. (activatable' ts) \<and> invs' s \<and> st_tcb_at' (\<lambda>ts'. ts' = ts) thread s"
-                      in  corres_split_deprecated [OF _ getThreadState_corres])
+                      in  corres_split_deprecated [OF _ getThreadState_corres]; (solves simp)?)
             apply (rule_tac F="idle rv \<or> runnable rv" in corres_req, clarsimp)
             apply (rule_tac F="idle' rv' \<or> runnable' rv'" in corres_req, clarsimp)
             apply (case_tac rv, simp_all add: isRunning_def isRestart_def, safe, simp_all)[1]
@@ -177,7 +177,7 @@ lemma restart_corres:
                    get_tcb_obj_ref_def)
   apply (simp add: isStopped_def2 liftM_def)
   apply (rule corres_guard_imp)
-    apply (rule corres_split_deprecated [OF _ getThreadState_corres])
+    apply (rule corres_split_deprecated [OF _ getThreadState_corres]; (solves simp)?)
       apply (rule corres_split_deprecated [OF _ threadGet_corres[where r="(=)"]])
          apply (rename_tac scOpt)
          apply (rule corres_when2)
@@ -189,7 +189,7 @@ lemma restart_corres:
                 apply (simp add: maybeM_when, fold dc_def)
                 apply (rule corres_split_deprecated [OF _ corres_when2])
                     apply (rule corres_split_deprecated [OF _ isSchedulable_corres])
-                      apply (rule corres_when2 [OF _ possibleSwitchTo_corres])
+                      apply (rule corres_when2 [OF _ possibleSwitchTo_corres]; (solves simp)?)
                       apply simp
                      prefer 4
                      apply (rule schedContextResume_corres)
@@ -579,8 +579,9 @@ lemma copyreg_invs':
   by (rule hoare_strengthen_post, rule copyreg_invs'', simp)
 
 lemma isRunnable_corres:
-  "corres (\<lambda>ts runn. runnable ts = runn) (tcb_at t) (tcb_at' t)
-     (get_thread_state t) (isRunnable t)"
+  "t = t' \<Longrightarrow>
+   corres (\<lambda>ts runn. runnable ts = runn) (tcb_at t) (tcb_at' t)
+     (get_thread_state t) (isRunnable t')"
   apply (simp add: isRunnable_def)
   apply (subst bind_return[symmetric])
   apply (rule corres_guard_imp)
@@ -1043,7 +1044,7 @@ lemma setPriority:
                           threadSet_valid_objs_tcbPriority_update threadSetPriority_invs'
                     simp: if_fun_split)
        apply (case_tac rv; simp add: ep_blocked_def epBlocked_def ntfn_blocked_def ntfnBlocked_def)
-      apply (rule getThreadState_corres)
+      apply (rule getThreadState_corres; (solves simp)?)
      apply (wp gts_wp)
     apply (wp gts_wp')
    apply (fastforce simp: pred_tcb_at_def obj_at_def)
