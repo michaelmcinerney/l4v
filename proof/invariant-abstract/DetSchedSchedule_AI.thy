@@ -26207,7 +26207,6 @@ lemma handle_event_ct_ready_if_schedulable[wp]:
     and cur_sc_active
     and (\<lambda>s. ct_running s \<or> ct_idle s) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)
     and ct_not_in_release_q
-    and ct_not_queued
     and consumed_time_bounded
     and ct_released
     and (\<lambda>s. cur_sc_offset_ready (consumed_time s) s) \<rbrace>
