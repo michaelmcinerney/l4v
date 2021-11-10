@@ -25006,6 +25006,7 @@ method he_ctris_two_phase_wp
 method he_ctris_two_phase_ff
  = (fastforce intro!: schact_is_rct_ct_released
                       schact_is_rct_ct_active_sc
+                dest: valid_sched_ct_not_queued
                 simp: runnable_eq_active ct_in_state_def in_release_queue_def not_in_release_q_def
                       schedulable_def2 pred_tcb_at_def obj_at_def
                 elim: invs_cur_sc_chargeableE)
@@ -25018,7 +25019,6 @@ lemma handle_event_ct_ready_if_schedulable[wp]:
     and cur_sc_active
     and (\<lambda>s. ct_running s \<or> ct_idle s) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)
     and ct_not_in_release_q
-    and ct_not_queued
     and consumed_time_bounded
     and ct_released
     and (\<lambda>s. cur_sc_offset_ready (consumed_time s) s) \<rbrace>
