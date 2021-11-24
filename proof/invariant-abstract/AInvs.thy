@@ -201,7 +201,7 @@ crunches handle_fault, check_budget_restart, handle_recv
 
 crunches sched_context_yield_to, sched_context_bind_tcb, cancel_all_ipc, cancel_all_signals,
          cancel_badged_sends, restart, maybe_sched_context_unbind_tcb, maybe_sched_context_bind_tcb,
-         sched_context_bind_tcb, bind_notification, send_signal
+         sched_context_bind_tcb, bind_notification, send_signal, check_domain_time
   for cur_sc[wp]: "\<lambda>s. P (cur_sc s)"
   (wp: crunch_wps check_cap_inv filterM_preserved simp: crunch_simps)
 
@@ -1285,5 +1285,528 @@ lemma call_kernel_consumed_time_bounded:
   apply (clarsimp simp: call_kernel_def)
   apply (wpsimp wp: preemption_path_consumed_time_bounded)
   done
+
+crunches check_domain_time
+  for cur_sc_active[wp]: "\<lambda>s. P (cur_sc_active s)"
+  and cur_sc_offset_ready[wp]: "\<lambda>s. cur_sc_offset_ready (consumed_time s) s"
+  and cur_sc_offset_sufficient[wp]: "\<lambda>s. cur_sc_offset_sufficient (consumed_time s) s"
+
+lemma commit_time_cur_sc_offset_ready_and_sufficient_consumed_time:
+  "\<lbrace>\<lambda>s. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s
+        \<and> current_time_bounded 5 s \<and> active_sc_valid_refills s\<rbrace>
+   commit_time
+   \<lbrace>\<lambda>_ s. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s\<rbrace>"
+   apply (clarsimp simp: commit_time_def)
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+   apply (rule hoare_seq_ext[OF _ get_sched_context_sp])
+ apply (rule hoare_seq_ext)
+ apply wpsimp
+ apply clarsimp
+ apply (rule hoare_when_cases)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_sufficient_def
+ refill_capacity_def  split: if_splits)
+   apply (metis MIN_BUDGET_nonzero More_Word.word_l_diffs(3) plus_minus_no_overflow_ab
+  word_add_increasing word_le_not_less)
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+ apply (rule hoare_seq_ext)
+ apply wpsimp
+
+ apply (rule hoare_when_cases)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_sufficient_def
+ refill_capacity_def  split: if_splits)
+
+   apply (metis MIN_BUDGET_nonzero More_Word.word_l_diffs(3) plus_minus_no_overflow_ab
+ word_add_increasing word_le_not_less)
+
+ apply (rule hoare_seq_ext[OF _ is_round_robin_sp])
+
+ apply (rule hoare_vcg_conj_lift_pre_fix)
+
+ apply (rule hoare_if)
+
+ apply (rule_tac Q="\<lambda>_ s. is_refill_ready (cur_sc s) s" in hoare_post_imp)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def)
+   apply (metis le_antisym nat_le_linear unat_plus_gt_trans word_less_eq_iff_unsigned)
+
+ apply (rule hoare_weaken_pre)
+ apply (rule_tac f=cur_sc and g=cur_sc in hoare_lift_Pf_pre_conj)
+ apply (wpsimp wp: refill_budget_check_round_robin_refill_ready_offset_ready_and_sufficient )
+ apply wpsimp
+   apply (fastforce simp: current_time_bounded_def)
+
+ apply (rule_tac Q="\<lambda>_ s. is_refill_ready (cur_sc s) s" in hoare_post_imp)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def)
+   apply (metis le_antisym nat_le_linear unat_plus_gt_trans word_less_eq_iff_unsigned)
+
+ apply (rule hoare_weaken_pre)
+ apply (rule_tac f=cur_sc in hoare_lift_Pf2)
+ apply (wpsimp wp: refill_budget_check_refill_ready_offset_ready_and_sufficient )
+ apply wpsimp
+   apply simp
+ apply (rule active_sc_valid_refillsE)
+ apply (clarsimp simp: obj_at_def vs_all_heap_simps)
+   apply linarith
+ apply (rule hoare_if)
+
+ apply (rule_tac Q="\<lambda>_ s. is_refill_sufficient 0 (cur_sc s) s" in hoare_post_imp)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def)
+
+
+ apply (rule hoare_weaken_pre)
+ apply (rule_tac f=cur_sc in hoare_lift_Pf2)
+ apply (wpsimp wp: refill_budget_check_round_robin_is_refill_sufficient )
+ apply wpsimp
+
+ apply clarsimp
+ apply (intro conjI)
+ apply (rule active_sc_valid_refillsE)
+ apply (clarsimp simp: obj_at_def vs_all_heap_simps)
+   apply linarith
+
+   apply (fastforce simp: current_time_bounded_def)
+
+ apply (rule_tac Q="\<lambda>_ s. is_refill_sufficient 0 (cur_sc s) s" in hoare_post_imp)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def)
+
+
+ apply (rule hoare_weaken_pre)
+ apply (rule_tac f=cur_sc in hoare_lift_Pf2)
+ apply (wpsimp wp: refill_budget_check_is_refill_sufficient )
+ apply wpsimp
+ apply clarsimp
+ apply (intro conjI)
+ apply (rule active_sc_valid_refillsE)
+ apply (clarsimp simp: obj_at_def vs_all_heap_simps)
+   apply linarith
+   apply (fastforce simp: current_time_bounded_def)
+ done
+
+
+ find_theorems valid_machine_time cur_time kernelWCET_ticks
+ find_theorems cur_time kernelWCET_ticks -valid
+
+ find_theorems refill_budget_check_round_robin name: ready
+
+lemma commit_time_is_refill_ready_other:
+  "\<lbrace>\<lambda>s. is_refill_ready sc_ptr s \<and> sc_ptr \<noteq> cur_sc s\<rbrace>
+   commit_time
+   \<lbrace>\<lambda>_ s. is_refill_ready sc_ptr s\<rbrace>"
+  apply (clarsimp simp: commit_time_def)
+ sorry
+
+lemma commit_time_is_refill_sufficient_other:
+  "\<lbrace>\<lambda>s. is_refill_sufficient 0 sc_ptr s \<and> sc_ptr \<noteq> cur_sc s\<rbrace>
+   commit_time
+   \<lbrace>\<lambda>_ s. is_refill_sufficient 0 sc_ptr s\<rbrace>"
+  apply (clarsimp simp: commit_time_def)
+ sorry
+
+lemma if_cond_refill_unblock_check_cur_sc_is_refill_sufficient[wp]:
+  "unat MIN_BUDGET + unat usage \<le> unat max_time \<Longrightarrow>
+   \<lbrace>\<lambda>s. is_refill_sufficient usage sc_ptr s \<and> valid_refills sc_ptr s\<rbrace>
+   if_cond_refill_unblock_check sc_opt actv asst
+   \<lbrace>\<lambda>_ s. is_refill_sufficient usage sc_ptr s\<rbrace>"
+  by (wpsimp simp: if_cond_refill_unblock_check_def)
+
+crunches if_cond_refill_unblock_check
+  for is_refill_ready[wp]: "is_refill_ready sc_ptr"
+  and reprogram_timer[wp]: reprogram_timer
+  (simp: crunch_simps wp: crunch_wps is_round_robin_wp refill_unblock_check_cur_sc_is_refill_sufficient)
+
+lemma switch_sched_context_cur_sc_offset_ready_and_sufficient_consumed_time:
+   "\<lbrace>\<lambda>s. (cur_sc_tcb_are_bound s \<longrightarrow> (cur_sc_offset_ready (consumed_time s) s
+\<and> cur_sc_offset_sufficient (consumed_time s) s))
+ \<and> ct_released s
+\<and> current_time_bounded 5 s
+
+ \<and> active_sc_valid_refills s\<rbrace>
+    switch_sched_context
+    \<lbrace>\<lambda>_ s :: det_state. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s\<rbrace>"
+   apply (clarsimp simp: switch_sched_context_def)
+   apply (rule hoare_seq_ext[OF _ gets_sp], rename_tac cur_sc_ptr)
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+   apply (rule hoare_seq_ext[OF _ gsc_sp])
+   apply (rule hoare_seq_ext[OF _ assert_opt_sp], rename_tac scp)
+   apply (rule hoare_seq_ext[OF _ get_sched_context_sp])
+
+ apply (rule_tac P="\<lambda>s. cur_sc_ptr = scp" in hoare_pre_tautI)
+ apply (clarsimp simp: when_def)
+ apply (simp flip: bind_assoc)
+ apply (rule_tac B="\<lambda>_ s. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s
+ \<and> cur_sc_ptr = cur_sc s" in hoare_seq_ext)
+ apply wpsimp
+
+
+
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+
+ apply (rule hoare_if; (solves wpsimp)?)
+ apply (wpsimp wp: commit_time_cur_sc_offset_ready_and_sufficient_consumed_time)
+
+
+ apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
+
+ apply (rule_tac Q="\<lambda>_ s. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s" in hoare_post_imp)
+   apply fast
+ apply_trace (wpsimp wp: commit_time_cur_sc_offset_ready_and_sufficient_consumed_time)
+ apply (prop_tac "cur_sc_tcb_are_bound s")
+ find_theorems cur_sc_tcb_are_bound -valid
+ apply (clarsimp simp: vs_all_heap_simps pred_tcb_at_def obj_at_def)
+   apply fastforce
+
+ apply (rule_tac Q="\<lambda>_ s. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s" in hoare_post_imp)
+   apply fast
+ apply (wpsimp wp: commit_time_cur_sc_offset_ready_and_sufficient_consumed_time)
+ apply (prop_tac "cur_sc_tcb_are_bound s")
+ find_theorems cur_sc_tcb_are_bound -valid
+ apply (clarsimp simp: vs_all_heap_simps pred_tcb_at_def obj_at_def)
+   apply fastforce
+ apply wpsimp
+ apply (prop_tac "cur_sc_tcb_are_bound s")
+ find_theorems cur_sc_tcb_are_bound -valid
+ apply (clarsimp simp: vs_all_heap_simps pred_tcb_at_def obj_at_def)
+   apply fastforce
+ apply (clarsimp simp: when_def pred_neg_def bind_assoc)
+
+ apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
+
+ apply (simp flip: bind_assoc)
+ apply (rule_tac B="\<lambda>_ s. is_refill_ready scp s \<and> consumed_time s =  0" in hoare_seq_ext)
+ apply wpsimp
+
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def)
+   apply (metis le_antisym nat_le_linear unat_plus_gt_trans word_less_eq_iff_unsigned)
+ apply (simp add: bind_assoc)
+
+ apply (intro hoare_vcg_conj_lift_pre_fix)
+
+ apply (wpsimp wp: commit_time_is_refill_ready_other hoare_drop_imps)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def pred_tcb_at_def
+ obj_at_def)
+
+
+ apply (rule_tac B="\<lambda>_. reprogram_timer" in hoare_seq_ext[rotated])
+
+ apply wpsimp
+
+ apply (rule hoare_seq_ext_skip)
+
+ apply wpsimp
+ apply wpsimp
+
+
+ apply (simp flip: bind_assoc)
+ apply (rule_tac B="\<lambda>_ s. is_refill_sufficient 0 scp s \<and> consumed_time s =  0" in hoare_seq_ext)
+ apply wpsimp
+
+ apply (simp add: bind_assoc)
+ apply (intro hoare_vcg_conj_lift_pre_fix)
+ apply (wpsimp wp: commit_time_is_refill_sufficient_other hoare_drop_imps
+ refill_unblock_check_cur_sc_is_refill_sufficient)
+ apply (intro conjI)
+ apply (rule valid_refills_refill_sufficient)
+ apply (rule active_sc_valid_refillsE)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def pred_tcb_at_def
+ obj_at_def
+ refill_sufficient_def refill_capacity_def)
+   apply fastforce
+ apply (rule active_sc_valid_refillsE)
+ apply (clarsimp simp: vs_all_heap_simps refill_ready_no_overflow_def refill_ready_def pred_tcb_at_def
+ obj_at_def
+ refill_sufficient_def refill_capacity_def)
+   apply fastforce
+
+ apply (rule_tac B="\<lambda>_. reprogram_timer" in hoare_seq_ext[rotated])
+ apply wpsimp
+ apply (rule hoare_seq_ext_skip)
+ apply wpsimp
+ apply wpsimp
+ done
+
+ lemma sc_and_timer_cur_sc_offset_ready_and_sufficient_consumed_time:
+   "\<lbrace>\<lambda>s. (cur_sc_tcb_are_bound s \<longrightarrow> (cur_sc_offset_ready (consumed_time s) s
+\<and>  cur_sc_offset_sufficient (consumed_time s) s))
+ \<and> ct_released s \<and> current_time_bounded 5 s \<and> active_sc_valid_refills s\<rbrace>
+    sc_and_timer
+    \<lbrace>\<lambda>_ s :: det_state. cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s\<rbrace>"
+   apply (clarsimp simp: sc_and_timer_def)
+ apply (wpsimp wp: switch_sched_context_cur_sc_offset_ready_and_sufficient_consumed_time)
+ done
+
+lemma switch_to_thread_cur_sc_offset_ready_and_sufficient:
+  "\<lbrace>\<lambda>s. cur_sc_more_than_ready s \<and> released_sc_tcb_at thread s \<and> active_sc_valid_refills s\<rbrace>
+          switch_to_thread thread
+       \<lbrace>\<lambda>_ s. cur_sc_tcb_are_bound s \<longrightarrow> (cur_sc_offset_ready (consumed_time s) s
+                                          \<and> cur_sc_offset_sufficient (consumed_time s) s)\<rbrace>"
+apply (clarsimp simp: switch_to_thread_def)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule_tac B="\<lambda>_ s. cur_sc_more_than_ready s \<and> released_sc_tcb_at thread s
+\<and> active_sc_tcb_at thread s \<and> active_sc_valid_refills s" in  hoare_seq_ext[rotated])
+apply ( wpsimp wp: tcb_sched_dequeue_valid_ready_qs)
+apply (fastforce simp: valid_ready_qs_def vs_all_heap_simps in_ready_q_def active_sc_def)
+apply wpsimp
+apply (case_tac "consumed_time s = 0")
+apply (frule (1) active_sc_valid_refills_tcb_at)
+apply (clarsimp simp: valid_ready_qs_def vs_all_heap_simps in_ready_q_def refill_ready_no_overflow_def refill_ready_def
+refill_sufficient_def refill_capacity_def word_unat_less_le
+valid_refills_tcb_at_def pred_tcb_at_def obj_at_def valid_refills_def rr_valid_refills_def split: if_splits)
+  apply fastforce
+
+apply (clarsimp simp: cur_sc_more_than_ready_def)
+apply (clarsimp simp: valid_ready_qs_def vs_all_heap_simps in_ready_q_def refill_ready_no_overflow_def refill_ready_def
+)
+done
+
+lemma choose_thread_cur_sc_offset_ready_and_sufficient:
+  "\<lbrace>\<lambda>s. cur_sc_more_than_ready s \<and> valid_ready_qs s \<and> active_sc_valid_refills s \<and> invs s \<and> current_time_bounded 5 s
+\<rbrace>
+          choose_thread
+       \<lbrace>\<lambda>_ s. cur_sc_tcb_are_bound s \<longrightarrow> (cur_sc_offset_ready (consumed_time s) s
+\<and> cur_sc_offset_sufficient (consumed_time s) s)\<rbrace>"
+apply (clarsimp simp: choose_thread_def)
+apply (intro hoare_seq_ext[OF _ gets_sp])
+apply (rule hoare_if)
+subgoal sorry
+apply (clarsimp simp: guarded_switch_to_def)
+apply (wpsimp wp: switch_to_thread_cur_sc_offset_ready_and_sufficient is_schedulable_wp thread_get_wp)
+apply (clarsimp simp: obj_at_def)
+apply (frule hd_max_non_empty_queue_in_ready_queues)
+apply clarsimp
+apply (fastforce simp: valid_ready_qs_def vs_all_heap_simps in_ready_q_def)
+done
+
+lemma schedule_choose_new_thread_cur_sc_offset_ready_and_sufficient:
+  "\<lbrace>\<lambda>s. cur_sc_more_than_ready s \<and> valid_ready_qs s \<and> active_sc_valid_refills s
+\<and> invs s \<and> current_time_bounded 5 s \<rbrace>
+          schedule_choose_new_thread
+       \<lbrace>\<lambda>_ s. cur_sc_tcb_are_bound s \<longrightarrow>
+(cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s)\<rbrace>"
+  apply (clarsimp simp: schedule_choose_new_thread_def)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext)
+apply wpsimp
+apply (wpsimp wp: choose_thread_cur_sc_offset_ready_and_sufficient)
+done
+
+
+lemma schedule_switch_thread_branch_cur_sc_tcb_are_bound_imp_cur_sc_offset_ready_and_sufficient:
+  "\<lbrace>\<lambda>s. cur_sc_more_than_ready s \<and> valid_ready_qs s \<and> active_sc_valid_refills s  \<and> valid_sched_action s \<and>
+             invs s \<and>
+             current_time_bounded 5 s \<and> cur_thread s = ct \<and> ct_ready_if_schedulable s
+ \<and> ct_schdble = ct_schedulable s
+\<and> scheduler_action s = switch_thread candidate\<rbrace>
+       schedule_switch_thread_branch candidate ct ct_schdble
+       \<lbrace>\<lambda>_ s. cur_sc_tcb_are_bound s \<longrightarrow>
+(cur_sc_offset_ready (consumed_time s) s \<and> cur_sc_offset_sufficient (consumed_time s) s)\<rbrace>"
+apply (rule_tac B="\<lambda>_ s. cur_sc_more_than_ready s \<and> valid_ready_qs s \<and> active_sc_valid_refills s \<and>
+valid_sched_action s \<and>
+             invs s \<and>
+             current_time_bounded 5 s  \<and> scheduler_action s = switch_thread candidate" in hoare_seq_ext[rotated])
+apply_trace wpsimp
+
+apply (clarsimp simp: schedulable_def2 ct_ready_if_schedulable_def vs_all_heap_simps obj_at_kh_kheap_simps)
+
+apply clarsimp
+
+apply (rule hoare_seq_ext[OF _ gets_sp])
+apply (rule hoare_seq_ext[OF _ thread_get_sp])
+
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_seq_ext_skip, wpsimp)
+apply (rule hoare_if)
+
+apply (simp flip: bind_assoc)
+apply (rule hoare_seq_ext[OF schedule_choose_new_thread_cur_sc_offset_ready_and_sufficient])
+
+apply (intro hoare_vcg_conj_lift_pre_fix)
+apply wpsimp
+apply wpsimp
+apply (prop_tac "valid_sched_action s")
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+apply (frule valid_sched_action_weak_valid_sched_action)
+apply (frule weak_valid_sched_action_st_prop)
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+
+apply wpsimp
+apply wpsimp
+apply wpsimp
+
+apply (rule hoare_if)
+
+apply (simp flip: bind_assoc)
+apply (rule hoare_seq_ext[OF schedule_choose_new_thread_cur_sc_offset_ready_and_sufficient])
+
+apply (intro hoare_vcg_conj_lift_pre_fix)
+apply wpsimp
+apply wpsimp
+apply (prop_tac "valid_sched_action s")
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+apply (frule valid_sched_action_weak_valid_sched_action)
+apply (frule weak_valid_sched_action_st_prop)
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+apply (fastforce dest: valid_sched_action_weak_valid_sched_action weak_valid_sched_action_st_prop
+simp: obj_at_kh_kheap_simps vs_all_heap_simps)
+
+apply wpsimp
+apply wpsimp
+apply wpsimp
+
+apply (simp flip: bind_assoc)
+apply (rule hoare_seq_ext)
+apply wpsimp
+
+apply (wpsimp wp: switch_to_thread_cur_sc_offset_ready_and_sufficient)
+apply (clarsimp simp: valid_sched_action_def weak_valid_sched_action_def)
+done
+
+lemma switch_to_thread_ct_released[wp]:
+  "\<lbrace>released_sc_tcb_at thread\<rbrace>
+   switch_to_thread thread
+   \<lbrace>\<lambda>_. ct_released\<rbrace>"
+  apply (clarsimp simp: switch_to_thread_def)
+  apply wpsimp
+  done
+
+lemma choose_thread_ct_released[wp]:
+  "\<lbrace>valid_ready_qs\<rbrace>
+   choose_thread
+   \<lbrace>\<lambda>_. ct_released\<rbrace>"
+  apply (clarsimp simp: choose_thread_def guarded_switch_to_def)
+apply (intro hoare_seq_ext[OF _ gets_sp])
+apply (rule hoare_if)
+subgoal sorry
+  apply (wpsimp wp: is_schedulable_wp thread_get_wp)
+apply (clarsimp simp: obj_at_def vs_all_heap_simps valid_ready_qs_def)
+apply (frule hd_max_non_empty_queue_in_ready_queues)
+apply clarsimp
+apply (fastforce simp: valid_ready_qs_def vs_all_heap_simps in_ready_q_def)
+  done
+
+lemma schedule_choose_new_thread_ct_released:
+  "\<lbrace>valid_ready_qs\<rbrace> schedule_choose_new_thread \<lbrace>\<lambda>_. ct_released\<rbrace>"
+  apply (clarsimp simp: schedule_choose_new_thread_def)
+apply wpsimp
+done
+
+lemma schedule_switch_thread_branch_ct_released:
+  "\<lbrace>\<lambda>s. ct_schdble = schedulable ct s \<and>
+             valid_ready_qs s \<and> active_sc_valid_refills s \<and> valid_sched_action s \<and>
+             ct_ready_if_schedulable s \<and>
+             (schact_is_rct s \<longrightarrow> cur_sc_active s) \<and>
+             current_time_bounded 5 s \<and> cur_thread s = ct \<and> scheduler_action s = switch_thread candidate\<rbrace>
+       schedule_switch_thread_branch candidate ct ct_schdble
+       \<lbrace>\<lambda>rv. ct_released\<rbrace>"
+apply (rule hoare_seq_ext_skip)
+apply wpsimp
+apply (clarsimp simp: schedulable_def2 ct_ready_if_schedulable_def vs_all_heap_simps obj_at_kh_kheap_simps)
+
+apply clarsimp
+
+apply (rule hoare_seq_ext_skip, solves wpsimp)+
+apply (rule hoare_if)
+apply (wpsimp wp: schedule_choose_new_thread_ct_released)
+apply (clarsimp simp: valid_sched_action_def weak_valid_sched_action_def vs_all_heap_simps obj_at_kh_kheap_simps)
+
+apply (rule hoare_if)
+apply (wpsimp wp: schedule_choose_new_thread_ct_released)
+apply (clarsimp simp: valid_sched_action_def weak_valid_sched_action_def vs_all_heap_simps obj_at_kh_kheap_simps)
+
+
+apply (wpsimp wp: schedule_choose_new_thread_ct_released)
+apply (clarsimp simp: valid_sched_action_def weak_valid_sched_action_def vs_all_heap_simps obj_at_kh_kheap_simps)
+done
+
+lemma schedule_cur_sc_offset_ready_consumed_time:
+  "\<lbrace>\<lambda>s. (schact_is_rct s \<longrightarrow> (cur_sc_offset_ready (consumed_time s) s
+                              \<and> cur_sc_offset_sufficient (consumed_time s) s))
+        \<and> cur_sc_more_than_ready s
+        \<and> ct_ready_if_schedulable s
+        \<and> (schact_is_rct s \<longrightarrow> cur_sc_active s)
+        \<and> invs s \<and> valid_sched s
+        \<and> current_time_bounded 5 s\<rbrace>
+   schedule
+   \<lbrace>\<lambda>_ s :: det_state. cur_sc_offset_ready (consumed_time s) s
+                       \<and> cur_sc_offset_sufficient (consumed_time s) s\<rbrace>"
+   apply (clarsimp simp: schedule_def)
+   apply (rule hoare_seq_ext_skip)
+
+    apply (wpsimp wp: hoare_vcg_imp_lift' awaken_valid_sched hoare_vcg_ex_lift awaken_valid_sched)
+  apply fastforce
+   apply (rule hoare_seq_ext_skip)
+
+    apply (wpsimp wp: hoare_vcg_imp_lift' awaken_valid_sched hoare_vcg_ex_lift awaken_valid_sched)
+
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+   apply (rule hoare_seq_ext[OF _ is_schedulable_sp'])
+   apply (rule hoare_seq_ext[OF _ gets_sp])
+
+ apply (simp flip: bind_assoc)
+ apply (rule hoare_seq_ext[OF sc_and_timer_cur_sc_offset_ready_and_sufficient_consumed_time])
+
+ apply (intro hoare_vcg_conj_lift_pre_fix)
+
+ prefer 4
+
+ apply (wpsimp simp: schedule_switch_thread_fastfail_def wp: hoare_drop_imps )
+
+ prefer 4
+
+ apply (case_tac action; clarsimp)
+ apply wpsimp
+ apply (wpsimp simp: schedule_switch_thread_fastfail_def wp: hoare_drop_imps )
+ apply wpsimp
+  apply fastforce
+ apply (case_tac action; clarsimp)
+ apply wpsimp
+    apply (subst bind_dummy_ret_val)+
+ apply (rule hoare_weaken_pre)
+ apply (rule schedule_switch_thread_branch_cur_sc_tcb_are_bound_imp_cur_sc_offset_ready_and_sufficient)
+apply clarsimp
+apply (clarsimp simp: valid_sched_def)
+
+apply (rule hoare_seq_ext[OF schedule_choose_new_thread_cur_sc_offset_ready_and_sufficient])
+apply wpsimp
+apply (intro conjI impI)
+apply (clarsimp simp: valid_sched_def)
+apply (clarsimp simp: schedulable_def2)
+apply (clarsimp simp: schedulable_def2 ct_ready_if_schedulable_def vs_all_heap_simps obj_at_kh_kheap_simps)
+
+apply (clarsimp simp: valid_sched_def)
+apply (clarsimp simp: valid_sched_def)
+apply (clarsimp simp: valid_sched_def)
+
+
+ apply (case_tac action; clarsimp)
+ apply wpsimp
+apply (rule schact_is_rct_ct_released)
+  apply fastforce
+  apply fastforce
+  apply fastforce
+  apply fastforce
+  apply fastforce
+  apply fastforce
+prefer 2
+apply (wpsimp wp: schedule_choose_new_thread_ct_released)
+apply (intro conjI impI)
+apply (clarsimp simp: valid_sched_def)
+apply (clarsimp simp: schedulable_def2)
+apply (clarsimp simp: schedulable_def2 ct_ready_if_schedulable_def vs_all_heap_simps obj_at_kh_kheap_simps)
+apply (clarsimp simp: valid_sched_def)
+    apply (subst bind_dummy_ret_val)+
+ apply (rule hoare_weaken_pre)
+ apply (rule schedule_switch_thread_branch_ct_released)
+apply fastforce
+done
 
 end
