@@ -2308,9 +2308,9 @@ locale DetSchedSchedule_AI =
   assumes arch_invoke_irq_handler_ct_active[wp]:
     "\<And>i. arch_invoke_irq_handler i \<lbrace>ct_active::'state_ext state \<Rightarrow> _\<rbrace>"
   assumes handle_reserved_irq_ct_active[wp]:
-    "\<And>i. handle_reserved_irq i \<lbrace>ct_active::'state_ext state \<Rightarrow> _\<rbrace>"
+    "\<And>i P. handle_reserved_irq i \<lbrace>ct_in_state P ::'state_ext state \<Rightarrow> _\<rbrace>"
   assumes arch_mask_irq_signal_ct_active[wp]:
-    "\<And>i. arch_mask_irq_signal i \<lbrace>ct_active::'state_ext state \<Rightarrow> _\<rbrace>"
+    "\<And>i P. arch_mask_irq_signal i \<lbrace>ct_in_state P :: 'state_ext state \<Rightarrow> _\<rbrace>"
   assumes prepare_thread_delete_current_time_bounded[wp]: (* need to give a concrete n? *)
     "\<And>t n. prepare_thread_delete t \<lbrace>current_time_bounded n :: 'state_ext state \<Rightarrow> _\<rbrace>"
   assumes arch_post_cap_deletion_current_time_bounded[wp] :
@@ -18296,6 +18296,10 @@ locale DetSchedSchedule_AI_handle_hypervisor_fault =
        \<lbrace>\<lambda>_. cur_sc_in_release_q_imp_zero_consumed :: 'state_ext state \<Rightarrow> _\<rbrace>"
   assumes handle_hypervisor_fault_ct_not_in_release_q[wp]:
     "\<And>t fault. handle_hypervisor_fault t fault \<lbrace>ct_not_in_release_q :: 'state_ext state \<Rightarrow> _\<rbrace>"
+  assumes handle_hypervisor_fault_ct_in_state[wp]:
+    "\<And>t fault P. handle_hypervisor_fault t fault \<lbrace>ct_in_state P :: 'state_ext state \<Rightarrow> _\<rbrace>"
+  assumes handle_hypervisor_fault_scheduler_action[wp]:
+    "\<And>t fault P. handle_hypervisor_fault t fault \<lbrace>\<lambda>s :: 'state_ext state. P (scheduler_action s)\<rbrace>"
 
 locale DetSchedSchedule_AI_handle_hypervisor_fault_det_ext =
   DetSchedSchedule_AI_handle_hypervisor_fault "TYPE (det_ext)"
