@@ -694,7 +694,7 @@ lemma replyRemoveTCB_corres:
    apply (fastforce dest!: st_tcb_at_coerce_concrete elim!: pred_tcb'_weakenE)
   apply (clarsimp simp: reply_remove_tcb_def replyRemoveTCB_def isReply_def)
   apply (rule corres_guard_imp)
-    apply (rule corres_split[OF getThreadState_corres]; (solves simp)?)
+    apply (rule corres_split[OF getThreadState_corres])
       apply (rule corres_assert_gen_asm_l)
       apply (rule corres_assert_gen_asm2)
       apply (rule corres_assert_opt_assume)
@@ -2770,7 +2770,7 @@ lemma restart_thread_if_no_fault_corres:
          apply clarsimp
          apply (rule corres_split_eqr[OF _ get_tcb_obj_ref_corres])
             apply (rule corres_split[OF ifCondRefillUnblockCheck_corres])
-              apply (rule possibleSwitchTo_corres)
+              apply (rule possibleSwitchTo_corres, simp)
              apply (wpsimp simp: if_cond_refill_unblock_check_def
                              wp: refill_unblock_check_active_sc_valid_refills)
             apply wpsimp
@@ -2958,8 +2958,7 @@ lemma cancelAllIPC_corres_helper:
           apply clarsimp
           apply (rename_tac t)
           apply (rule corres_guard_imp)
-            apply (rule corres_split_deprecated[OF _ getThreadState_corres], rename_tac st st';
-                   (solves simp)?)
+            apply (rule corres_split_deprecated[OF _ getThreadState_corres], rename_tac st st')
               apply (rule_tac P="\<lambda>s. blocked_on_send_recv_tcb_at t s \<and> t \<noteq> idle_thread s
                                      \<and> reply_unlink_ts_pred t s \<and> valid_sched s \<and> valid_tcbs s
                                      \<and> pspace_aligned s \<and> pspace_distinct s
@@ -3164,7 +3163,7 @@ lemma ntfn_cancel_corres_helper:
                apply clarsimp
               apply (rule corres_split_eqr[OF _ get_tcb_obj_ref_corres])
                  apply (rule corres_split[OF ifCondRefillUnblockCheck_corres])
-                   apply (rule possibleSwitchTo_corres)
+                   apply (rule possibleSwitchTo_corres, simp)
                   apply (wpsimp simp: if_cond_refill_unblock_check_def
                                   wp: refill_unblock_check_active_sc_valid_refills)
                  apply wpsimp
@@ -3224,7 +3223,6 @@ lemma ntfn_cancel_corres_helper:
          apply (clarsimp simp: is_blocked_thread_state_defs)
          apply (case_tac "itcb_state tcb"; simp)
         apply clarsimp
-<<<<<<< HEAD
        apply clarsimp
        apply (rule conjI)
         apply (frule valid_sched_released_ipc_queues)
@@ -3240,25 +3238,6 @@ lemma refill_unblock_check_weak_valid_sched_action[wp]:
    \<lbrace>\<lambda>rv. weak_valid_sched_action\<rbrace>"
   apply (clarsimp simp: weak_valid_sched_action_def)
   apply (wpsimp wp: hoare_vcg_all_lift hoare_vcg_imp_lift'')
-=======
-        apply (rule corres_guard_imp)
-          apply (rule corres_split_deprecated[OF possibleSwitchTo_corres]; (solves simp)?)
-            apply (rule setThreadState_corres)
-            apply simp
-           apply (wp set_thread_state_valid_sched_action
-                     setThreadState_st_tcb)+
-         apply force
-        apply (clarsimp simp: valid_tcb_state'_def)
-       apply (wpsimp wp: set_thread_state_pred_map_tcb_sts_of)
-      apply (wpsimp wp: typ_at_lifts)
-     apply (clarsimp simp: pred_conj_def)
-     apply (wpsimp wp: set_thread_state_possible_switch_to_valid_sched
-                       hoare_vcg_const_Ball_lift set_thread_state_pred_map_tcb_sts_of)
-     apply (frule valid_sched_released_ipc_queues)
-     apply (fastforce simp: released_ipc_queues_defs)
-    apply (wpsimp wp: hoare_vcg_const_Ball_lift typ_at_lifts sts_st_tcb')
-    apply (auto simp: valid_tcb_state'_def)
->>>>>>> aba61eaf9 (rt refine: rephrase some corres rules)
   done
 
 crunches if_cond_refill_unblock_check

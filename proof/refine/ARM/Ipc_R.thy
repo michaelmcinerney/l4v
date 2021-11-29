@@ -2532,7 +2532,7 @@ lemma sendIPC_corres:
                              apply simp
                             apply (rule corres_split_eqr [OF _ threadGet_corres])
                                apply (rule corres_split [OF ifCondRefillUnblockCheck_corres])
-                                 apply (rule possibleSwitchTo_corres)
+                                 apply (rule possibleSwitchTo_corres, simp)
                             \<comment> \<open>starting Hoare triples\<close>
                                 apply wpsimp
                                apply wpsimp
@@ -4706,7 +4706,7 @@ lemma receiveIPC_corres:
                 apply (rule corres_guard_imp)
                   apply (rule corres_split[OF setEndpoint_corres])
                      apply (clarsimp simp: ep_relation_def split: list.splits)
-                    apply (rule corres_split[OF getThreadState_corres]; (solves simp)?)
+                    apply (rule corres_split[OF getThreadState_corres])
                       apply (rule_tac F="\<exists>data. sender_state = Structures_A.thread_state.BlockedOnSend epptr data"
                              in corres_gen_asm)
                       apply (clarsimp simp: isSend_def case_bool_If
@@ -4749,7 +4749,7 @@ lemma receiveIPC_corres:
                                     apply (rule setThreadState_corres, simp)
                                    prefer 3 \<comment> \<open> defer wp until corres complete \<close>
                                    apply (rule corres_split[OF setThreadState_corres], simp)
-                                     apply (rule possibleSwitchTo_corres)
+                                     apply (rule possibleSwitchTo_corres, simp)
                                     apply (wpsimp wp: set_thread_state_valid_sched_action)
                                    apply wpsimp
                                   apply wpsimp
@@ -6383,7 +6383,7 @@ lemma doReplyTransfer_corres:
                apply (clarsimp split: option.splits simp: valid_pspace'_def)
               apply (clarsimp simp: isRunnable_def get_tcb_obj_ref_def)
               (* solve remaining corres goals *)
-              apply (rule corres_split [OF getThreadState_corres]; (solves simp)?)
+              apply (rule corres_split [OF getThreadState_corres])
                 apply (rule corres_split [OF threadGet_corres[where r="(=)"]])
                    apply (simp add: tcb_relation_def)
                   apply (rename_tac scopt scopt')

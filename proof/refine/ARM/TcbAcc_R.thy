@@ -1904,7 +1904,7 @@ lemma asUser_setRegister_corres:
 
 end
 
-lemma getThreadState_corres:
+lemma getThreadState_corres':
   "t = t' \<Longrightarrow>
    corres thread_state_relation (tcb_at t) (tcb_at' t)
           (get_thread_state t) (getThreadState t')"
@@ -1912,6 +1912,8 @@ lemma getThreadState_corres:
   apply (rule threadGet_corres)
   apply (simp add: tcb_relation_def)
   done
+
+lemmas getThreadState_corres = getThreadState_corres'[OF refl]
 
 lemma gts_wf'[wp]: "\<lbrace>tcb_at' t and invs'\<rbrace> getThreadState t \<lbrace>valid_tcb_state'\<rbrace>"
   apply (simp add: getThreadState_def threadGet_getObject)
