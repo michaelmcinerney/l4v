@@ -1242,20 +1242,6 @@ lemma tcbReleaseRemove_valid_refills'[wp]:
     apply (fastforce simp: obj_at_simps valid_refills'_def opt_map_def split: option.splits)+
   done
 
-lemma updateSchedContext_scBadge_update_active_sc_at'[wp]:
-  "updateSchedContext scPtr' (scBadge_update f) \<lbrace>active_sc_at' scPtr\<rbrace>"
-  apply (clarsimp simp: updateSchedContext_def)
-  apply (wpsimp wp: set_sc'.set_wp)
-  apply (fastforce simp: active_sc_at'_def obj_at_simps scBits_simps ps_clear_def)
-  done
-
-lemma updateSchedContext_scSporadic_update_active_sc_at'[wp]:
-  "updateSchedContext scPtr' (scSporadic_update f) \<lbrace>active_sc_at' scPtr\<rbrace>"
-  apply (clarsimp simp: updateSchedContext_def)
-  apply (wpsimp wp: set_sc'.set_wp)
-  apply (fastforce simp: active_sc_at'_def obj_at_simps scBits_simps ps_clear_def)
-  done
-
 crunches commitTime, refillNew, refillUpdate
   for ksCurSc[wp]: "\<lambda>s. P (ksCurSc s)"
   (wp: crunch_wps simp: crunch_simps)
@@ -1304,15 +1290,23 @@ lemma invokeSchedControlConfigureFlags_corres:
      apply (clarsimp simp: obj_at_def)
 
     apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
-    apply (wps_conj_solves wp: ct_in_state_thread_state_lift')
+    apply (wps_conj_solves wp: ct_in_state_thread_state_lift' updateSchedContext_active_sc_at')
      apply (clarsimp simp: updateSchedContext_def)
      apply (wpsimp wp: setSchedContext_invs')
      apply (fastforce dest!: sc_ko_at_valid_objs_valid_sc')
 
-   apply (clarsimp simp: updateSchedContext_def)
-   apply (rule corres_symb_exec_r[rotated, OF get_sc_sp' get_sc_inv'])
-    apply (wpsimp wp: no_fail_getMiscObject)
-   apply (corressimp corres: scBadge_update_corres)
+   apply (corressimp corres: updateSchedContext_corres)
+   apply (intro conjI impI allI)
+     apply (rename_tac abs_state conc_state n')
+     apply (frule_tac ptr=sc_ptr and s=abs_state in state_relation_sc_relation; simp?)
+     apply (clarsimp simp: sc_relation_def opt_map_def is_sc_obj_def obj_at_simps
+                    split: Structures_A.kernel_object.splits)
+    apply (rename_tac abs_state conc_state)
+    apply (frule_tac s=abs_state in state_relation_sc_replies_relation)
+    apply (clarsimp simp: sc_replies_relation2_def sc_replies_relation_rewrite)
+    apply (fastforce simp: opt_map_def is_sc_obj_def obj_at_simps
+                    split: option.splits Structures_A.kernel_object.splits)
+   apply (clarsimp simp: obj_at_simps)
 
   apply (clarsimp split del: if_split)
   apply (rule_tac Q="\<lambda>_ s. sc_at sc_ptr s \<and> ?abs s \<and> sc_at (cur_sc s) s"
@@ -1328,16 +1322,23 @@ lemma invokeSchedControlConfigureFlags_corres:
      apply (clarsimp simp: obj_at_def)
 
     apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
-    apply (wps_conj_solves wp: ct_in_state_thread_state_lift')
+    apply (wps_conj_solves wp: ct_in_state_thread_state_lift' updateSchedContext_active_sc_at')
      apply (clarsimp simp: updateSchedContext_def)
      apply (wpsimp wp: setSchedContext_invs')
      apply (fastforce dest!: sc_ko_at_valid_objs_valid_sc')
 
-   apply (clarsimp simp: updateSchedContext_def)
-   apply (rule corres_symb_exec_r[rotated, OF get_sc_sp' get_sc_inv'])
-    apply (wpsimp wp: no_fail_getMiscObject)
-   apply (corressimp corres: scSporadic_update_corres
-                       simp: sc_sporadic_flag_eq_schedContextSporadicFlag)
+   apply (corressimp corres: updateSchedContext_corres)
+   apply (intro conjI impI allI)
+     apply (rename_tac abs_state conc_state n')
+     apply (frule_tac ptr=sc_ptr and s=abs_state in state_relation_sc_relation; simp?)
+     apply (clarsimp simp: sc_relation_def opt_map_def is_sc_obj_def obj_at_simps
+                    split: Structures_A.kernel_object.splits)
+    apply (rename_tac abs_state conc_state)
+    apply (frule_tac s=abs_state in state_relation_sc_replies_relation)
+    apply (clarsimp simp: sc_replies_relation2_def sc_replies_relation_rewrite)
+    apply (fastforce simp: opt_map_def is_sc_obj_def obj_at_simps
+                    split: option.splits Structures_A.kernel_object.splits)
+   apply (clarsimp simp: obj_at_simps)
 
   apply (rule_tac F="budget \<le> MAX_PERIOD \<and> budget \<ge> MIN_BUDGET \<and> period \<le> MAX_PERIOD
                      \<and> budget \<ge> MIN_BUDGET \<and> MIN_REFILLS \<le> mrefills \<and> budget \<le> period"
@@ -1417,7 +1418,6 @@ lemma invokeSchedControlConfigureFlags_corres:
          apply (fastforce intro: cur_sc_active_offset_ready_and_sufficient_implies_cur_sc_more_than_ready)
         apply (wpsimp wp: commit_time_valid_release_q hoare_vcg_imp_lift'
                           tcb_release_remove_cur_sc_in_release_q_imp_zero_consumed'
-                          tcb_release_remove_cur_sc_in_release_q_imp_zero_consumed
                | strengthen invs_valid_stateI)+
         apply (frule cur_sc_tcb_are_bound_cur_sc_in_release_q_imp_zero_consumed[rotated 2])
           apply (fastforce intro: invs_strengthen_cur_sc_tcb_are_bound)
@@ -1425,6 +1425,8 @@ lemma invokeSchedControlConfigureFlags_corres:
         apply (fastforce simp: cur_sc_in_release_q_imp_zero_consumed_2_def)
        apply (wpsimp wp: tcb_release_remove_sc_not_in_release_q)
        apply (intro conjI impI; fastforce?)
+        apply (rule disjI2)
+        apply (intro conjI)
          apply (fastforce dest!: invs_sym_refs sym_ref_sc_tcb
                            simp: heap_refs_inv_def vs_all_heap_simps obj_at_def sc_at_pred_n_def)
         apply (fastforce intro: sym_refs_inj_tcb_scps)
@@ -1484,7 +1486,7 @@ lemma invokeSchedControlConfigureFlags_corres:
 
      apply (rule corres_if_split; (solves simp)?)
 
-      apply (clarsimp simp: minRefills_eq_MIN_REFILLS)
+      apply clarsimp
       apply (rule corres_guard_imp)
         apply (rule_tac n=n in refillNew_corres)
          apply (clarsimp simp: MIN_REFILLS_def)
@@ -1497,7 +1499,7 @@ lemma invokeSchedControlConfigureFlags_corres:
 
       apply (rule corres_symb_exec_l[rotated 2, OF assert_opt_sp]; (solves wpsimp)?)
        apply (rule corres_split'[rotated 2, OF gts_sp isRunnable_sp])
-        apply (corressimp corres: isRunnable_corres; (solves simp)?)
+        apply (corressimp corres: isRunnable_corres')
         apply (fastforce simp: sc_relation_def sc_at_pred_n_def obj_at_def
                        intro!: tcb_at_cross Some_to_the)
 
@@ -1577,18 +1579,18 @@ lemma invokeSchedControlConfigureFlags_corres:
    apply (rule hoare_if)
     apply wps_conj_solves
      apply (wpsimp wp: refillNew_invs')
-    apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def minRefills_eq_MIN_REFILLS)
+    apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def)
    apply (rule hoare_if)
     apply wps_conj_solves
     apply (rule hoare_seq_ext[OF _ isRunnable_sp])
     apply (rule hoare_if)
      apply (wpsimp wp: refillUpdate_invs')
-     apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def minRefills_eq_MIN_REFILLS)
+     apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def)
     apply (wpsimp wp: refillNew_invs')
-    apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def minRefills_eq_MIN_REFILLS)
+    apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def)
    apply wps_conj_solves
    apply (wpsimp wp: refillNew_invs')
-  apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def minRefills_eq_MIN_REFILLS)
+  apply (clarsimp simp: ko_wp_at'_def valid_refills_number'_def)
 
   apply (clarsimp simp: when_def; intro conjI impI; (solves \<open>clarsimp simp: sc_relation_def\<close>)?)
   apply (rule corres_symb_exec_l[rotated 2, OF assert_opt_sp]; (solves wpsimp)?)
@@ -1598,7 +1600,7 @@ lemma invokeSchedControlConfigureFlags_corres:
 
   apply (clarsimp simp: sc_relation_def)
   apply (rule corres_split'[rotated 2, OF gts_sp isRunnable_sp])
-   apply (corressimp corres: isRunnable_corres; (solves simp)?)
+   apply (corressimp corres: isRunnable_corres')
    apply (fastforce simp: sc_relation_def sc_at_pred_n_def obj_at_def
                   intro!: tcb_at_cross Some_to_the)
 

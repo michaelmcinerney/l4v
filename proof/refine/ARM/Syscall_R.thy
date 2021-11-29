@@ -1182,7 +1182,7 @@ lemma handleInvocation_corres:
    apply (frule schact_is_rct_sane)
    apply (frule invs_valid_objs)
    apply (frule valid_objs_valid_tcbs)
-   apply (clarsimp simp: invs_def cur_tcb_def valid_state_def
+   apply (clarsimp simp: invs_def cur_tcb_def valid_state_def current_time_bounded_def
                          valid_sched_def valid_pspace_def ct_in_state_def simple_from_active)
    apply (erule st_tcb_ex_cap, clarsimp+)
    apply fastforce
