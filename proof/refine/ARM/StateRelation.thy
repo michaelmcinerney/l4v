@@ -201,11 +201,11 @@ where
   \<and> tcb_priority tcb = tcbPriority tcb'
   \<and> tcb_domain tcb = tcbDomain tcb'"
 
-lemma sc_sporadic_flag_eq_schedContextSporadicFlag:
+lemma sc_sporadic_flag_eq_schedContextSporadicFlag[simp]:
   "sc_sporadic_flag = schedContextSporadicFlag"
   by (simp add: sc_sporadic_flag_def schedContextSporadicFlag_def)
 
-lemma minRefills_eq_MIN_REFILLS:
+lemma minRefills_eq_MIN_REFILLS[simp]:
   "minRefills = MIN_REFILLS"
   by (clarsimp simp: minRefills_def MIN_REFILLS_def)
 
