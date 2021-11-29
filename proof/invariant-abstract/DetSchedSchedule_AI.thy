@@ -18233,7 +18233,7 @@ lemma invoke_sched_control_configure_flags_valid_sched:
   apply (rule_tac B="\<lambda>rv s. iscc_valid_sched_predicate sc_ptr tcb_ptr mrefills budget s
                             \<and> budget \<le> period \<and> period \<le> MAX_PERIOD \<and> current_time_bounded 3 s
                             \<and> ex_nonz_cap_to sc_ptr s \<and> consumed_time_bounded s
-                           \<and> sc_refill_max_sc_at (\<lambda>rm. rm = sc_refill_max sc) sc_ptr s
+                            \<and> sc_refill_max_sc_at (\<lambda>rm. rm = sc_refill_max sc) sc_ptr s
                             \<and> sc_tcb_sc_at (\<lambda>to. to = sc_tcb sc) sc_ptr s
                             \<and> not_in_release_q tcb_ptr s \<and> cur_sc_offset_ready (consumed_time s) s
                             \<and> cur_sc_offset_sufficient (consumed_time s) s
