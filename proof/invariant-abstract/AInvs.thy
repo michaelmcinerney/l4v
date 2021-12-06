@@ -202,13 +202,13 @@ crunches handle_recv
 crunches sched_context_yield_to, sched_context_bind_tcb, cancel_all_ipc, cancel_all_signals,
          cancel_badged_sends, restart, maybe_sched_context_unbind_tcb, maybe_sched_context_bind_tcb,
          sched_context_bind_tcb, bind_notification, send_signal
-  for cur_sc[wp]: "\<lambda>s. P (cur_sc s)"
+  for cur_sc'[wp]: "\<lambda>s. P (cur_sc s)"
   (wp: crunch_wps check_cap_inv filterM_preserved simp: crunch_simps)
 
 crunches install_tcb_frame_cap, install_tcb_cap, do_reply_transfer, invoke_irq_handler, awaken,
          check_domain_time, if_cond_refill_unblock_check, activate_thread, handle_fault, handle_recv,
          handle_yield, handle_interrupt, preemption_path
-  for cur_sc[wp]: "\<lambda>s. P (cur_sc s)"
+  for cur_sc'[wp]: "\<lambda>s. P (cur_sc s)"
   (wp: crunch_wps check_cap_inv  preemption_point_inv hoare_vcg_all_lift simp: crunch_simps)
 
 crunches perform_invocation
