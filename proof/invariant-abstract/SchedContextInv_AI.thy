@@ -1532,10 +1532,10 @@ lemma charge_budget_invs[wp]:
       apply (wpsimp wp: end_timeslice_invs assert_inv hoare_vcg_if_lift2 gts_wp
                         hoare_vcg_all_lift  sc_consumed_add_invs refill_budget_check_invs
                   simp: Let_def)+
-apply (frule invs_cur)
-apply (auto split: if_splits kernel_object.splits thread_state.splits simp: schedulable_def get_tcb_def opt_map_def obj_at_def ct_in_state_def pred_tcb_at_def
-cur_tcb_def is_tcb_def)
-  apply (meson kernel_object.exhaust)
+  apply (frule invs_cur)
+  apply (clarsimp simp: ct_in_state_def schedulable_def pred_tcb_at_def obj_at_def get_tcb_def
+                        cur_tcb_def
+                 split: kernel_object.splits if_splits)
   by (metis (no_types, lifting) option.case_eq_if runnable_eq)
 
 lemma check_budget_invs[wp]:
