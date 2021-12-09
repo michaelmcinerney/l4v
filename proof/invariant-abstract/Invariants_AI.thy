@@ -2374,6 +2374,13 @@ lemma valid_cs_sizeE [elim]:
   using assms
   by (auto simp: valid_cs_size_def well_formed_cnode_n_def)
 
+lemma valid_objs_valid_ntfn [dest?]:
+  assumes vp: "valid_objs s"
+  and    ran: "Notification ntfn \<in> ran (kheap s)"
+  shows  "valid_ntfn ntfn s"
+  using vp ran unfolding valid_objs_def
+  by (auto simp: valid_obj_def ran_def dom_def)
+
 lemma valid_objs_valid_sched_context [dest?]:
   assumes vp: "valid_objs s"
   and    ran: "SchedContext sc n \<in> ran (kheap s)"
@@ -4198,6 +4205,18 @@ lemma sym_ref_sc_tcb:
    apply (clarsimp simp: obj_at_def, simp)
   apply (clarsimp simp: state_refs_of_def get_refs_def2 elim!: sym_refsE)
   apply (drule_tac x="(tp, SCTcb)" in bspec)
+   apply fastforce
+  apply (clarsimp simp: obj_at_def)
+  apply (case_tac koa; clarsimp simp: get_refs_def2)
+  done
+
+lemma sym_ref_tcb_sc: "\<lbrakk> sym_refs (state_refs_of s); kheap s tp = Some (TCB tcb);
+   tcb_sched_context tcb = Some scp \<rbrakk> \<Longrightarrow>
+  \<exists>sc n. kheap s scp = Some (SchedContext sc n) \<and> sc_tcb sc = Some tp"
+  apply (drule sym_refs_obj_atD[rotated, where p=tp])
+   apply (clarsimp simp: obj_at_def, simp)
+  apply (clarsimp simp: state_refs_of_def get_refs_def2 elim!: sym_refsE)
+  apply (drule_tac x="(scp, TCBSchedContext)" in bspec)
    apply fastforce
   apply (clarsimp simp: obj_at_def)
   apply (case_tac koa; clarsimp simp: get_refs_def2)
