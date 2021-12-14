@@ -1522,7 +1522,6 @@ lemma charge_budget_invs[wp]:
   unfolding charge_budget_def is_round_robin_def
   apply clarsimp
   apply (rule hoare_seq_ext[OF _ gets_sp])
-  apply (rule hoare_seq_ext[OF _ get_sched_context_sp])
   apply (wpsimp wp: end_timeslice_invs assert_inv hoare_vcg_if_lift2 gts_wp is_schedulable_wp)
      apply (rule_tac Q="\<lambda>_. invs" in hoare_strengthen_post[rotated])
       apply (clarsimp simp: ct_in_state_def runnable_eq pred_tcb_at_def obj_at_def schedulable_def
