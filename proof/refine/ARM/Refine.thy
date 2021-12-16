@@ -939,10 +939,6 @@ lemma ct_running_or_idle_cross:
   apply (fastforce dest: ct_running_cross ct_idle_cross)
   done
 
-lemma pick_three_helper:
-  "(P \<and> Q \<and> R \<and> S) = ((P \<and> Q \<and> R) \<and> S)"
-  by simp
-
 lemma ckernel_invariant:
   "ADT_H uop \<Turnstile> full_invs'"
   unfolding full_invs'_def
@@ -974,84 +970,31 @@ lemma ckernel_invariant:
   apply (clarsimp simp: ADT_A_def ADT_H_def global_automaton_def)
 
   apply (erule_tac P="a \<and> (\<exists>x. b x)" for a b in disjE)
-\<comment> \<open>apply (simp add: kernel_call_H_def)
-   apply (rename_tac uc' conc_state' uc conc_state abs_state event)
-
-   apply (prop_tac "ksSchedulerAction conc_state = ResumeCurrentThread")
-    apply (frule_tac s=abs_state and s'=conc_state in state_relation_schact)\<close>
-
-
-
-
-
-thm conj_assoc[symmetric]
-apply (subst pick_three_helper)
-apply (rule conjI)
-
-
-   apply (clarsimp simp: ex_abs_underlying_def kernel_call_H_def)
-   apply (rename_tac uc' conc_state' uc conc_state abs_state event)
-
-   apply (prop_tac "ksSchedulerAction conc_state = ResumeCurrentThread")
-    apply (frule_tac s=abs_state and s'=conc_state in state_relation_schact)
-    apply (clarsimp simp: sched_act_relation_def)
-
-
-    apply (rule conjI)
-     apply (drule use_valid[OF _ kernelEntry_invs'])
-      apply clarsimp
-      apply (rule conjI)
-       apply (rule impI)
+   apply (clarsimp simp: ex_abs_def kernel_call_H_def)
+   apply (drule use_valid[OF _ valid_corres_combined])
+       apply (rule kernel_entry_invs)
+      apply (rule corres_guard_imp)
+        apply (rule entry_corres)
+       apply force
+      apply force
+     apply (rule hoare_weaken_pre)
+      apply (rule kernelEntry_invs')
+     apply clarsimp
+     apply (intro conjI)
        apply (fastforce intro: ct_running_cross)
-      apply (fastforce intro: ct_running_cross ct_idle_cross)
-     apply fastforce
-    apply (drule use_valid[OF _ valid_corres_combined])
-        apply (rule kernel_entry_invs)
-       apply (rule corres_guard_imp)
-         apply (rule entry_corres)
-        apply force
-       apply force
-      apply (rule hoare_weaken_pre)
-       apply (rule kernelEntry_invs')
-      apply clarsimp
-      apply (intro conjI)
-        apply (fastforce intro: ct_running_cross)
-       apply (rule ct_running_or_idle_cross)
-          apply force
-         apply fastforce
+      apply (rule ct_running_or_idle_cross)
+         apply force
         apply fastforce
        apply fastforce
-      apply (fastforce intro!: resume_cur_thread_cross)
-     apply (rule_tac x=abs_state in exI)
-     apply clarsimp
-    apply blast
-
-apply (clarsimp simp: ex_abs_def kernel_call_H_def)
-    apply (drule use_valid[OF _ valid_corres_combined])
-        apply (rule kernel_entry_invs)
-       apply (rule corres_guard_imp)
-         apply (rule entry_corres)
-        apply force
-       apply force
-      apply (rule hoare_weaken_pre)
-       apply (rule kernelEntry_invs')
-      apply clarsimp
-      apply (intro conjI)
-        apply (fastforce intro: ct_running_cross)
-       apply (rule ct_running_or_idle_cross)
-          apply force
-         apply fastforce
-        apply fastforce
-       apply fastforce
-      apply (fastforce intro!: resume_cur_thread_cross)
-     apply (rule_tac x=s in exI)
-     apply clarsimp
-apply clarsimp
-   apply (frule_tac a=sa in ct_running_or_idle_cross)
       apply fastforce
-     apply fastforce
-    apply fastforce
-   apply fastforce
+     subgoal by (fastforce intro!: resume_cur_thread_cross)
+    apply (rule_tac x=s in exI)
+    apply clarsimp
+   apply clarsimp
+   apply (intro conjI impI)
+     apply metis
+    apply metis
+   apply (frule_tac a=sa in ct_running_or_idle_cross; fastforce)
 
   apply (erule_tac P="a \<and> b" for a b in disjE)
    apply (clarsimp simp add: do_user_op_H_def monad_to_transition_def)
@@ -1061,20 +1004,13 @@ apply clarsimp
      apply (rule valid_corres_combined[OF do_user_op_invs2 corres_guard_imp2[OF do_user_op_corres]])
       apply clarsimp
      apply (rule doUserOp_invs'[THEN hoare_weaken_pre])
-apply (clarsimp simp: ex_abs_def)
-apply (rule conjI)
-apply (rule_tac x=sb in exI)
-apply clarsimp
-
-apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
-
-
+     apply (clarsimp simp: ex_abs_def)
+     apply (rule conjI)
+      apply metis
+     apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
     apply (clarsimp simp: ex_abs_def, rule_tac x=s in exI,
-            clarsimp simp: ct_running_related sched_act_rct_related)
-   apply (clarsimp simp: ex_abs_def)
-apply (rule_tac x=sa in exI)
-apply clarsimp
-
+           clarsimp simp: ct_running_related sched_act_rct_related)
+   apply (fastforce simp: ex_abs_def)
 
   apply (erule_tac P="a \<and> b \<and> c \<and> (\<exists>x. d x)" for a b c d in disjE)
    apply (clarsimp simp add: do_user_op_H_def monad_to_transition_def)
@@ -1084,81 +1020,61 @@ apply clarsimp
      apply (rule valid_corres_combined[OF do_user_op_invs2 corres_guard_imp2[OF do_user_op_corres]])
       apply clarsimp
      apply (rule doUserOp_invs'[THEN hoare_weaken_pre])
-apply (clarsimp simp: ex_abs_def)
-apply (rule conjI)
-apply (rule_tac x=sb in exI)
-apply clarsimp
-apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
-
-
+     apply (clarsimp simp: ex_abs_def)
+     apply (rule conjI)
+      apply metis
+     apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
     apply (fastforce simp: ex_abs_def ct_running_related sched_act_rct_related)
    apply (fastforce simp: ex_abs_def)
 
   apply (erule_tac P="a \<and> b" for a b in disjE)
    apply (clarsimp simp: check_active_irq_H_def)
-
-
    apply (drule use_valid)
      apply (rule hoare_vcg_conj_lift)
       apply (rule checkActiveIRQ_valid_duplicates')
      apply (rule valid_corres_combined[OF check_active_irq_invs_just_running corres_guard_imp2[OF checkActiveIRQ_just_running_corres]])
       apply clarsimp
      apply (rule checkActiveIRQ_invs'_just_running[THEN hoare_weaken_pre])
-apply (clarsimp simp: ex_abs_def)
-apply (rule conjI)
-apply (rule_tac x=sb in exI)
-apply clarsimp
-apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
-
-
+     apply (clarsimp simp: ex_abs_def)
+     apply (rule conjI)
+      apply blast
+     apply (fastforce intro: resume_cur_thread_cross ct_running_cross)
     apply (fastforce simp: ex_abs_def ct_running_related sched_act_rct_related)
    apply (fastforce simp: ex_abs_def)
 
   apply (erule_tac P="a \<and> b" for a b in disjE)
    apply (clarsimp simp: check_active_irq_H_def)
-
    apply (drule use_valid)
      apply (rule hoare_vcg_conj_lift)
       apply (rule checkActiveIRQ_valid_duplicates')
      apply (rule valid_corres_combined[OF check_active_irq_invs_just_idle corres_guard_imp2[OF checkActiveIRQ_just_idle_corres]])
       apply clarsimp
      apply (rule checkActiveIRQ_invs'_just_idle[THEN hoare_weaken_pre])
-apply (clarsimp simp: ex_abs_def)
-
-apply (rule_tac x=sb in exI)
-apply clarsimp
-apply clarsimp
-apply (clarsimp simp: ex_abs_def)
-apply (rule_tac x=s in exI)
-apply clarsimp
-apply (intro conjI)
-apply (fastforce intro: ct_idle_related)
-apply (fastforce intro: resume_cur_thread_cross)
-
-apply (fastforce simp: ex_abs_def)
+     apply (fastforce simp: ex_abs_def)
+    apply (clarsimp simp: ex_abs_def)
+    apply (rule_tac x=s in exI)
+    apply clarsimp
+    apply (intro conjI)
+     apply (fastforce intro: ct_idle_related)
+    apply (fastforce intro: resume_cur_thread_cross)
+   apply (fastforce simp: ex_abs_def)
 
   apply (clarsimp simp: check_active_irq_H_def)
    apply (drule use_valid)
-     apply (rule hoare_vcg_conj_lift)
+    apply (rule hoare_vcg_conj_lift)
      apply (rule checkActiveIRQ_valid_duplicates')
-     apply (rule valid_corres_combined[OF check_active_irq_invs_just_idle corres_guard_imp2[OF checkActiveIRQ_just_idle_corres]])
-      apply clarsimp
-     apply (rule checkActiveIRQ_invs'_just_idle[THEN hoare_weaken_pre])
-apply (clarsimp simp: ex_abs_def)
-
-apply (rule_tac x=sb in exI)
-apply clarsimp
-apply clarsimp
-apply (clarsimp simp: ex_abs_def)
-apply (rule_tac x=s in exI)
-apply clarsimp
-apply (intro conjI)
-apply (fastforce intro: ct_idle_related)
-apply (fastforce intro: resume_cur_thread_cross)
-apply (clarsimp simp: ex_abs_def)
-apply (rule_tac x=sa in exI)
-apply clarsimp
-done
+    apply (rule valid_corres_combined[OF check_active_irq_invs_just_idle corres_guard_imp2[OF checkActiveIRQ_just_idle_corres]])
+     apply clarsimp
+    apply (rule checkActiveIRQ_invs'_just_idle[THEN hoare_weaken_pre])
+    apply (fastforce simp: ex_abs_def)
+   apply (clarsimp simp: ex_abs_def)
+   apply (rule_tac x=s in exI)
+   apply clarsimp
+   apply (intro conjI)
+    apply (fastforce intro: ct_idle_related)
+   apply (fastforce intro: resume_cur_thread_cross)
+  apply (fastforce simp: ex_abs_def)
+  done
 
 text \<open>The top-level theorem\<close>
 
