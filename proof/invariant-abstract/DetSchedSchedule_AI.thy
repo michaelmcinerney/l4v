@@ -26477,8 +26477,11 @@ lemma call_kernel_valid_sched:
   apply (frule schact_is_rct_ct_active_sc; simp add: schact_is_rct_def)
   apply (prop_tac "ct_not_queued s")
    apply (fastforce simp: valid_sched_def ct_not_in_q_def)
-  apply (fastforce intro: schact_is_rct_ct_released
-                    simp: ct_in_state_def pred_tcb_at_def obj_at_def schact_is_rct_def)
+  apply (intro conjI impI; (fastforce simp: ct_in_state_def pred_tcb_at_def obj_at_def)?)
+  apply (rule schact_is_rct_ct_released; (fastforce simp: schact_is_rct_def)?)
+  apply (rule cur_sc_not_idle_sc_ptr;
+         (fastforce simp: runnable_eq_active ct_in_state_def pred_tcb_at_def obj_at_def)?)
+  apply (fastforce intro: invs_strengthen_cur_sc_tcb_are_bound simp: schact_is_rct_def)
   done
 
 end
