@@ -971,6 +971,7 @@ lemma ckernel_invariant:
 
   apply (erule_tac P="a \<and> (\<exists>x. b x)" for a b in disjE)
    apply (clarsimp simp: ex_abs_def kernel_call_H_def)
+   apply (rename_tac uc' conc_state' uc conc_state abs_state event)
    apply (drule use_valid[OF _ valid_corres_combined])
        apply (rule kernel_entry_invs)
       apply (rule corres_guard_imp)
@@ -981,20 +982,20 @@ lemma ckernel_invariant:
       apply (rule kernelEntry_invs')
      apply clarsimp
      apply (intro conjI)
-       apply (fastforce intro: ct_running_cross)
+       subgoal by (fastforce intro: ct_running_cross)
       apply (rule ct_running_or_idle_cross)
          apply force
         apply fastforce
        apply fastforce
       apply fastforce
      subgoal by (fastforce intro!: resume_cur_thread_cross)
-    apply (rule_tac x=s in exI)
+    apply (rule_tac x=abs_state in exI)
     apply clarsimp
    apply clarsimp
    apply (intro conjI impI)
      apply metis
     apply metis
-   apply (frule_tac a=sa in ct_running_or_idle_cross; fastforce)
+   apply (fastforce dest!: ct_running_or_idle_cross)
 
   apply (erule_tac P="a \<and> b" for a b in disjE)
    apply (clarsimp simp add: do_user_op_H_def monad_to_transition_def)
@@ -1093,89 +1094,21 @@ lemma fw_sim_A_H:
 
    apply (erule_tac P="a \<and> (\<exists>x. b x)" for a b in disjE)
     apply (clarsimp simp add: kernel_call_H_def kernel_call_A_def)
-    apply (rule rev_mp, rule_tac tc=tc and event=x in entry_corres)
-apply (intro conjI impI allI)
-
+    apply (rename_tac abs_state uc' conc_state' conc_state event)
+    apply (rule rev_mp, rule_tac tc=tc and event=event in entry_corres)
     apply (clarsimp simp: corres_underlying_def)
-    apply (drule_tac x="(ak, ck)" in bspec)
-  apply fastforce
-apply clarsimp
-apply (prop_tac "(x \<noteq> Interrupt \<longrightarrow> ct_running' ck) \<and>
-        0 < ksDomainTime ck \<and>
-        valid_domain_list' ck \<and>
-        (ct_running' ck \<or> ct_idle' ck) \<and> ksSchedulerAction ck = ResumeCurrentThread")
-apply (intro conjI impI; (solves \<open>clarsimp simp: state_relation_def\<close>)?)
-
-
-
-apply (clarsimp simp: ct_in_state'_def)
-
-
-apply (clarsimp simp: ct_in_state_def)
-apply (frule st_tcb_at_coerce_concrete)
-  apply fastforce
-apply fastforce+
-apply (clarsimp simp: thread_state_relation_def state_relation_def)
-apply (fastforce intro: ct_idle_cross ct_running_cross)
-
-
-
-apply clarsimp
-apply (drule_tac x="(tc',ck')" in bspec)
-  apply fastforce
-apply clarsimp
-apply (rule_tac x=b in exI)
-apply (intro conjI impI allI)
-  apply fastforce
-  apply fastforce
-
-apply (rule ct_running_related)
-apply fastforce
-apply fastforce
-
-    apply (clarsimp simp: corres_underlying_def)
-    apply (drule_tac x="(ak, ck)" in bspec)
-  apply fastforce
-apply clarsimp
-apply (prop_tac "(x \<noteq> Interrupt \<longrightarrow> ct_running' ck) \<and>
-        0 < ksDomainTime ck \<and>
-        valid_domain_list' ck \<and>
-        (ct_running' ck \<or> ct_idle' ck) \<and> ksSchedulerAction ck = ResumeCurrentThread")
-apply (intro conjI impI; (solves \<open>clarsimp simp: state_relation_def\<close>)?)
-
-
-
-apply (clarsimp simp: ct_in_state'_def)
-
-
-apply (clarsimp simp: ct_in_state_def)
-apply (frule st_tcb_at_coerce_concrete)
-  apply fastforce
-apply fastforce+
-apply (clarsimp simp: thread_state_relation_def state_relation_def)
-apply (elim disjE)
-apply (fastforce intro:  ct_running_cross)
-apply (fastforce intro:  ct_idle_cross)
-
-apply clarsimp
-apply (drule_tac x="(tc',ck')" in bspec)
-  apply fastforce
-apply clarsimp
-apply (rule_tac x=b in exI)
-apply (frule_tac s=ak in use_valid[OF _ kernel_entry_invs])
-  apply force
-apply (intro conjI impI allI)
-apply (clarsimp simp: ex_abs_def)
-apply (frule_tac a=b and c="ck'" in ct_running_cross)
-  apply fastforce
-
-
-  apply force
-apply fastforce
-apply fastforce
-  apply fastforce
-  apply fastforce
-
+    apply (drule_tac x="(abs_state, conc_state)" in bspec, blast)
+    apply clarsimp
+    apply (drule_tac x="(uc', conc_state')" in bspec, blast)
+    apply clarsimp
+    apply (frule use_valid[OF _ kernel_entry_invs])
+     apply force
+    apply (rename_tac abs_state')
+    apply (intro conjI impI allI)
+     apply (rule_tac x=abs_state' in exI)
+     subgoal by (fastforce intro: ct_running_related)
+    apply (rule_tac x=abs_state' in exI)
+    subgoal by (fastforce dest: ct_running_cross)
 
    apply (erule_tac P="a \<and> b" for a b in disjE)
     apply (clarsimp simp: do_user_op_H_def do_user_op_A_def monad_to_transition_def)
