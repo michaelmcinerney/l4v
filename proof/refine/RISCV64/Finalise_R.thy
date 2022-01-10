@@ -56,6 +56,8 @@ lemma updateCap_cte_wp_at_cases:
 crunches postCapDeletion, updateTrackedFreeIndex
   for cte_wp_at'[wp]: "cte_wp_at' P p"
 
+end
+
 lemma updateFreeIndex_cte_wp_at:
   "\<lbrace>\<lambda>s. cte_at' p s \<and> P (cte_wp_at' (if p = p' then P'
       o (cteCap_update (capFreeIndex_update (K idx))) else P') p' s)\<rbrace>
@@ -91,23 +93,35 @@ crunch cur_tcb'[wp]: clearUntypedFreeIndex "cur_tcb'"
   (wp: cur_tcb_lift)
 
 crunch ksRQ[wp]: emptySlot "\<lambda>s. P (ksReadyQueues s)"
+crunch ksRLQ[wp]: emptySlot "\<lambda>s. P (ksReleaseQueue s)"
 crunch ksRQL1[wp]: emptySlot "\<lambda>s. P (ksReadyQueuesL1Bitmap s)"
 crunch ksRQL2[wp]: emptySlot "\<lambda>s. P (ksReadyQueuesL2Bitmap s)"
-crunch obj_at'[wp]: postCapDeletion "obj_at' P p"
+crunch obj_at'[wp]: postCapDeletion "\<lambda>s. Q (obj_at' P p s)"
 
 lemmas postCapDeletion_valid_queues[wp] =
     valid_queues_lift [OF postCapDeletion_obj_at'
-                          postCapDeletion_pred_tcb_at'
                           postCapDeletion_ksRQ]
 
 crunch inQ[wp]: clearUntypedFreeIndex "\<lambda>s. P (obj_at' (inQ d p) t s)"
+crunch tcbInReleaseQueue[wp]: clearUntypedFreeIndex "\<lambda>s. P (obj_at' (tcbInReleaseQueue) t s)"
 crunch tcbDomain[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbDomain tcb)) t"
 crunch tcbPriority[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbPriority tcb)) t"
+crunch tcbQueued[wp]: clearUntypedFreeIndex "obj_at' (\<lambda>tcb. P (tcbQueued tcb)) t"
 
 lemma emptySlot_queues [wp]:
   "\<lbrace>Invariants_H.valid_queues\<rbrace> emptySlot sl opt \<lbrace>\<lambda>rv. Invariants_H.valid_queues\<rbrace>"
   unfolding emptySlot_def
   by (wp | wpcw | wp valid_queues_lift | simp)+
+
+lemma emptySlot_valid_release_queue [wp]:
+  "emptySlot sl opt \<lbrace>Invariants_H.valid_release_queue\<rbrace>"
+  unfolding emptySlot_def
+  by (wp | wpcw | wp valid_release_queue_lift | simp)+
+
+lemma emptySlot_valid_release_queue' [wp]:
+  "emptySlot sl opt \<lbrace>Invariants_H.valid_release_queue'\<rbrace>"
+  unfolding emptySlot_def
+  by (wp | wpcw | wp valid_release_queue'_lift | simp)+
 
 crunch nosch[wp]: emptySlot "\<lambda>s. P (ksSchedulerAction s)"
 crunch ksCurDomain[wp]: emptySlot "\<lambda>s. P (ksCurDomain s)"
@@ -161,9 +175,8 @@ lemma mdb_chunked2D:
   done
 
 lemma nullPointer_eq_0_simp[simp]:
-  "(nullPointer = 0) = True"
   "(0 = nullPointer) = True"
-  by (simp add: nullPointer_def)+
+  by (simp add: nullPointer_def)
 
 lemma no_0_no_0_lhs_trancl [simp]:
   "no_0 m \<Longrightarrow> \<not> m \<turnstile> 0 \<leadsto>\<^sup>+ x"
@@ -1069,24 +1082,6 @@ lemma irq_control_n [simp]: "irq_control n"
   apply (erule (1) irq_controlD, rule irq_control)
   done
 
-lemma reply_masters_rvk_fb_m: "reply_masters_rvk_fb m"
-  using valid by auto
-
-lemma reply_masters_rvk_fb_n [simp]: "reply_masters_rvk_fb n"
-  using reply_masters_rvk_fb_m
-  apply (simp add: reply_masters_rvk_fb_def n_def
-                   ball_ran_modify_map_eq
-                   modify_map_comp[symmetric])
-  apply (subst ball_ran_modify_map_eq)
-   apply (frule bspec, rule ranI, rule slot)
-   apply (simp add: nullMDBNode_def isCap_simps modify_map_def
-                    slot)
-  apply (subst ball_ran_modify_map_eq)
-   apply (clarsimp simp add: modify_map_def)
-   apply fastforce
-  apply (simp add: ball_ran_modify_map_eq)
-  done
-
 lemma vmdb_n: "valid_mdb_ctes n"
   by (simp add: valid_mdb_ctes_def valid_dlist_n
                 no_0_n mdb_chain_0_n valid_badges_n
@@ -1349,7 +1344,7 @@ lemma emptySlot_valid_global_refs[wp]:
 end
 
 lemmas doMachineOp_irq_handlers[wp]
-    = valid_irq_handlers_lift'' [OF doMachineOp_ctes doMachineOp_ksInterruptState]
+    = valid_irq_handlers_lift'' [OF doMachineOp_ctes doMachineOp_ksInterrupt]
 
 lemma deletedIRQHandler_irq_handlers'[wp]:
   "\<lbrace>\<lambda>s. valid_irq_handlers' s \<and> (IRQHandlerCap irq \<notin> ran (cteCaps_of s))\<rbrace>
@@ -1415,6 +1410,12 @@ lemma deletedIRQHandler_irqs_masked'[wp]:
   done
 
 context begin interpretation Arch . (*FIXME: arch_split*)
+
+lemma setObject_cte_irq_masked'[wp]:
+  "setObject p (v::cte) \<lbrace>irqs_masked'\<rbrace>"
+  unfolding setObject_def
+  by (wpsimp simp: irqs_masked'_def Ball_def wp: hoare_vcg_all_lift hoare_vcg_imp_lift' updateObject_cte_inv)
+
 crunch irqs_masked'[wp]: emptySlot "irqs_masked'"
 
 lemma setIRQState_umm:
@@ -1557,8 +1558,7 @@ lemma clearUntypedFreeIndex_noop_corres:
 lemma clearUntypedFreeIndex_valid_pspace'[wp]:
   "\<lbrace>valid_pspace'\<rbrace> clearUntypedFreeIndex slot \<lbrace>\<lambda>rv. valid_pspace'\<rbrace>"
   apply (simp add: valid_pspace'_def)
-  apply (rule hoare_pre)
-   apply (wp | simp add: valid_mdb'_def)+
+  apply (wpsimp wp: valid_replies'_lift valid_mdb'_lift)
   done
 
 lemma emptySlot_corres:
@@ -1608,36 +1608,20 @@ lemma emptySlot_corres:
   apply (simp add: put_def)
   apply (simp add: exec_gets exec_get exec_put del: fun_upd_apply | subst bind_def)+
   apply (clarsimp simp: state_relation_def)
-  apply (drule updateMDB_the_lot, fastforce simp: pspace_relations_def, fastforce, fastforce)
-   apply (clarsimp simp: invs'_def valid_state'_def valid_pspace'_def
-                         valid_mdb'_def valid_mdb_ctes_def)
+  apply (drule updateMDB_the_lot, fastforce, fastforce, fastforce)
+   apply (clarsimp simp: invs'_def valid_pspace'_def valid_mdb'_def valid_mdb_ctes_def)
   apply (elim conjE)
   apply (drule (4) updateMDB_the_lot, elim conjE)
   apply clarsimp
-  apply (drule_tac s'=s''a and c=cap.NullCap in set_cap_not_quite_corres)
-                     subgoal by simp
-                    subgoal by simp
-                   subgoal by simp
-                  subgoal by fastforce
-                 subgoal by fastforce
-                subgoal by fastforce
-               subgoal by fastforce
-              subgoal by fastforce
-             apply fastforce
-            subgoal by fastforce
-           subgoal by fastforce
-          subgoal by fastforce
-         apply (erule cte_wp_at_weakenE, rule TrueI)
-        apply assumption
-       subgoal by simp
-      subgoal by simp
-     subgoal by simp
-    subgoal by simp
-   apply (rule refl)
+  apply (drule_tac s'=s''a and c=cap.NullCap in set_cap_not_quite_corres; (simp (no_asm_simp))?)
+      subgoal by fastforce
+     subgoal by fastforce
+    subgoal by fastforce
+   apply (erule cte_wp_at_weakenE, rule TrueI)
   apply clarsimp
   apply (drule updateCap_stuff, elim conjE, erule (1) impE)
   apply clarsimp
-  apply (drule updateMDB_the_lot, force simp: pspace_relations_def, assumption+, simp)
+  apply (drule updateMDB_the_lot, force, assumption+, simp)
   apply (rule bexI)
    prefer 2
    apply (simp only: trans_state_update[symmetric])
@@ -1661,11 +1645,11 @@ lemma emptySlot_corres:
    apply (rule mdb_empty.intro)
    apply (rule mdb_ptr.intro)
     apply (rule vmdb.intro)
-    subgoal by (simp add: invs'_def valid_state'_def valid_pspace'_def valid_mdb'_def)
+    subgoal by (simp add: invs'_def valid_pspace'_def valid_mdb'_def)
    apply (rule mdb_ptr_axioms.intro)
    subgoal by simp
   apply (clarsimp simp: ghost_relation_typ_at set_cap_a_type_inv)
-  apply (simp add: pspace_relations_def)
+
   apply (rule conjI)
    apply (clarsimp simp: data_at_def ghost_relation_typ_at set_cap_a_type_inv)
   apply (rule conjI)
@@ -1698,7 +1682,7 @@ lemma emptySlot_corres:
       prefer 2
       apply(drule_tac cte="CTE s_cap s_node" in valid_mdbD2')
         subgoal by (clarsimp simp: valid_mdb_ctes_def no_0_def)
-       subgoal by (clarsimp simp: invs'_def valid_state'_def valid_pspace'_def)
+       subgoal by (clarsimp simp: invs'_def valid_pspace'_def)
       apply(clarsimp)
       apply(rule cte_map_inj_eq)
            apply(assumption)
@@ -1818,7 +1802,9 @@ where
  "final_matters' cap \<equiv> case cap of
     EndpointCap ref bdg s r g gr \<Rightarrow> True
   | NotificationCap ref bdg s r \<Rightarrow> True
+  | ReplyCap ref gr \<Rightarrow> True
   | ThreadCap ref \<Rightarrow> True
+  | SchedContextCap ref sz \<Rightarrow> True
   | CNodeCap ref bits gd gs \<Rightarrow> True
   | Zombie ptr zb n \<Rightarrow> True
   | IRQHandlerCap irq \<Rightarrow> True
@@ -2094,6 +2080,13 @@ lemma obj_refs_Master:
   by (clarsimp simp: isCap_simps
               split: cap_relation_split_asm arch_cap.split_asm)
 
+(* FIXME RT: this should maybe replace is_sc_obj_def in is_obj_defs *)
+lemma is_sc_obj_def':
+  "is_sc_obj n ko = (\<exists>sc. ko = kernel_object.SchedContext sc n \<and> valid_sched_context_size n)"
+  unfolding is_sc_obj_def
+  apply (case_tac ko; simp)
+  by fastforce
+
 lemma isFinalCapability_corres':
   "final_matters' (cteCap cte) \<Longrightarrow>
    corres (=) (invs and cte_wp_at ((=) cap) ptr)
@@ -2206,11 +2199,6 @@ definition
   finaliseCapTrue_standin_simple_def:
   "finaliseCapTrue_standin cap fin \<equiv> finaliseCap cap fin True"
 
-context
-begin
-
-declare if_cong [cong]
-
 lemmas finaliseCapTrue_standin_def
     = finaliseCapTrue_standin_simple_def
         [unfolded finaliseCap_def, simplified]
@@ -2222,14 +2210,16 @@ lemmas cteDeleteOne_def
 
 crunches cteDeleteOne, suspend, prepareThreadDelete
   for typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
-  (wp: crunch_wps getObject_inv loadObject_default_inv
+  and sc_at'_n[wp]: "\<lambda>s. P (sc_at'_n n p s)"
+  (wp: crunch_wps  hoare_vcg_if_lift2 hoare_vcg_all_lift
    simp: crunch_simps unless_def o_def)
 
 end
 
-lemmas cancelAllIPC_typs[wp] = typ_at_lifts [OF cancelAllIPC_typ_at']
-lemmas cancelAllSignals_typs[wp] = typ_at_lifts [OF cancelAllSignals_typ_at']
-lemmas suspend_typs[wp] = typ_at_lifts [OF suspend_typ_at']
+global_interpretation cancelIPC: typ_at_all_props' "cancelIPC x" by typ_at_props'
+global_interpretation cancelAllIPC: typ_at_all_props' "cancelAllIPC x" by typ_at_props'
+global_interpretation cancelAllSignals: typ_at_all_props' "cancelAllSignals x" by typ_at_props'
+global_interpretation suspend: typ_at_all_props' "suspend x" by typ_at_props'
 
 definition
   cap_has_cleanup' :: "capability \<Rightarrow> bool"
@@ -2584,26 +2574,13 @@ lemma unbindNotification_valid_objs'_helper':
   by (clarsimp simp: valid_bound_tcb'_def valid_ntfn'_def
                   split: option.splits ntfn.splits)
 
-lemma typ_at'_valid_tcb'_lift:
-  assumes P: "\<And>P T p. \<lbrace>\<lambda>s. P (typ_at' T p s)\<rbrace> f \<lbrace>\<lambda>rv s. P (typ_at' T p s)\<rbrace>"
-  shows      "\<lbrace>\<lambda>s. valid_tcb' tcb s\<rbrace> f \<lbrace>\<lambda>rv s. valid_tcb' tcb s\<rbrace>"
-  including no_pre
-  apply (simp add: valid_tcb'_def)
-  apply (case_tac "tcbState tcb", simp_all add: valid_tcb_state'_def split_def valid_bound_ntfn'_def)
-         apply (wp hoare_vcg_const_Ball_lift typ_at_lifts[OF P]
-               | case_tac "tcbBoundNotification tcb", simp_all)+
-  done
-
-lemmas setNotification_valid_tcb' = typ_at'_valid_tcb'_lift [OF setNotification_typ_at']
-
 lemma unbindNotification_valid_objs'[wp]:
   "\<lbrace>valid_objs'\<rbrace>
      unbindNotification t
    \<lbrace>\<lambda>rv. valid_objs'\<rbrace>"
   apply (simp add: unbindNotification_def)
   apply (rule hoare_pre)
-  apply (wp threadSet_valid_objs' gbn_wp' set_ntfn_valid_objs' hoare_vcg_all_lift
-            setNotification_valid_tcb' getNotification_wp
+  apply (wp threadSet_valid_objs' gbn_wp' set_ntfn_valid_objs' hoare_vcg_all_lift getNotification_wp
         | wpc | clarsimp simp: setBoundNotification_def unbindNotification_valid_objs'_helper)+
   apply (clarsimp elim!: obj_atE')
   apply (rule valid_objsE', assumption+)
@@ -2617,8 +2594,7 @@ lemma unbindMaybeNotification_valid_objs'[wp]:
   apply (simp add: unbindMaybeNotification_def)
   apply (rule hoare_seq_ext[OF _ get_ntfn_sp'])
   apply (rule hoare_pre)
-  apply (wp threadSet_valid_objs' gbn_wp' set_ntfn_valid_objs' hoare_vcg_all_lift
-            setNotification_valid_tcb' getNotification_wp
+  apply (wp threadSet_valid_objs' gbn_wp' set_ntfn_valid_objs' hoare_vcg_all_lift getNotification_wp
         | wpc | clarsimp simp: setBoundNotification_def unbindNotification_valid_objs'_helper)+
   apply (clarsimp elim!: obj_atE')
   apply (rule valid_objsE', assumption+)
@@ -2649,9 +2625,9 @@ lemma sym_refs_ntfn_bound_eq: "sym_refs (state_refs_of' s)
   apply (clarsimp simp: obj_at'_def ko_wp_at'_def refs_of_rev')
   done
 
-lemma unbindMaybeNotification_obj_at'_bound:
+lemma unbindMaybeNotification_obj_at'_ntfnBound:
   "\<lbrace>\<top>\<rbrace>
-     unbindMaybeNotification r
+   unbindMaybeNotification r
    \<lbrace>\<lambda>_ s. obj_at' (\<lambda>ntfn. ntfnBoundTCB ntfn = None) r s\<rbrace>"
   apply (simp add: unbindMaybeNotification_def)
   apply (rule hoare_seq_ext[OF _ get_ntfn_sp'])
@@ -2732,6 +2708,7 @@ crunches unbindNotification, unbindMaybeNotification
 
 crunches unbindNotification, unbindMaybeNotification
   for weak_sch_act_wf[wp]: "\<lambda>s. weak_sch_act_wf (ksSchedulerAction s) s"
+  (wp: weak_sch_act_wf_lift)
 
 lemma unbindNotification_tcb_at'[wp]:
   "\<lbrace>tcb_at' t'\<rbrace> unbindNotification t \<lbrace>\<lambda>rv. tcb_at' t'\<rbrace>"
@@ -2754,10 +2731,298 @@ crunch obj_at'[wp]: prepareThreadDelete
 
 end
 
+lemma ntfnSc_sym_refsD:
+  "\<lbrakk>obj_at' (\<lambda>ntfn. ntfnSc ntfn = Some scPtr) ntfnPtr s; sym_refs (state_refs_of' s)\<rbrakk>
+    \<Longrightarrow> obj_at' (\<lambda>sc. scNtfn sc = Some ntfnPtr) scPtr s"
+  apply (drule (1) sym_refs_obj_atD')
+  apply (auto simp: state_refs_of'_def ko_wp_at'_def obj_at'_def
+                    refs_of_rev' projectKOs)
+  done
+
+lemma scNtfn_sym_refsD:
+  "\<lbrakk>obj_at' (\<lambda>sc. scNtfn sc = Some ntfnPtr) scPtr s;
+    valid_objs' s; sym_refs (state_refs_of' s)\<rbrakk>
+    \<Longrightarrow> obj_at' (\<lambda>ntfn. ntfnSc ntfn = Some scPtr) ntfnPtr s"
+  apply (frule obj_at_valid_objs', assumption)
+  apply (clarsimp simp: valid_obj'_def valid_sched_context'_def projectKOs)
+  apply (frule_tac p=ntfnPtr in obj_at_valid_objs', assumption)
+  apply (clarsimp simp: valid_obj'_def valid_ntfn'_def projectKOs)
+  apply (frule_tac p=scPtr in sym_refs_obj_atD', assumption)
+  apply (frule_tac p=ntfnPtr in sym_refs_obj_atD', assumption)
+  apply (clarsimp simp: ko_wp_at'_def obj_at'_def projectKOs get_refs_def2 ntfn_q_refs_of'_def
+                 split: Structures_H.ntfn.splits)
+  done
+
+lemma schedContextUnbindNtfn_obj_at'_ntfnSc:
+  "\<lbrace>obj_at' (\<lambda>ntfn. ntfnSc ntfn = Some scPtr) ntfnPtr\<rbrace>
+   schedContextUnbindNtfn scPtr
+   \<lbrace>\<lambda>_ s. obj_at' (\<lambda>ntfn. ntfnSc ntfn = None) ntfnPtr s\<rbrace>"
+  apply (simp add: schedContextUnbindNtfn_def sym_refs_asrt_def)
+  apply (wpsimp wp: stateAssert_wp set_ntfn'.obj_at'_strongest getNotification_wp
+                    hoare_vcg_all_lift hoare_vcg_imp_lift')
+  apply (drule ntfnSc_sym_refsD; assumption?)
+  apply (clarsimp simp: obj_at'_def projectKOs)
+  done
+
+lemma schedContextMaybeUnbindNtfn_obj_at'_ntfnSc:
+  "\<lbrace>\<top>\<rbrace>
+   schedContextMaybeUnbindNtfn ntfnPtr
+   \<lbrace>\<lambda>_ s. obj_at' (\<lambda>ntfn. ntfnSc ntfn = None) ntfnPtr s\<rbrace>"
+  apply (simp add: schedContextMaybeUnbindNtfn_def)
+  apply (wpsimp wp: schedContextUnbindNtfn_obj_at'_ntfnSc getNotification_wp)
+  apply (clarsimp simp: obj_at'_def)
+  done
+
+lemma replyUnlink_makes_unlive:
+  "\<lbrace>\<lambda>s. \<not> is_reply_linked rptr' s \<and> replySCs_of s rptr' = None
+        \<and> weak_sch_act_wf (ksSchedulerAction s) s \<and> rptr' = rptr\<rbrace>
+   replyUnlink rptr tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr'\<rbrace>"
+  apply (simp add: replyUnlink_def)
+  apply (wpsimp wp: setThreadState_Inactive_unlive updateReply_wp_all gts_wp')
+  by (auto simp: ko_wp_at'_def obj_at'_def projectKOs opt_map_def objBitsKO_def
+                 live'_def live_reply'_def weak_sch_act_wf_def pred_tcb_at'_def
+                 replyNext_None_iff)
+
+lemma cleanReply_obj_at_next_prev_none:
+  "\<lbrace>K (rptr' = rptr)\<rbrace>
+   cleanReply rptr
+   \<lbrace>\<lambda>_ s. \<not> is_reply_linked rptr s \<and> replySCs_of s rptr = None\<rbrace>"
+  apply (simp add: cleanReply_def )
+  apply (wpsimp wp: updateReply_wp_all)
+  apply (auto simp: obj_at'_def projectKOs objBitsKO_def)
+  done
+
+lemma replyPop_makes_unlive:
+  "\<lbrace>\<lambda>s. weak_sch_act_wf (ksSchedulerAction s) s\<rbrace>
+   replyPop rptr tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr\<rbrace>"
+  apply (simp add: replyPop_def)
+  by (wpsimp wp: replyUnlink_makes_unlive cleanReply_obj_at_next_prev_none
+                    hoare_vcg_if_lift
+         | wp (once) hoare_drop_imps)+
+
+lemma replyRemove_makes_unlive:
+  "\<lbrace>\<lambda>s. weak_sch_act_wf (ksSchedulerAction s) s\<rbrace>
+   replyRemove rptr tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr\<rbrace>"
+  apply (simp add: replyRemove_def)
+  by (wpsimp wp: replyPop_makes_unlive replyUnlink_makes_unlive cleanReply_obj_at_next_prev_none
+                 hoare_vcg_if_lift threadGet_wp gts_wp' hoare_drop_imps)
+
+lemma replyRemoveTCB_makes_unlive:
+  "\<lbrace>\<lambda>s. st_tcb_at' (\<lambda>st. replyObject st = Some rptr) tptr s
+        \<and> weak_sch_act_wf (ksSchedulerAction s) s\<rbrace>
+   replyRemoveTCB tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr\<rbrace>"
+  apply (simp add: replyRemoveTCB_def)
+  apply (wpsimp wp: replyUnlink_makes_unlive cleanReply_obj_at_next_prev_none
+                    hoare_vcg_if_lift threadGet_wp gts_wp' hoare_drop_imps)
+  by (clarsimp simp: pred_tcb_at'_def obj_at'_def)
+
+method cancelIPC_makes_unlive_hammer =
+  (normalise_obj_at',
+   frule (2) sym_ref_replyTCB_Receive_or_Reply,
+   fastforce simp: weak_sch_act_wf_def pred_tcb_at'_def obj_at'_def projectKOs)
+
+lemma obj_at_replyTCBs_of:
+  "obj_at' (\<lambda>reply. replyTCB reply = tptr_opt) rptr s
+   \<Longrightarrow> replyTCBs_of s rptr = tptr_opt"
+  by (clarsimp simp: obj_at'_def projectKOs opt_map_def)
+
+lemma cancelIPC_makes_unlive:
+  "\<lbrace>\<lambda>s. obj_at' (\<lambda>reply. replyTCB reply = Some tptr) rptr s
+        \<and> weak_sch_act_wf (ksSchedulerAction s) s \<and> valid_replies' s
+        \<and> valid_replies'_sc_asrt rptr s\<rbrace>
+   cancelIPC tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr\<rbrace>"
+  unfolding cancelIPC_def blockedCancelIPC_def Let_def getBlockingObject_def sym_refs_asrt_def
+  apply simp
+  apply (intro hoare_seq_ext[OF _ stateAssert_sp] hoare_seq_ext[OF _ gts_sp'])+
+  apply (case_tac state; clarsimp)
+         (* BlockedOnReceive*)
+         apply (rename_tac ep pl rp)
+         apply (case_tac rp; clarsimp)
+          apply (wpsimp wp: hoare_pre_cont, cancelIPC_makes_unlive_hammer)
+         apply (wpsimp wp: setThreadState_unlive_other replyUnlink_makes_unlive
+                           hoare_vcg_all_lift hoare_drop_imps threadSet_weak_sch_act_wf)
+         apply (frule obj_at_replyTCBs_of,
+                frule (1) valid_replies'_other_state;
+                  clarsimp simp: valid_replies'_sc_asrt_replySC_None)
+         apply cancelIPC_makes_unlive_hammer
+        (* BlockedOnReply*)
+        apply (wpsimp wp: replyRemoveTCB_makes_unlive threadSet_pred_tcb_no_state
+                          threadSet_weak_sch_act_wf)
+        apply cancelIPC_makes_unlive_hammer
+       (* All other states are impossible *)
+       apply (wpsimp wp: hoare_pre_cont, cancelIPC_makes_unlive_hammer)+
+  done
+
+lemma replyClear_makes_unlive:
+  "\<lbrace>\<lambda>s. obj_at' (\<lambda>reply. replyTCB reply = Some tptr) rptr s
+        \<and> weak_sch_act_wf (ksSchedulerAction s) s \<and> valid_replies' s
+        \<and> valid_replies'_sc_asrt rptr s\<rbrace>
+   replyClear rptr tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') rptr\<rbrace>"
+  apply (simp add: replyClear_def)
+  apply (wpsimp wp: replyRemove_makes_unlive cancelIPC_makes_unlive gts_wp' haskell_fail_wp)
+  done
+
+crunches unbindFromSC
+  for bound_tcb_at'[wp]: "bound_tcb_at' P p"
+  (ignore: threadSet simp: crunch_simps wp: crunch_wps)
+
+lemma schedContextUnbindTCB_valid_queues[wp]:
+  "\<lbrace>valid_queues and valid_objs' and sch_act_simple\<rbrace>
+   schedContextUnbindTCB scPtr
+   \<lbrace>\<lambda>_. valid_queues\<rbrace>"
+  unfolding schedContextUnbindTCB_def
+  apply (wpsimp wp: threadSet_valid_queues tcbReleaseRemove_valid_queues
+                    hoare_vcg_all_lift tcbSchedDequeue_valid_queues
+                    rescheduleRequired_oa_queued tcbSchedDequeue_nonq
+         | wp (once) hoare_drop_imps)+
+  apply (auto simp: valid_obj'_def valid_sched_context'_def
+              elim: valid_objs'_maxDomain valid_objs'_maxPriority
+             dest!: ko_at_valid_objs'_pre)
+  done
+
+crunches setConsumed
+  for valid_queues[wp]: valid_queues
+  and ksQ[wp]: "\<lambda>s. P (ksReadyQueues s p)"
+  (simp: crunch_simps wp: crunch_wps)
+
+lemma schedContextCompleteYieldTo_valid_queues[wp]:
+  "schedContextCompleteYieldTo tptr \<lbrace>valid_queues\<rbrace>"
+  unfolding schedContextCompleteYieldTo_def
+  apply (wpsimp wp: hoare_vcg_all_lift threadGet_wp simp: inQ_def cong: conj_cong)
+  apply (clarsimp simp: obj_at'_def)
+  done
+
+crunches unbindFromSC
+  for valid_queues[wp]: valid_queues
+  (simp: crunch_simps wp: crunch_wps)
+
+crunches schedContextCompleteYieldTo, unbindNotification, unbindMaybeNotification
+  for sch_act_simple[wp]: sch_act_simple
+  (simp: crunch_simps wp: crunch_wps rule: sch_act_simple_lift)
+
+lemma schedContextZeroRefillMax_unlive[wp]:
+  "schedContextZeroRefillMax scPtr \<lbrace>\<lambda>s. P (ko_wp_at' (Not \<circ> live') p s)\<rbrace>"
+  unfolding schedContextZeroRefillMax_def
+  apply (wpsimp wp: set_sc'.set_wp simp: updateSchedContext_def)
+  apply (clarsimp simp: ko_wp_at'_def obj_at'_def projectKOs live_sc'_def
+                        ps_clear_upd objBits_simps)
+  done
+
+crunches setMessageInfo, setMRs
+  for obj_at'_sc[wp]: "obj_at' (P :: sched_context \<Rightarrow> bool) p"
+  (wp: crunch_wps simp: crunch_simps)
+
+lemma schedContextUpdateConsumed_obj_at'_not_consumed:
+  "(\<And>ko f. P (scConsumed_update f ko) = P ko)
+   \<Longrightarrow> schedContextUpdateConsumed scPtr \<lbrace>obj_at' P t\<rbrace>"
+  apply (simp add: schedContextUpdateConsumed_def)
+  apply (wpsimp wp: set_sc'.obj_at'_strongest)
+  by (auto simp: obj_at'_def)
+
+lemma setConsumed_obj_at'_not_consumed:
+  "(\<And>ko f. P (scConsumed_update f ko) = P ko)
+   \<Longrightarrow> setConsumed scPtr buffer \<lbrace>obj_at' P t\<rbrace>"
+  apply (clarsimp simp: setConsumed_def)
+  apply (wpsimp wp: schedContextUpdateConsumed_obj_at'_not_consumed)
+  done
+
+lemma schedContextCancelYieldTo_makes_unlive:
+  "\<lbrace>obj_at' (\<lambda>sc. scTCB sc = None) scPtr and obj_at' (\<lambda>sc. scNtfn sc = None) scPtr and
+    obj_at' (\<lambda>sc. scReply sc = None) scPtr and bound_yt_tcb_at' (\<lambda>yieldTo. yieldTo = Some scPtr) tptr\<rbrace>
+   schedContextCancelYieldTo tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') scPtr\<rbrace>"
+  unfolding schedContextCancelYieldTo_def
+  apply (wpsimp wp: threadSet_unlive_other set_sc'.ko_wp_at threadGet_wp)
+  apply (auto simp: pred_tcb_at'_def obj_at'_def ko_wp_at'_def projectKOs live_sc'_def)
+  done
+
+lemma schedContextCompleteYieldTo_makes_unlive:
+  "\<lbrace>obj_at' (\<lambda>sc. scTCB sc = None) scPtr and obj_at' (\<lambda>sc. scNtfn sc = None) scPtr and
+    obj_at' (\<lambda>sc. scReply sc = None) scPtr and bound_yt_tcb_at' ((=) (Some scPtr)) tptr\<rbrace>
+   schedContextCompleteYieldTo tptr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') scPtr\<rbrace>"
+  unfolding schedContextCompleteYieldTo_def
+  apply (wpsimp wp: schedContextCancelYieldTo_makes_unlive haskell_fail_wp
+                    setConsumed_obj_at'_not_consumed hoare_drop_imps threadGet_wp)
+  apply (auto simp: pred_tcb_at'_def obj_at'_def)
+  done
+
+lemma sym_ref_scYieldFrom:
+  "\<lbrakk>ko_at' sc scp s; scYieldFrom sc = Some tp; sym_refs (state_refs_of' s)\<rbrakk>
+  \<Longrightarrow> \<exists>tcb. ko_at' tcb tp s \<and> tcbYieldTo tcb = Some scp"
+  apply (drule (1) sym_refs_ko_atD')
+  apply (auto simp: state_refs_of'_def ko_wp_at'_def obj_at'_def
+                    refs_of_rev' projectKOs)
+  done
+
+lemma schedContextUnbindYieldFrom_makes_unlive:
+  "\<lbrace>obj_at' (\<lambda>sc. scTCB sc = None) scPtr and obj_at' (\<lambda>sc. scNtfn sc = None) scPtr and
+    obj_at' (\<lambda>sc. scReply sc = None) scPtr\<rbrace>
+   schedContextUnbindYieldFrom scPtr
+   \<lbrace>\<lambda>_. ko_wp_at' (Not \<circ> live') scPtr\<rbrace>"
+  unfolding schedContextUnbindYieldFrom_def sym_refs_asrt_def
+  apply (wpsimp wp: schedContextCompleteYieldTo_makes_unlive)
+  apply (rule conjI; clarsimp)
+   apply (drule (2) sym_ref_scYieldFrom)
+   apply (auto simp: pred_tcb_at'_def obj_at'_def ko_wp_at'_def projectKOs live_sc'_def)
+  done
+
+lemma schedContextUnbindReply_obj_at'_not_reply:
+  "(\<And>ko f. P (scReply_update f ko) = P ko)
+   \<Longrightarrow> schedContextUnbindReply scPtr \<lbrace>obj_at' P p\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindReply_def)
+  apply (wpsimp wp: set_sc'.obj_at'_strongest updateReply_wp_all)
+  by (auto simp: obj_at'_def projectKOs)
+
+lemma schedContextUnbindReply_obj_at'_reply_None:
+  "\<lbrace>\<top>\<rbrace> schedContextUnbindReply scPtr \<lbrace>\<lambda>_. obj_at' (\<lambda>sc. scReply sc = None) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindReply_def)
+  apply (wpsimp wp: set_sc'.obj_at'_strongest)
+  by (auto simp: obj_at'_def)
+
+lemma schedContextUnbindNtfn_obj_at'_not_ntfn:
+  "(\<And>ko f. P (scNtfn_update f ko) = P ko)
+   \<Longrightarrow> schedContextUnbindNtfn scPtr \<lbrace>obj_at' P p\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindNtfn_def)
+  apply (wpsimp wp: set_sc'.obj_at'_strongest set_ntfn'.set_wp getNotification_wp)
+  by (auto simp: obj_at'_def projectKOs)
+
+lemma schedContextUnbindNtfn_obj_at'_ntfn_None:
+  "\<lbrace>\<top>\<rbrace> schedContextUnbindNtfn scPtr \<lbrace>\<lambda>_. obj_at' (\<lambda>sc. scNtfn sc = None) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindNtfn_def)
+  apply (wpsimp wp: set_sc'.obj_at'_strongest)
+  by (auto simp: obj_at'_def)
+
+lemma schedContextUnbindTCB_obj_at'_tcb_None:
+  "\<lbrace>\<top>\<rbrace> schedContextUnbindTCB scPtr \<lbrace>\<lambda>_. obj_at' (\<lambda>sc. scTCB sc = None) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindTCB_def)
+  by (wpsimp wp: set_sc'.obj_at'_strongest)
+
+lemma schedContextUnbindAllTCBs_obj_at'_tcb_None:
+  "\<lbrace>\<top>\<rbrace> schedContextUnbindAllTCBs scPtr \<lbrace>\<lambda>_. obj_at' (\<lambda>sc. scTCB sc = None) scPtr\<rbrace>"
+  apply (clarsimp simp: schedContextUnbindAllTCBs_def)
+  apply (wpsimp wp: schedContextUnbindTCB_obj_at'_tcb_None)
+  by (auto simp: obj_at'_def)
+
+lemmas schedContextZeroRefillMax_removeable'
+  = prepares_delete_helper'' [OF schedContextZeroRefillMax_unlive
+                                   [where p=scPtr and scPtr=scPtr for scPtr]]
+
+crunches schedContextMaybeUnbindNtfn
+  for sch_act_wf[wp]: "\<lambda>s. sch_act_wf (ksSchedulerAction s) s"
+
+end
+
 lemma (in delete_one_conc_pre) finaliseCap_replaceable:
   "\<lbrace>\<lambda>s. invs' s \<and> cte_wp_at' (\<lambda>cte. cteCap cte = cap) slot s
        \<and> (final_matters' cap \<longrightarrow> (final = isFinal cap slot (cteCaps_of s)))
-       \<and> weak_sch_act_wf (ksSchedulerAction s) s\<rbrace>
+       \<and> sch_act_simple s\<rbrace>
      finaliseCap cap final flag
    \<lbrace>\<lambda>rv s. (isNullCap (fst rv) \<and> removeable' slot s cap
                 \<and> (snd rv \<noteq> NullCap \<longrightarrow> snd rv = cap \<and> cap_has_cleanup' cap
@@ -2906,14 +3171,12 @@ lemma deletingIRQHandler_cte_preserved:
 
 lemma finaliseCap_equal_cap[wp]:
   "\<lbrace>cte_wp_at' (\<lambda>cte. cteCap cte = cap) sl\<rbrace>
-     finaliseCap cap fin flag
+   finaliseCap cap fin flag
    \<lbrace>\<lambda>rv. cte_wp_at' (\<lambda>cte. cteCap cte = cap) sl\<rbrace>"
   apply (simp add: finaliseCap_def Let_def
              cong: if_cong split del: if_split)
-  apply (rule hoare_pre)
-   apply (wp suspend_cte_wp_at' deletingIRQHandler_cte_preserved
-        | clarsimp simp: finaliseCap_def | wpc)+
-  apply (case_tac cap)
+  apply (wpsimp wp: suspend_cte_wp_at' deletingIRQHandler_cte_preserved
+              simp: finaliseCap_def)+
   apply auto
   done
 
@@ -2928,6 +3191,13 @@ lemma setThreadState_st_tcb_at_simplish':
 
 lemmas setThreadState_st_tcb_at_simplish
     = setThreadState_st_tcb_at_simplish'[unfolded pred_disj_def]
+
+lemma replyUnlink_st_tcb_at_simplish:
+  "replyUnlink r t' \<lbrace>st_tcb_at' (\<lambda>st. P st \<or> simple' st) t\<rbrace>"
+  supply if_split [split del]
+  unfolding replyUnlink_def
+  apply (wpsimp wp: sts_st_tcb' hoare_vcg_if_lift2 hoare_vcg_imp_lift' gts_wp')
+  done
 
 crunch st_tcb_at_simplish: cteDeleteOne
             "st_tcb_at' (\<lambda>st. P st \<or> simple' st) t"
@@ -3386,7 +3656,9 @@ lemma interrupt_cap_null_or_ntfn:
   done
 
 lemma (in delete_one) deletingIRQHandler_corres:
-  "corres dc (einvs) (invs')
+  "corres dc
+          (einvs and simple_sched_action and current_time_bounded 2)
+          invs'
           (deleting_irq_handler irq) (deletingIRQHandler irq)"
   apply (simp add: deleting_irq_handler_def deletingIRQHandler_def)
   apply (rule corres_guard_imp)
@@ -3395,7 +3667,7 @@ lemma (in delete_one) deletingIRQHandler_corres:
       apply (rule_tac P'="cte_at' (cte_map slot)" in corres_symb_exec_r_conj)
          apply (rule_tac F="isNotificationCap rv \<or> rv = capability.NullCap"
              and P="cte_wp_at (\<lambda>cp. is_ntfn_cap cp \<or> cp = cap.NullCap) slot
-                 and einvs"
+                 and einvs and simple_sched_action and current_time_bounded 2"
              and P'="invs' and cte_wp_at' (\<lambda>cte. cteCap cte = rv)
                  (cte_map slot)" in corres_req)
           apply (clarsimp simp: cte_wp_at_caps_of_state state_relation_def)
@@ -3918,7 +4190,8 @@ lemma cancelAllIPC_ct_not_ksQ:
         apply (wp rescheduleRequired_ksQ')
        apply (clarsimp)
        apply (wp cancelAll_ct_not_ksQ_helper mapM_x_wp_inv)
-      apply (wp hoare_lift_Pf2 [OF setEndpoint_ksQ setEndpoint_ct'])+
+  oops (* FIXME RT: this lemma is probably not needed since we have ct_queues_cross *) (*
+      apply (wp hoare_lift_Pf2 [OF set_ep'.ksReadyQueues set_ep'.ct])+
       apply (wps rescheduleRequired_ct')
       apply (wp rescheduleRequired_ksQ')
      apply (clarsimp)
@@ -3933,7 +4206,7 @@ lemma cancelAllIPC_ct_not_ksQ:
                            sch_act_sane_def
             | drule(1) ct_not_in_epQueue)+)[2]
   apply (wp get_ep_sp')
-  done
+  done *)
 
 lemma cancelAllSignals_ct_not_ksQ:
   "\<lbrace>invs' and ct_in_state' simple' and sch_act_sane
@@ -3947,15 +4220,16 @@ lemma cancelAllSignals_ct_not_ksQ:
       apply (wp rescheduleRequired_ksQ')
      apply clarsimp
      apply (wp cancelAll_ct_not_ksQ_helper mapM_x_wp_inv)
-    apply (wp hoare_lift_Pf2 [OF setNotification_ksQ setNotification_ksCurThread])
-    apply (wps setNotification_ksCurThread, wp)
+  oops (* FIXME RT: this lemma is probably not needed since we have ct_queues_cross *) (*
+    apply (wp hoare_lift_Pf2 [OF set_ntfn'.ksReadyQueues set_ntfn'.ct])
+    apply (wps set_ntfn'.ct, wp)
    prefer 2
    apply assumption
   apply (rule_tac Q="\<lambda>ep. ?PRE and ko_at' ep ntfnptr" in hoare_post_imp)
    apply ((clarsimp simp: invs'_def valid_state'_def sch_act_sane_def
           | drule(1) ct_not_in_ntfnQueue)+)[1]
   apply (wp get_ntfn_sp')
-  done
+  done *)
 
 lemma unbindMaybeNotification_ct_not_ksQ:
  "\<lbrace>invs' and ct_in_state' simple' and sch_act_sane
@@ -3969,7 +4243,7 @@ lemma unbindMaybeNotification_ct_not_ksQ:
     apply wp
     apply (wps setBoundNotification_ct')
     apply (wp sbn_ksQ)
-   apply (wps setNotification_ksCurThread, wp)
+   apply (wps set_ntfn'.ct, wp)
   apply clarsimp
   done
 
@@ -3978,14 +4252,13 @@ lemma sbn_ct_in_state'[wp]:
   apply (simp add: ct_in_state'_def)
   apply (rule hoare_pre)
    apply (wps setBoundNotification_ct')
-  apply (wp sbn_st_tcb', clarsimp)
+  apply wpsimp+
   done
 
 lemma set_ntfn_ct_in_state'[wp]:
   "\<lbrace>ct_in_state' P\<rbrace> setNotification a ntfn \<lbrace>\<lambda>_. ct_in_state' P\<rbrace>"
   apply (simp add: ct_in_state'_def)
-  apply (rule hoare_pre)
-   apply (wps setNotification_ksCurThread, wp, clarsimp)
+  apply (wp_pre, wps, wp, clarsimp)
   done
 
 lemma unbindMaybeNotification_ct_in_state'[wp]:
@@ -4005,25 +4278,29 @@ lemma unbindMaybeNotification_sch_act_sane[wp]:
   apply (wp setNotification_sch_act_sane sbn_sch_act_sane | wpc | clarsimp)+
   done
 
+lemma ct_queues_cross:
+  "cross_rel (\<lambda>s. P (cur_thread s) (ready_queues s d p)) (\<lambda>s. P (ksCurThread s) (ksReadyQueues s (d,p)))"
+  by (clarsimp simp: state_relation_def ready_queues_relation_def cross_rel_def)
+
 lemma finaliseCapTrue_standin_ct_not_ksQ:
   "\<lbrace>invs' and ct_in_state' simple' and sch_act_sane
           and (\<lambda>s. ksCurThread s \<notin> set (ksReadyQueues s p))\<rbrace>
    finaliseCapTrue_standin cap final
    \<lbrace>\<lambda>rv s. ksCurThread s \<notin> set (ksReadyQueues s p)\<rbrace>"
-  apply (simp add: finaliseCapTrue_standin_def Let_def)
+(*   apply (simp add: finaliseCapTrue_standin_def Let_def)
   apply (safe)
       apply (wp cancelAllIPC_ct_not_ksQ cancelAllSignals_ct_not_ksQ
                 hoare_drop_imps unbindMaybeNotification_ct_not_ksQ
              | wpc
-             | clarsimp simp: isNotificationCap_def isReplyCap_def split:capability.splits)+
-  done
+             | clarsimp simp: isNotificationCap_def isReplyCap_def split:capability.splits)+ *)
+  oops (* FIXME RT: this lemma is probably not needed since we have ct_queues_cross *)
 
 lemma cteDeleteOne_ct_not_ksQ:
   "\<lbrace>invs' and ct_in_state' simple' and sch_act_sane
           and (\<lambda>s. ksCurThread s \<notin> set (ksReadyQueues s p))\<rbrace>
    cteDeleteOne slot
    \<lbrace>\<lambda>rv s. ksCurThread s \<notin> set (ksReadyQueues s p)\<rbrace>"
-  apply (simp add: cteDeleteOne_def unless_def split_def)
+(*   apply (simp add: cteDeleteOne_def unless_def split_def)
   apply (rule hoare_seq_ext [OF _ getCTE_sp])
   apply (case_tac "\<forall>final. finaliseCap (cteCap cte) final True = fail")
    apply (simp add: finaliseCapTrue_standin_simple_def)
@@ -4034,7 +4311,10 @@ lemma cteDeleteOne_ct_not_ksQ:
     apply (wp (once) hoare_drop_imps)
     apply (wp finaliseCapTrue_standin_ct_not_ksQ isFinalCapability_inv)+
   apply (clarsimp)
-  done
+  done *)
+  oops (* FIXME RT: this lemma is probably not needed since we have ct_queues_cross
+                    in fact this is not used at all in Refine (perhaps it is needed in
+                    CRefine?) GK: not needed in CRefine, can be deleted if we don't need it here *)
 
 end
 

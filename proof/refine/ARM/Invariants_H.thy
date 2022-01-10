@@ -2490,6 +2490,20 @@ lemma cte_wp_at_cases':
                          unless_def when_def bind_def
                   split: kernel_object.splits if_split_asm option.splits
                     del: disjCI)
+apply (rule disjI2)
+
+\<comment> \<open>apply (fastforce simp: field_simps elim: rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v])\<close>
+apply (rule_tac x="0x10" in exI)
+apply (rule_tac x=x6 in exI)
+apply (intro conjI)
+apply clarsimp
+apply clarsimp
+thm cteSizeBits_def
+
+apply (rule rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v])
+
+
+apply (fastforce simp: field_simps elim: rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v])+
        apply ((rule disjI2)?, fastforce simp: field_simps elim: rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v])+
   apply (simp add: cte_wp_at'_def getObject_def split_def gets_the_def
                    bind_def simpler_gets_def return_def readObject_def
@@ -2742,7 +2756,13 @@ lemma typ_at_lift_page_table_at'_strong:
   using x
   apply -
   apply (rule P_bool_lift[where P=P])
-  apply (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
+  apply_trace (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
+         | fastforce)
+  apply_trace (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
+         | fastforce)
+  apply_trace (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
+         | fastforce)
+  apply_trace (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
          | fastforce)+
   done
 

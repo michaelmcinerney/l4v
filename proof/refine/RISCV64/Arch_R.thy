@@ -130,7 +130,7 @@ lemma set_cap_device_and_range_aligned:
 lemma performASIDControlInvocation_corres:
   "asid_ci_map i = i' \<Longrightarrow>
   corres dc
-         (einvs and ct_active and valid_aci i)
+         (einvs and ct_active and valid_aci i and schact_is_rct)
          (invs' and ct_active' and valid_aci' i')
          (perform_asid_control_invocation i)
          (performASIDControlInvocation i')"
@@ -230,7 +230,7 @@ lemma performASIDControlInvocation_corres:
                                makeObjectKO_def range_cover_full
                          simp del: capFreeIndex_update.simps
                 | strengthen invs_valid_pspace' invs_pspace_aligned'
-                             invs_pspace_distinct'
+                             invs_pspace_distinct' invs_pspace_bounded'
                              exI[where x="makeObject :: asidpool"])+
          apply (wp updateFreeIndex_forward_invs'
                    updateFreeIndex_pspace_no_overlap'
@@ -247,7 +247,7 @@ lemma performASIDControlInvocation_corres:
      apply wp+
     apply (clarsimp simp: conj_comms)
     apply (clarsimp simp: conj_comms ex_disj_distrib
-           | strengthen invs_valid_pspace' invs_pspace_aligned'
+           | strengthen invs_valid_pspace' invs_pspace_aligned' invs_pspace_bounded'
                         invs_pspace_distinct')+
     apply (wp deleteObjects_invs'[where p="makePoolParent i'"]
               deleteObjects_cte_wp_at'
@@ -263,7 +263,7 @@ lemma performASIDControlInvocation_corres:
     apply (wp deleteObjects_descendants[where p="makePoolParent i'"]
               deleteObjects_cte_wp_at'
               deleteObjects_null_filter[where p="makePoolParent i'"])
-   apply (clarsimp simp:invs_mdb max_free_index_def invs_untyped_children)
+   apply (clarsimp simp:invs_mdb max_free_index_def invs_untyped_children schact_is_rct)
    apply (subgoal_tac "detype_locale x y sa" for x y)
     prefer 2
     apply (simp add:detype_locale_def)
@@ -282,6 +282,7 @@ lemma performASIDControlInvocation_corres:
    apply (frule_tac ptr = "(aa,ba)" in detype_invariants [rotated 3])
         apply fastforce
        apply simp
+       apply (clarsimp simp: schact_is_rct)
       apply (simp add: cte_wp_at_caps_of_state)
      apply (simp add: is_cap_simps)
     apply (simp add:empty_descendants_range_in descendants_range_def2)
@@ -315,8 +316,6 @@ lemma performASIDControlInvocation_corres:
    apply (rule conjI, rule pspace_no_overlap_subset,
          rule pspace_no_overlap_detype[OF caps_of_state_valid])
         apply (simp add:invs_psp_aligned invs_valid_objs is_aligned_neg_mask_eq)+
-   apply (clarsimp simp: detype_def clear_um_def detype_ext_def valid_sched_def valid_etcbs_def
-            st_tcb_at_kh_def obj_at_kh_def st_tcb_at_def obj_at_def is_etcb_at_def)
   apply (simp add: detype_def clear_um_def)
   apply (drule_tac x = "cte_map (aa,ba)" in pspace_relation_cte_wp_atI[OF state_relation_pspace_relation])
     apply (simp add:invs_valid_objs)+
@@ -349,9 +348,8 @@ lemma performASIDControlInvocation_corres:
   apply (drule (1) cte_cap_in_untyped_range)
        apply (fastforce simp add: cte_wp_at_ctes_of)
       apply assumption+
-    apply (clarsimp simp: invs'_def valid_state'_def if_unsafe_then_cap'_def cte_wp_at_ctes_of)
-   apply fastforce
-  apply simp
+    apply (clarsimp simp: invs'_def if_unsafe_then_cap'_def cte_wp_at_ctes_of)
+   apply fastforce+
   done
 
 definition
@@ -1023,7 +1021,7 @@ lemma performASIDControlInvocation_tcb_at':
   apply clarsimp
   apply (drule(1) cte_cap_in_untyped_range,
          fastforce simp add: cte_wp_at_ctes_of, assumption, simp_all)
-   apply (clarsimp simp: invs'_def valid_state'_def if_unsafe_then_cap'_def cte_wp_at_ctes_of)
+   apply (clarsimp simp: invs'_def if_unsafe_then_cap'_def cte_wp_at_ctes_of)
   apply clarsimp
   done
 
@@ -1036,13 +1034,77 @@ lemma invokeArch_tcb_at':
                   wp: performASIDControlInvocation_tcb_at')
   done
 
+lemma setObject_tcb_pre:
+  assumes "\<lbrace>P and tcb_at' p\<rbrace> setObject p (t::tcb) \<lbrace>Q\<rbrace>"
+  shows "\<lbrace>P\<rbrace> setObject p (t::tcb) \<lbrace>Q\<rbrace>" using assms
+  apply (clarsimp simp: valid_def setObject_def in_monad
+                        split_def updateObject_default_def
+                        projectKOs in_magnitude_check objBits_simps')
+  apply (drule spec, drule mp, erule conjI)
+   apply (simp add: obj_at'_def projectKOs objBits_simps')
+  apply (simp add: split_paired_Ball)
+  apply (drule spec, erule mp)
+  apply (clarsimp simp: in_monad projectKOs in_magnitude_check objBits_simps')
+  done
+
+(* FIXME RT: move to KHeap, including instances below, replace single setObject lemmas *)
+lemma setObject_at_pre:
+  assumes pre: "\<lbrace>P and obj_at' (\<lambda>_::'a. True) p\<rbrace> setObject p (v::'a::pspace_storable) \<lbrace>Q\<rbrace>"
+  assumes R: "\<And>ko s y n. updateObject v ko p y n s = updateObject_default v ko p y n s"
+  assumes objBits: "\<exists>n. \<forall>v. objBits (v::'a) = n \<and> (1::machine_word) < 2^n"
+  shows "\<lbrace>P\<rbrace> setObject p v \<lbrace>Q\<rbrace>"
+  using pre objBits
+  apply (clarsimp simp: valid_def setObject_def in_monad R
+                        split_def updateObject_default_def
+                        projectKOs in_magnitude_check split_paired_Ball)
+  apply (drule spec, drule mp, erule conjI)
+   apply (simp add: obj_at'_def projectKOs objBits_def project_inject)
+   apply metis
+  apply (simp add: split_paired_Ball)
+  apply (drule spec, erule mp)
+  apply (clarsimp simp: in_monad projectKOs in_magnitude_check)
+  done
+
+lemma setObject_pspace_no_overlap':
+  assumes R: "\<And>ko s y n. updateObject v ko p y n s = updateObject_default v ko p y n s"
+  assumes objBits: "\<exists>n. \<forall>v. objBits (v::'a) = n \<and> (1::machine_word) < 2^n"
+  shows "setObject p (v::'a::pspace_storable) \<lbrace>pspace_no_overlap' w s\<rbrace>"
+  apply (rule setObject_at_pre[OF _ R objBits])
+  using objBits
+  apply (clarsimp simp: setObject_def split_def valid_def in_monad R)
+  apply (clarsimp simp: obj_at'_def projectKOs)
+  apply (erule (1) ps_clear_lookupAround2)
+    apply (rule order_refl)
+   apply (erule is_aligned_no_overflow)
+   apply simp
+  apply (clarsimp simp: objBits_def updateObject_default_def in_monad projectKOs in_magnitude_check)
+  apply (fastforce simp: pspace_no_overlap'_def project_inject)
+  done
+
+end
+
+context begin interpretation Arch .
+
+(* FIXME RT: replace the one in KHeap *)
+lemma setObject_tcb_pspace_no_overlap2:
+  "\<lbrace>pspace_no_overlap' w s\<rbrace>
+  setObject t (tcb::tcb)
+  \<lbrace>\<lambda>rv. pspace_no_overlap' w s\<rbrace>"
+  apply (rule setObject_tcb_pre)
+  apply (rule setObject_tcb_pspace_no_overlap')
+  done
+
 crunch pspace_no_overlap'[wp]: setThreadState "pspace_no_overlap' w s"
-  (simp: unless_def)
+  (simp: unless_def wp: crunch_wps setObject_tcb_pspace_no_overlap2)
 
 lemma sts_cte_cap_to'[wp]:
   "\<lbrace>ex_cte_cap_to' p\<rbrace> setThreadState st t \<lbrace>\<lambda>rv. ex_cte_cap_to' p\<rbrace>"
   by (wp ex_cte_cap_to'_pres)
 
+
+crunches setThreadState
+  for sc_at'_n[wp]: "sc_at'_n n p"
+  (simp: crunch_simps wp: crunch_wps)
 
 lemma sts_valid_arch_inv':
   "\<lbrace>valid_arch_inv' ai\<rbrace> setThreadState st t \<lbrace>\<lambda>rv. valid_arch_inv' ai\<rbrace>"
@@ -1058,7 +1120,7 @@ lemma sts_valid_arch_inv':
    apply clarsimp
   apply (clarsimp simp: valid_apinv'_def split: asidpool_invocation.splits)
   apply (rule hoare_pre, wp)
-  apply simp
+  apply (simp add: o_def)
   done
 
 lemma inv_ASIDPool: "inv ASIDPool = (\<lambda>v. case v of ASIDPool a \<Rightarrow> a)"
@@ -1361,7 +1423,7 @@ lemma performASIDControlInvocation_invs' [wp]:
          cong: rev_conj_cong)
     apply (clarsimp simp:conj_comms
                          descendants_of_null_filter'
-      | strengthen invs_pspace_aligned' invs_pspace_distinct'
+      | strengthen invs_pspace_aligned' invs_pspace_distinct' invs_pspace_bounded'
           invs_pspace_aligned' invs_valid_pspace')+
     apply (wp updateFreeIndex_forward_invs'
            updateFreeIndex_cte_wp_at
@@ -1372,7 +1434,7 @@ lemma performASIDControlInvocation_invs' [wp]:
            updateCap_cte_wp_at_cases static_imp_wp
            getSlotCap_wp)+
   apply (clarsimp simp:conj_comms ex_disj_distrib is_aligned_mask
-           | strengthen invs_valid_pspace' invs_pspace_aligned'
+           | strengthen invs_valid_pspace' invs_pspace_aligned' invs_pspace_bounded'
                         invs_pspace_distinct' empty_descendants_range_in')+
   apply (wp deleteObjects_invs'[where p="makePoolParent aci"]
             hoare_vcg_ex_lift

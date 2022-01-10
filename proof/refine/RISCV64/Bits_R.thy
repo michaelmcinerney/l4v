@@ -52,7 +52,9 @@ lemma isCap_simps:
   "isNotificationCap v = (\<exists>v0 v1 v2 v3. v = NotificationCap v0 v1 v2 v3)"
   "isEndpointCap v = (\<exists>v0 v1 v2 v3 v4 v5. v = EndpointCap v0 v1 v2 v3 v4 v5)"
   "isUntypedCap v = (\<exists>d v0 v1 f. v = UntypedCap d v0 v1 f)"
-  "isReplyCap v = (\<exists>v0 v1 v2. v = ReplyCap v0 v1 v2)"
+  "isReplyCap v = (\<exists>v0 v1. v = ReplyCap v0 v1)"
+  "isSchedContextCap v = (\<exists>v0 v1. v = SchedContextCap v0 v1)"
+  "isSchedControlCap v = (v = SchedControlCap)"
   "isIRQControlCap v = (v = IRQControlCap)"
   "isIRQHandlerCap v = (\<exists>v0. v = IRQHandlerCap v0)"
   "isNullCap v = (v = NullCap)"
@@ -84,6 +86,27 @@ lemma projectKO_ep:
 lemma projectKO_ntfn:
   "(projectKO_opt ko = Some t) = (ko = KONotification t)"
   by (cases ko) (auto simp: projectKO_opts_defs)
+
+lemma projectKO_reply:
+  "(projectKO_opt ko = Some t) = (ko = KOReply t)"
+  by (cases ko) (auto simp: projectKO_opts_defs)
+
+lemma reply_of'_KOReply[simp]:
+  "reply_of' (KOReply reply) = Some reply"
+  apply (clarsimp simp: projectKO_reply)
+  done
+
+lemma projectKO_sc:
+  "(projectKO_opt ko = Some t) = (ko = KOSchedContext t)"
+  by (cases ko) (auto simp: projectKO_opts_defs)
+
+lemma sc_of'_Sched[simp]:
+  "sc_of' (KOSchedContext sc) = Some sc"
+  by (simp add: projectKO_sc)
+
+lemma tcb_of'_TCB[simp]:
+  "tcb_of' (KOTCB tcb) = Some tcb"
+  by (simp add: projectKO_tcb)
 
 lemma projectKO_ASID:
   "(projectKO_opt ko = Some t) = (ko = KOArch (KOASIDPool t))"
@@ -151,6 +174,39 @@ lemma ko_at_valid_objs':
   shows "valid_obj' (injectKO k) s" using ko vo
   by (clarsimp simp: valid_objs'_def obj_at'_def project_inject ranI)
 
+lemmas ko_at_valid_objs'_pre =
+  ko_at_valid_objs'[simplified project_inject, atomized, simplified, rule_format]
+
+lemmas ep_ko_at_valid_objs_valid_ep' =
+  ko_at_valid_objs'_pre[where 'a=endpoint, simplified injectKO_defs valid_obj'_def, simplified]
+
+lemmas ntfn_ko_at_valid_objs_valid_ntfn' =
+  ko_at_valid_objs'_pre[where 'a=notification, simplified injectKO_defs valid_obj'_def,
+                        simplified]
+
+lemmas tcb_ko_at_valid_objs_valid_tcb' =
+  ko_at_valid_objs'_pre[where 'a=tcb, simplified injectKO_defs valid_obj'_def, simplified]
+
+lemmas cte_ko_at_valid_objs_valid_cte' =
+  ko_at_valid_objs'_pre[where 'a=cte, simplified injectKO_defs valid_obj'_def, simplified]
+
+lemmas sc_ko_at_valid_objs_valid_sc' =
+  ko_at_valid_objs'_pre[where 'a=sched_context, simplified injectKO_defs valid_obj'_def,
+                        simplified]
+
+lemmas reply_ko_at_valid_objs_valid_reply' =
+  ko_at_valid_objs'_pre[where 'a=reply, simplified injectKO_defs valid_obj'_def, simplified]
+
+(* FIXME: arch split *)
+lemmas pde_ko_at_valid_objs_valid_pde' =
+  ko_at_valid_objs'_pre[where 'a=pde, simplified injectKO_pde valid_obj'_def, simplified]
+
+lemmas pte_ko_at_valid_objs_valid_pte' =
+  ko_at_valid_objs'_pre[where 'a=pte, simplified injectKO_pde valid_obj'_def, simplified]
+
+lemmas asidpool_ko_at_valid_objs_valid_asid_pool' =
+  ko_at_valid_objs'_pre[where 'a=asidpool, simplified injectKO_pde valid_obj'_def, simplified]
+
 lemma obj_at_valid_objs':
   "\<lbrakk> obj_at' P p s; valid_objs' s \<rbrakk> \<Longrightarrow>
   \<exists>k. P k \<and>
@@ -184,6 +240,9 @@ lemma getIdleThread_corres:
 
 lemma git_wp [wp]: "\<lbrace>\<lambda>s. P (ksIdleThread s) s\<rbrace> getIdleThread \<lbrace>P\<rbrace>"
   by (unfold getIdleThread_def, wp)
+
+lemma getIdleSc_wp [wp]: "\<lbrace>\<lambda>s. P (ksIdleSC s) s\<rbrace> getIdleSC \<lbrace>P\<rbrace>"
+  by (unfold getIdleSC_def, wp)
 
 lemma gsa_wp [wp]: "\<lbrace>\<lambda>s. P (ksSchedulerAction s) s\<rbrace> getSchedulerAction \<lbrace>P\<rbrace>"
   by (unfold getSchedulerAction_def, wp)

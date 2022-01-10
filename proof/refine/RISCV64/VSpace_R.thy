@@ -506,12 +506,17 @@ lemma set_mi_tcb' [wp]:
   "\<lbrace> tcb_at' t \<rbrace> setMessageInfo receiver msg \<lbrace>\<lambda>rv. tcb_at' t\<rbrace>"
   by (simp add: setMessageInfo_def) wp
 
+end
 
-lemma setMRs_typ_at':
-  "\<lbrace>\<lambda>s. P (typ_at' T p s)\<rbrace> setMRs receiver recv_buf mrs \<lbrace>\<lambda>rv s. P (typ_at' T p s)\<rbrace>"
-  by (simp add: setMRs_def zipWithM_x_mapM split_def, wp crunch_wps)
+crunches setMRs
+  for typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
+  and sc_at'_n[wp]: "\<lambda>s. P (sc_at'_n n p s)"
+  (simp: crunch_simps wp: crunch_wps)
 
-lemmas setMRs_typ_at_lifts[wp] = typ_at_lifts [OF setMRs_typ_at']
+global_interpretation setMRs: typ_at_all_props' "setMRs thread buffer data"
+  by typ_at_props'
+
+context begin interpretation Arch . (*FIXME: arch_split*)
 
 lemma set_mrs_invs'[wp]:
   "\<lbrace> invs' and tcb_at' receiver \<rbrace> setMRs receiver recv_buf mrs \<lbrace>\<lambda>rv. invs' \<rbrace>"
@@ -1221,6 +1226,10 @@ crunch invs'[wp]: unmapPageTable "invs'"
   (ignore: doMachineOp
        wp: storePTE_Invalid_invs mapM_wp' crunch_wps
      simp: crunch_simps)
+
+crunches unmapPageTable
+  for sc_at'_n[wp]: "sc_at'_n n p"
+  (simp: crunch_simps wp: crunch_wps)
 
 lemma perform_pti_invs [wp]:
   "\<lbrace>invs' and valid_pti' pti\<rbrace> performPageTableInvocation pti \<lbrace>\<lambda>_. invs'\<rbrace>"
