@@ -716,6 +716,7 @@ lemmas isCap_defs =
   isThreadCap_def isCNodeCap_def isNotificationCap_def
   isEndpointCap_def isUntypedCap_def isNullCap_def
   isIRQHandlerCap_def isIRQControlCap_def isReplyCap_def
+  isSchedContextCap_def isSchedControlCap_def
   isFrameCap_def isPageTableCap_def
   isASIDControlCap_def isASIDPoolCap_def
   isDomainCap_def isArchFrameCap_def
@@ -1333,4 +1334,5 @@ lemma sc_refill_sufficient_relation:
   by (clarsimp simp: sufficientRefills_def refill_sufficient_def minBudget_def MIN_BUDGET_def
                         kernelWCETTicks_def)
 
+end
 end
