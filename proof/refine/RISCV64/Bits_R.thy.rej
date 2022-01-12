@@ -1,0 +1,52 @@
+--- Bits_R.thy
++++ Bits_R.thy
+@@ -20,7 +20,8 @@ crunch_ignore (add:
+   storeWordVM loadWord setRegister getRegister getRestartPC
+   debugPrint setNextPC maskInterrupt clearMemory throw_on_false
+   unifyFailure ignoreFailure empty_on_failure emptyOnFailure clearMemoryVM null_cap_on_failure
+-  setNextPC getRestartPC assertDerived throw_on_false getObject setObject updateObject loadObject)
++  setNextPC getRestartPC assertDerived throw_on_false getObject setObject updateObject loadObject
++  ifM andM orM whenM whileM haskell_assert)
+ 
+ context Arch begin (*FIXME: arch_split*)
+ 
+@@ -140,9 +164,9 @@ lemma projectKO_user_data_device:
+ 
+ 
+ lemmas projectKOs =
+-  projectKO_ntfn projectKO_ep projectKO_cte projectKO_tcb
++  projectKO_ntfn projectKO_ep projectKO_cte projectKO_tcb projectKO_reply projectKO_sc
+   projectKO_ASID projectKO_PTE projectKO_PDE projectKO_user_data projectKO_user_data_device
+-  projectKO_eq projectKO_eq2
++  projectKO_eq
+ 
+ lemma capAligned_epI:
+   "ep_at' p s \<Longrightarrow> capAligned (EndpointCap p a b c d e)"
+@@ -170,14 +194,25 @@ lemma capAligned_tcbI:
+                   dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)
+   done
+ 
+-lemma capAligned_reply_tcbI:
+-  "tcb_at' p s \<Longrightarrow> capAligned (ReplyCap p m r)"
++lemma capAligned_replyI:
++  "reply_at' p s \<Longrightarrow> capAligned (ReplyCap p r)"
+   apply (clarsimp simp: obj_at'_real_def capAligned_def
+                         objBits_simps word_bits_def capUntypedPtr_def isCap_simps)
+   apply (fastforce dest: ko_wp_at_norm
+                   dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)
+   done
+ 
++lemma capAligned_sched_contextI:
++  "\<lbrakk>sc_at'_n r p s; sc_size_bounds r\<rbrakk>
++      \<Longrightarrow> capAligned (SchedContextCap p r)"
++  by (clarsimp simp: obj_at'_real_def capAligned_def sc_size_bounds_def ko_wp_at'_def isCap_simps
++                     objBits_simps word_bits_def capUntypedPtr_def maxUntypedSizeBits_def)
++
++lemma sc_at'_n_sc_at':
++  "sc_at'_n n p s \<Longrightarrow> sc_at' p s"
++  apply (clarsimp simp: ko_wp_at'_def obj_at'_def projectKOs)
++  by (case_tac ko; clarsimp)
++
+ lemma ko_at_valid_objs':
+   assumes ko: "ko_at' k p s"
+   assumes vo: "valid_objs' s"

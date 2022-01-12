@@ -1,0 +1,267 @@
+--- StateRelation.thy
++++ StateRelation.thy
+@@ -104,8 +106,12 @@ where
+            Structures_H.CNodeCap ref n (of_bl L) (length L))"
+ | "cap_relation (Structures_A.ThreadCap ref) c            = (c =
+            Structures_H.ThreadCap ref)"
+-| "cap_relation (Structures_A.ReplyCap ref master r) c    = (c =
+-           Structures_H.ReplyCap ref master (AllowGrant \<in> r))"
++| "cap_relation (Structures_A.ReplyCap ref r) c           = (c =
++           Structures_H.ReplyCap ref (AllowGrant \<in> r))"
++| "cap_relation (Structures_A.SchedContextCap ref n) c    = (c =
++           Structures_H.SchedContextCap ref (min_sched_context_bits + n))"
++| "cap_relation (Structures_A.SchedControlCap) c          = (c =
++           Structures_H.SchedControlCap)"
+ | "cap_relation (Structures_A.IRQControlCap) c            = (c =
+            Structures_H.IRQControlCap)"
+ | "cap_relation (Structures_A.IRQHandlerCap irq) c        = (c =
+@@ -402,6 +531,22 @@ where
+ | "aobj_relation_cuts (PageDirectory pd) x =
+      (\<lambda>y. (x + (ucast y << 2), pde_relation y)) ` UNIV"
+ 
++abbreviation
++  sc_relation_cut :: "Structures_A.kernel_object \<Rightarrow> Structures_H.kernel_object \<Rightarrow> bool"
++where
++  "sc_relation_cut obj obj' \<equiv>
++  (case (obj, obj') of
++        (Structures_A.SchedContext sc n, KOSchedContext sc') \<Rightarrow> sc_relation sc n sc'
++      | _ \<Rightarrow> False)"
++
++abbreviation
++  reply_relation_cut :: "Structures_A.kernel_object \<Rightarrow> Structures_H.kernel_object \<Rightarrow> bool"
++where
++  "reply_relation_cut obj obj' \<equiv>
++  (case (obj, obj') of
++        (Structures_A.Reply r, KOReply r') \<Rightarrow> reply_relation r r'
++      | _ \<Rightarrow> False)"
++
+ primrec
+   obj_relation_cuts :: "Structures_A.kernel_object \<Rightarrow> word32 \<Rightarrow> obj_relation_cuts"
+ where
+@@ -423,6 +571,9 @@ lemma obj_relation_cuts_def2:
+    (case ko of CNode sz cs \<Rightarrow> if well_formed_cnode_n sz cs
+                              then {(cte_map (x, y), cte_relation y) | y. y \<in> dom cs}
+                              else {(x, \<bottom>\<bottom>)}
++             | Structures_A.SchedContext sc n \<Rightarrow>
++                 if valid_sched_context_size n then {(x, sc_relation_cut)} else {(x, \<bottom>\<bottom>)}
++             | Structures_A.Reply reply \<Rightarrow> {(x, reply_relation_cut)}
+              | ArchObj (PageTable pt) \<Rightarrow> (\<lambda>y. (x + (ucast y << 2), pte_relation y))
+                                            ` (UNIV :: word8 set)
+              | ArchObj (PageDirectory pd) \<Rightarrow> (\<lambda>y. (x + (ucast y << 2), pde_relation y))
+@@ -435,8 +586,11 @@ lemma obj_relation_cuts_def2:
+ 
+ lemma obj_relation_cuts_def3:
+   "obj_relation_cuts ko x =
+-  (case (a_type ko) of
++  (case a_type ko of
+      ACapTable n \<Rightarrow> {(cte_map (x, y), cte_relation y) | y. length y = n}
++   | ASchedContext n \<Rightarrow>
++       if valid_sched_context_size n then {(x, sc_relation_cut)} else {(x, \<bottom>\<bottom>)}
++   | AReply \<Rightarrow> {(x, reply_relation_cut)}
+    | AArch APageTable \<Rightarrow> (\<lambda>y. (x + (ucast y << 2), pte_relation y))
+                             ` (UNIV :: word8 set)
+    | AArch APageDirectory \<Rightarrow> (\<lambda>y. (x + (ucast y << 2), pde_relation y))
+@@ -503,32 +667,43 @@ where
+   (\<forall>x \<in> dom ab. \<forall>(y, P) \<in> obj_relation_cuts (the (ab x)) x.
+        P (the (ab x)) (the (con y)))"
+ 
+-definition etcb_relation :: "etcb \<Rightarrow> Structures_H.tcb \<Rightarrow> bool"
+-where
+- "etcb_relation \<equiv> \<lambda>etcb tcb'.
+-    tcb_priority etcb = tcbPriority tcb'
+-  \<and> tcb_time_slice etcb = tcbTimeSlice tcb'
+-  \<and> tcb_domain etcb = tcbDomain tcb'"
+-
+ definition
+- ekheap_relation :: "(obj_ref \<Rightarrow> etcb option) \<Rightarrow> (word32 \<rightharpoonup> Structures_H.kernel_object) \<Rightarrow> bool"
+-where
+- "ekheap_relation ab con \<equiv>
+-    \<forall>x \<in> dom ab. \<exists>tcb'. con x = Some (KOTCB tcb') \<and> etcb_relation (the (ab x)) tcb'"
++  sc_replies_relation_2 ::
++  "(obj_ref \<rightharpoonup> obj_ref list) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> bool" where
++  "sc_replies_relation_2 sc_repls scRepl replPrevs \<equiv>
++     \<forall>p replies. sc_repls p = Some replies \<longrightarrow> heap_ls replPrevs (scRepl p) replies"
++
++abbreviation sc_replies_relation :: "det_state \<Rightarrow> kernel_state \<Rightarrow> bool" where
++  "sc_replies_relation s s' \<equiv>
++    sc_replies_relation_2 (sc_replies_of s) (scReplies_of s') (replyPrevs_of s')"
++
++lemmas sc_replies_relation_def = sc_replies_relation_2_def
++
++abbreviation sc_replies_relation_obj ::
++  "Structures_A.kernel_object \<Rightarrow> kernel_object \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> bool" where
++  "sc_replies_relation_obj obj obj' nexts \<equiv>
++   case (obj, obj') of
++     (Structures_A.SchedContext sc _, KOSchedContext sc') \<Rightarrow>
++       heap_ls nexts (scReply sc') (sc_replies sc)"
+ 
+ primrec
+-  sched_act_relation :: "Deterministic_A.scheduler_action \<Rightarrow> Structures_H.scheduler_action \<Rightarrow> bool"
++  sched_act_relation :: "Structures_A.scheduler_action \<Rightarrow> Structures_H.scheduler_action \<Rightarrow> bool"
+ where
+   "sched_act_relation resume_cur_thread a' = (a' = ResumeCurrentThread)" |
+   "sched_act_relation choose_new_thread a' = (a' = ChooseNewThread)" |
+   "sched_act_relation (switch_thread x) a' = (a' = SwitchToThread x)"
+ 
+ definition
+-  ready_queues_relation :: "(Deterministic_A.domain \<Rightarrow> Structures_A.priority \<Rightarrow> Deterministic_A.ready_queue)
++  ready_queues_relation :: "(Structures_A.domain \<Rightarrow> Structures_A.priority \<Rightarrow> Structures_A.ready_queue)
+                          \<Rightarrow> (domain \<times> priority \<Rightarrow> KernelStateData_H.ready_queue) \<Rightarrow> bool"
+ where
+   "ready_queues_relation qs qs' \<equiv> \<forall>d p. (qs d p = qs' (d, p))"
+ 
++definition
++  release_queue_relation :: "Structures_A.release_queue \<Rightarrow> KernelStateData_H.release_queue \<Rightarrow> bool"
++where
++  "release_queue_relation qs qs' \<equiv> (qs = qs')"
++
+ definition
+   ghost_relation :: "Structures_A.kheap \<Rightarrow> (word32 \<rightharpoonup> vmpage_size) \<Rightarrow> (word32 \<rightharpoonup> nat) \<Rightarrow> bool"
+ where
+@@ -595,12 +770,17 @@ where
+  "rights_mask_map \<equiv> \<lambda>rs. CapRights (AllowWrite \<in> rs) (AllowRead \<in> rs) (AllowGrant \<in> rs)
+                                    (AllowGrantReply \<in> rs)"
+ 
+-
+ lemma obj_relation_cutsE:
+   "\<lbrakk> (y, P) \<in> obj_relation_cuts ko x; P ko ko';
+      \<And>sz cs z cap cte. \<lbrakk> ko = CNode sz cs; well_formed_cnode_n sz cs; y = cte_map (x, z);
+                       ko' = KOCTE cte; cs z = Some cap; cap_relation cap (cteCap cte) \<rbrakk>
+               \<Longrightarrow> R;
++     \<And>sc n sc'. \<lbrakk> y = x; ko = Structures_A.SchedContext sc n; valid_sched_context_size n;
++                      ko' = KOSchedContext sc'; sc_relation sc n sc' \<rbrakk>
++              \<Longrightarrow> R;
++     \<And>reply reply'. \<lbrakk> y = x; ko = Structures_A.Reply reply;
++                      ko' = KOReply reply'; reply_relation reply reply' \<rbrakk>
++              \<Longrightarrow> R;
+      \<And>pt (z :: word8) pte'. \<lbrakk> ko = ArchObj (PageTable pt); y = x + (ucast z << 2);
+                               ko' = KOArch (KOPTE pte'); pte_relation_aligned z (pt z) pte' \<rbrakk>
+               \<Longrightarrow> R;
+@@ -615,9 +795,9 @@ lemma obj_relation_cutsE:
+                    a_type_def
+             split: Structures_A.kernel_object.split_asm if_split_asm
+                    ARM_A.arch_kernel_obj.split_asm)
+-    apply ((clarsimp split: if_splits,
+-                force simp: cte_relation_def pte_relation_def pde_relation_def)+)[5]
+-  done
++  by (clarsimp split: if_splits kernel_object.split_asm,
++      clarsimp simp: cte_relation_def pte_relation_def pde_relation_def
++                     reply_relation_def sc_relation_def)+
+ 
+ lemma eq_trans_helper:
+   "\<lbrakk> x = y; P y = Q \<rbrakk> \<Longrightarrow> P x = Q"
+@@ -721,20 +908,37 @@ lemma curthread_relation:
+   "(a, b) \<in> state_relation \<Longrightarrow> ksCurThread b = cur_thread a"
+   by (simp add: state_relation_def)
+ 
++lemma curdomain_relation:
++  "(s, s') \<in> state_relation \<Longrightarrow> cur_domain s = ksCurDomain s'"
++  by (clarsimp simp: state_relation_def)
++
+ lemma state_relation_pspace_relation[elim!]:
+   "(s,s') \<in> state_relation \<Longrightarrow> pspace_relation (kheap s) (ksPSpace s')"
+   by (simp add: state_relation_def)
+ 
+-lemma state_relation_ekheap_relation[elim!]:
+-  "(s,s') \<in> state_relation \<Longrightarrow> ekheap_relation (ekheap s) (ksPSpace s')"
++lemma state_relation_ready_queues_relation[elim!]:
++  "(s, s') \<in> state_relation \<Longrightarrow> ready_queues_relation (ready_queues s) (ksReadyQueues s')"
+   by (simp add: state_relation_def)
+ 
++lemma state_relation_release_queue_relation:
++  "(s,s') \<in> state_relation \<Longrightarrow> release_queue_relation (release_queue s) (ksReleaseQueue s')"
++  by (clarsimp simp: state_relation_def)
++
++lemma state_relation_sc_replies_relation:
++  "(s,s') \<in> state_relation \<Longrightarrow> sc_replies_relation s s'"
++  using state_relation_def by blast
++
++lemma state_relation_sched_act_relation[elim!]:
++  "(s,s') \<in> state_relation \<Longrightarrow> sched_act_relation (scheduler_action s) (ksSchedulerAction s')"
++  by (clarsimp simp: state_relation_def)
++
+ lemma state_relationD:
+   assumes sr:  "(s, s') \<in> state_relation"
+   shows "pspace_relation (kheap s) (ksPSpace s') \<and>
+-  ekheap_relation (ekheap s) (ksPSpace s') \<and>
++  sc_replies_relation s s' \<and>
+   sched_act_relation (scheduler_action s) (ksSchedulerAction s') \<and>
+   ready_queues_relation (ready_queues s) (ksReadyQueues s') \<and>
++  release_queue_relation (release_queue s) (ksReleaseQueue s') \<and>
+   ghost_relation (kheap s) (gsUserPages s') (gsCNodes s') \<and>
+   cdt_relation (swp cte_at s) (cdt s) (ctes_of s') \<and>
+   cdt_list_relation (cdt_list s) (cdt s) (ctes_of s') \<and>
+@@ -743,20 +947,26 @@ lemma state_relationD:
+   interrupt_state_relation (interrupt_irq_node s) (interrupt_states s) (ksInterruptState s') \<and>
+   cur_thread s = ksCurThread s' \<and>
+   idle_thread s = ksIdleThread s' \<and>
++  idle_sc_ptr = ksIdleSC s' \<and>
+   machine_state s = ksMachineState s' \<and>
+   work_units_completed s = ksWorkUnitsCompleted s' \<and>
+   domain_index s = ksDomScheduleIdx s' \<and>
+   domain_list s = ksDomSchedule s' \<and>
+   cur_domain s = ksCurDomain s' \<and>
+-  domain_time s = ksDomainTime s'"
++  domain_time s = ksDomainTime s' \<and>
++  consumed_time s = ksConsumedTime s' \<and>
++  cur_time s = ksCurTime s' \<and>
++  cur_sc s = ksCurSc s' \<and>
++  reprogram_timer s = ksReprogramTimer s'"
+   using sr unfolding state_relation_def by simp
+ 
+ lemma state_relationE [elim?]:
+   assumes sr:  "(s, s') \<in> state_relation"
+   and rl: "\<lbrakk>pspace_relation (kheap s) (ksPSpace s');
+-  ekheap_relation (ekheap s) (ksPSpace s');
++  sc_replies_relation s s';
+   sched_act_relation (scheduler_action s) (ksSchedulerAction s');
+   ready_queues_relation (ready_queues s) (ksReadyQueues s');
++  release_queue_relation (release_queue s) (ksReleaseQueue s');
+   ghost_relation (kheap s) (gsUserPages s') (gsCNodes s');
+   cdt_relation (swp cte_at s) (cdt s) (ctes_of s') \<and>
+   revokable_relation (is_original_cap s) (null_filter (caps_of_state s)) (ctes_of s');
+@@ -785,6 +999,7 @@ lemmas isCap_defs =
+   isThreadCap_def isCNodeCap_def isNotificationCap_def
+   isEndpointCap_def isUntypedCap_def isNullCap_def
+   isIRQHandlerCap_def isIRQControlCap_def isReplyCap_def
++  isSchedContextCap_def isSchedControlCap_def
+   isPageCap_def isPageTableCap_def isPageDirectoryCap_def
+   isASIDControlCap_def isASIDPoolCap_def isArchPageCap_def
+   isDomainCap_def
+@@ -826,10 +1054,32 @@ lemma pspace_relation_absD:
+   apply (simp add: image_def rev_bexI)
+   done
+ 
+-lemma ekheap_relation_absD:
+-  "\<lbrakk> ab x = Some y; ekheap_relation ab con \<rbrakk>
+-      \<Longrightarrow> \<exists>tcb'. con x = Some (KOTCB tcb') \<and> etcb_relation y tcb'"
+-  by (force simp add: ekheap_relation_def)
++lemma pspace_relation_None:
++  "\<lbrakk>pspace_relation p p'; p' ptr = None \<rbrakk> \<Longrightarrow> p ptr = None"
++  apply (rule not_Some_eq[THEN iffD1, OF allI, OF notI])
++  apply (drule(1) pspace_relation_absD)
++   apply (case_tac y; clarsimp simp: cte_map_def of_bl_def well_formed_cnode_n_def split: if_splits)
++   subgoal for n
++    apply (drule spec[of _ ptr])
++    apply (drule spec)
++    apply clarsimp
++    apply (drule spec[of _ "replicate n False"])
++    apply (drule mp[OF _ refl])
++     apply (drule mp)
++    subgoal premises by (induct n; simp)
++    apply clarsimp
++    done
++  subgoal for x
++     apply (cases x; clarsimp)
++   apply ((drule spec[of _ 0], fastforce)+)[2]
++   apply (drule spec[of _ ptr])
++   apply (drule spec)
++   apply clarsimp
++   apply (drule mp[OF _ refl])
++   apply (drule spec[of _ 0])
++   subgoal for _ sz by (cases sz; simp add: pageBits_def)
++   done
++  done
+ 
+ lemma in_related_pspace_dom:
+   "\<lbrakk> s' x = Some y; pspace_relation s s' \<rbrakk> \<Longrightarrow> x \<in> pspace_dom s"

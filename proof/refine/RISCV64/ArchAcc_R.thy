@@ -362,8 +362,8 @@ lemma getObject_PTE_corres:
   done
 
 lemmas aligned_distinct_pte_atI'
-    = aligned_distinct_obj_atI'[where 'a=pte,
-                                simplified, OF _ _ _ refl]
+    = aligned'_distinct'_ko_at'I[where 'a=pte,
+                                simplified, OF _ _ _ _ refl]
 
 lemma pt_bits_slot_eq:
   "table_base p + (ucast x << pte_bits) = p \<Longrightarrow> x = ucast (p && mask table_size >> pte_bits)"
@@ -418,8 +418,7 @@ lemma setObject_PT_corres:
    apply (drule bspec, assumption)
    apply clarsimp
    apply (erule (1) obj_relation_cutsE)
-      apply simp
-     apply simp
+         apply (simp+)[4]
      apply clarsimp
      apply (frule (1) pspace_alignedD)
      apply (drule_tac p=x in pspace_alignedD, assumption)
@@ -1118,7 +1117,7 @@ lemma dmo_clearMemory_invs'[wp]:
   "\<lbrace>invs'\<rbrace> doMachineOp (clearMemory w sz) \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (simp add: doMachineOp_def split_def)
   apply wp
-  apply (clarsimp simp: invs'_def valid_state'_def)
+  apply (clarsimp simp: invs'_def valid_dom_schedule'_def)
   apply (rule conjI)
    apply (simp add: valid_irq_masks'_def, elim allEI, clarsimp)
    apply (drule use_valid)

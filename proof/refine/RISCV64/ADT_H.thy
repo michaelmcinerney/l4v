@@ -10,6 +10,11 @@ theory ADT_H
   imports Syscall_R
 begin
 
+(* FIXME: many of the naming conventions in this file are wrong. Definitions should start with
+          lower case letters, and should be under_score, not camelCase. Some, possibly many of
+          the functions here can benefit from projections that have been developed since this
+          was originally written *)
+
 text \<open>
   The general refinement calculus (see theory Simulation) requires
   the definition of a so-called ``abstract datatype'' for each refinement layer.
@@ -98,12 +103,13 @@ definition
                    | Structures_H.RecvEP q \<Rightarrow> Structures_A.RecvEP q"
 
 definition
-  "AEndpointMap ntfn \<equiv>
+  "NtfnMap ntfn \<equiv>
       \<lparr> ntfn_obj = case ntfnObj ntfn of
                        Structures_H.IdleNtfn \<Rightarrow> Structures_A.IdleNtfn
                      | Structures_H.WaitingNtfn q \<Rightarrow> Structures_A.WaitingNtfn q
                      | Structures_H.ActiveNtfn b \<Rightarrow> Structures_A.ActiveNtfn b
-      , ntfn_bound_tcb = ntfnBoundTCB ntfn \<rparr>"
+      , ntfn_bound_tcb = ntfnBoundTCB ntfn
+      , ntfn_sc = ntfnSc ntfn \<rparr>"
 
 definition mdata_map' ::
   "(asid \<times> vspace_ref) option \<Rightarrow> (Machine_A.RISCV64_A.asid \<times> vspace_ref) option" where
@@ -125,8 +131,10 @@ fun CapabilityMap :: "capability \<Rightarrow> cap" where
    cap.CNodeCap ref n (bin_to_bl l (uint L))"
 | "CapabilityMap (capability.ThreadCap ref) = cap.ThreadCap ref"
 | "CapabilityMap capability.DomainCap = cap.DomainCap"
-| "CapabilityMap (capability.ReplyCap ref master gr) =
-   cap.ReplyCap ref master {x. gr \<and> x = AllowGrant \<or> x = AllowWrite}"
+| "CapabilityMap (capability.ReplyCap ref gr) =
+   cap.ReplyCap ref {x. gr \<and> x = AllowGrant \<or> x = AllowWrite}"
+| "CapabilityMap (SchedContextCap sc n) = cap.SchedContextCap sc (n - min_sched_context_bits)"
+| "CapabilityMap SchedControlCap = cap.SchedControlCap"
 | "CapabilityMap capability.IRQControlCap = cap.IRQControlCap"
 | "CapabilityMap (capability.IRQHandlerCap irq) = cap.IRQHandlerCap irq"
 | "CapabilityMap (capability.Zombie p b n) =
@@ -170,10 +178,10 @@ primrec ThStateMap :: "Structures_H.thread_state \<Rightarrow> Structures_A.thre
               Structures_A.thread_state.Inactive"
 | "ThStateMap Structures_H.thread_state.IdleThreadState =
               Structures_A.thread_state.IdleThreadState"
-| "ThStateMap Structures_H.thread_state.BlockedOnReply =
-              Structures_A.thread_state.BlockedOnReply"
-| "ThStateMap (Structures_H.thread_state.BlockedOnReceive oref grant) =
-              Structures_A.thread_state.BlockedOnReceive oref \<lparr> receiver_can_grant = grant \<rparr>"
+| "ThStateMap (Structures_H.thread_state.BlockedOnReply r) =
+              Structures_A.thread_state.BlockedOnReply (the r)"
+| "ThStateMap (Structures_H.thread_state.BlockedOnReceive oref grant r) =
+              Structures_A.thread_state.BlockedOnReceive oref r \<lparr> receiver_can_grant = grant \<rparr>"
 | "ThStateMap (Structures_H.thread_state.BlockedOnSend oref badge grant grant_reply call) =
               Structures_A.thread_state.BlockedOnSend oref
                 \<lparr> sender_badge = badge,
@@ -213,6 +221,8 @@ primrec ArchFaultMap :: "Fault_H.arch_fault \<Rightarrow> ExceptionTypes_A.arch_
 primrec FaultMap :: "Fault_H.fault \<Rightarrow> ExceptionTypes_A.fault" where
   "FaultMap (Fault_H.fault.CapFault ref b failure) =
      ExceptionTypes_A.fault.CapFault ref b (LookupFailureMap failure)"
+| "FaultMap (Fault_H.fault.Timeout b) =
+     ExceptionTypes_A.fault.Timeout b"
 | "FaultMap (Fault_H.fault.ArchFault fault) =
      ExceptionTypes_A.fault.ArchFault (ArchFaultMap fault)"
 | "FaultMap (Fault_H.fault.UnknownSyscallException n) =
@@ -1518,13 +1528,6 @@ lemma absSchedulerAction_correct:
 definition
   "absExst s \<equiv>
      \<lparr>work_units_completed_internal = ksWorkUnitsCompleted s,
-      scheduler_action_internal = absSchedulerAction (ksSchedulerAction s),
-      ekheap_internal = absEkheap (ksPSpace s),
-      domain_list_internal = ksDomSchedule s,
-      domain_index_internal = ksDomScheduleIdx s,
-      cur_domain_internal = ksCurDomain s,
-      domain_time_internal = ksDomainTime s,
-      ready_queues_internal = curry (ksReadyQueues s),
       cdt_list_internal = absCDTList (cteMap (gsCNodes s)) (ctes_of s)\<rparr>"
 
 lemma absExst_correct:
@@ -1533,11 +1536,10 @@ lemma absExst_correct:
   shows "absExst s' = exst s"
   apply (rule det_ext.equality)
       using rel invs invs'
-      apply (simp_all add: absExst_def absSchedulerAction_correct absEkheap_correct
+      apply (simp_all add: absExst_def absSchedulerAction_correct
                            absCDTList_correct[THEN fun_cong] state_relation_def invs_def valid_state_def
-                           ready_queues_relation_def invs'_def valid_state'_def
+                           ready_queues_relation_def invs'_def
                            valid_pspace_def valid_sched_def valid_pspace'_def curry_def fun_eq_iff)
-      apply (fastforce simp: absEkheap_correct)
   done
 
 
@@ -1547,6 +1549,17 @@ definition
     cdt = absCDT (cteMap (gsCNodes s)) (ctes_of s),
     is_original_cap = absIsOriginalCap (cteMap (gsCNodes s)) (ksPSpace s),
     cur_thread = ksCurThread s, idle_thread = ksIdleThread s,
+    consumed_time = ksConsumedTime s,
+    cur_time = ksCurTime s,
+    cur_sc = ksCurSc s,
+    reprogram_timer = ksReprogramTimer s,
+    scheduler_action = absSchedulerAction (ksSchedulerAction s),
+    domain_list = ksDomSchedule s,
+    domain_index = ksDomScheduleIdx s,
+    cur_domain = ksCurDomain s,
+    domain_time = ksDomainTime s,
+    ready_queues = curry (ksReadyQueues s),
+    release_queue = ksReleaseQueue s,
     machine_state = observable_memory (ksMachineState s) (user_mem' s),
     interrupt_irq_node = absInterruptIRQNode (ksInterruptState s),
     interrupt_states = absInterruptStates (ksInterruptState s),
