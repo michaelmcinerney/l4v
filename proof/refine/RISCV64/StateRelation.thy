@@ -754,6 +754,33 @@ lemma pspace_relation_absD:
   apply (fastforce simp: image_def intro: rev_bexI)
   done
 
+lemma pspace_relation_None:
+  "\<lbrakk>pspace_relation p p'; p' ptr = None \<rbrakk> \<Longrightarrow> p ptr = None"
+  apply (rule not_Some_eq[THEN iffD1, OF allI, OF notI])
+  apply (drule(1) pspace_relation_absD)
+   apply (case_tac y; clarsimp simp: cte_map_def of_bl_def well_formed_cnode_n_def split: if_splits)
+   subgoal for n
+    apply (drule spec[of _ ptr])
+    apply (drule spec)
+    apply clarsimp
+    apply (drule spec[of _ "replicate n False"])
+    apply (drule mp[OF _ refl])
+     apply (drule mp)
+    subgoal premises by (induct n; simp)
+    apply clarsimp
+    done
+  subgoal for x
+     apply (cases x; clarsimp)
+   apply ((drule spec[of _ 0], fastforce)+)[2]
+   apply (drule spec[of _ ptr])
+   apply (drule spec)
+   apply clarsimp
+   apply (drule mp[OF _ refl])
+   apply (drule spec[of _ 0])
+   subgoal for _ sz by (cases sz; simp add: ptTranslationBits_def)
+   done
+  done
+
 lemma in_related_pspace_dom:
   "\<lbrakk> s' x = Some y; pspace_relation s s' \<rbrakk> \<Longrightarrow> x \<in> pspace_dom s"
   by (clarsimp simp add: pspace_relation_def)

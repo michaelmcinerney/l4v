@@ -1468,10 +1468,6 @@ lemma valid_bound_obj'_Some[simp]:
   "valid_bound_obj' P (Some x) = P x"
   by (auto simp: valid_bound_obj'_def)
 
-lemma objBitsKO_Data:
-  "objBitsKO (if dev then KOUserDataDevice else KOUserData) = pageBits"
-  by (simp add: objBits_def objBitsKO_def word_size_def)
-
 lemmas untypedBits_defs = minUntypedSizeBits_def maxUntypedSizeBits_def
 lemmas objBits_simps = objBits_def objBitsKO_def word_size_def archObjSize_def
 lemmas objBits_simps' = objBits_simps objBits_defs
