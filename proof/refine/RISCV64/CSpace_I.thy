@@ -556,7 +556,7 @@ definition capMasterCap :: "capability \<Rightarrow> capability" where
  | NotificationCap ref bdg s r \<Rightarrow> NotificationCap ref 0 True True
  | CNodeCap ref bits gd gs \<Rightarrow> CNodeCap ref bits 0 0
  | ThreadCap ref \<Rightarrow> ThreadCap ref
- | ReplyCap ref master g \<Rightarrow> ReplyCap ref True True
+ | ReplyCap ref g \<Rightarrow> ReplyCap ref True
  | UntypedCap d ref n f \<Rightarrow> UntypedCap d ref n 0
  | ArchObjectCap acap \<Rightarrow> ArchObjectCap (case acap of
       FrameCap ref rghts sz d mapdata \<Rightarrow>
@@ -581,6 +581,10 @@ lemma capMasterCap_eqDs1:
      \<Longrightarrow> gd = 0 \<and> gs = 0 \<and> (\<exists>gd gs. cap = CNodeCap ref bits gd gs)"
   "capMasterCap cap = ThreadCap ref
      \<Longrightarrow> cap = ThreadCap ref"
+  "capMasterCap cap = SchedContextCap ref n
+     \<Longrightarrow> cap =  SchedContextCap ref n"
+  "capMasterCap cap = SchedControlCap
+     \<Longrightarrow> cap = SchedControlCap"
   "capMasterCap cap = NullCap
      \<Longrightarrow> cap = NullCap"
   "capMasterCap cap = DomainCap
@@ -624,11 +628,13 @@ lemma capBadge_simps[simp]:
  "capBadge (NotificationCap ref badge s r)    = Some badge"
  "capBadge (CNodeCap ref bits gd gs)          = None"
  "capBadge (ThreadCap ref)                    = None"
+ "capBadge (SchedContextCap ref n)            = None"
+ "capBadge (SchedControlCap)                  = None"
  "capBadge (Zombie ref b n)                   = None"
  "capBadge (ArchObjectCap cap)                = None"
  "capBadge (IRQControlCap)                    = None"
  "capBadge (IRQHandlerCap irq)                = None"
- "capBadge (ReplyCap tcb master g)            = None"
+ "capBadge (ReplyCap tcb g)                   = None"
   by (simp add: capBadge_def isCap_defs)+
 
 lemma capClass_Master:
@@ -655,6 +661,8 @@ lemma isCap_Master:
   "isCNodeCap (capMasterCap cap) = isCNodeCap cap"
   "isNotificationCap (capMasterCap cap) = isNotificationCap cap"
   "isEndpointCap (capMasterCap cap) = isEndpointCap cap"
+  "isSchedContextCap (capMasterCap cap) = isSchedContextCap cap"
+  "isSchedControlCap (capMasterCap cap) = isSchedControlCap cap"
   "isUntypedCap (capMasterCap cap) = isUntypedCap cap"
   "isReplyCap (capMasterCap cap) = isReplyCap cap"
   "isIRQControlCap (capMasterCap cap) = isIRQControlCap cap"
@@ -788,7 +796,9 @@ lemma capUntypedSize_simps [simp]:
   "capUntypedSize (ArchObjectCap x) = Arch.capUntypedSize x"
   "capUntypedSize (UntypedCap d r n f) = 1 << n"
   "capUntypedSize (CNodeCap r n g n2) = 1 << (objBits (undefined::cte) + n)"
-  "capUntypedSize (ReplyCap r m a) = 1 << objBits (undefined :: tcb)"
+  "capUntypedSize (ReplyCap r a) = 1 << objBits (undefined :: reply)"
+  "capUntypedSize (SchedContextCap sc sz) = 1 << sz"
+  "capUntypedSize SchedControlCap = 1"
   "capUntypedSize IRQControlCap = 1"
   "capUntypedSize (IRQHandlerCap irq) = 1"
   by (auto simp add: capUntypedSize_def isCap_simps objBits_simps'
@@ -849,14 +859,9 @@ lemma capBadge_maskCapRights[simp]:
 
 lemma getObject_cte_det:
   "(r::cte,s') \<in> fst (getObject p s) \<Longrightarrow> fst (getObject p s) = {(r,s)} \<and> s' = s"
-  apply (clarsimp simp add: getObject_def bind_def get_def gets_def
-                            return_def loadObject_cte split_def)
-  apply (clarsimp split: kernel_object.split_asm if_split_asm option.split_asm
-                   simp: in_monad typeError_def alignError_def magnitudeCheck_def)
-       apply (simp_all add: bind_def return_def assert_opt_def split_def
-                            alignCheck_def is_aligned_mask[symmetric]
-                            unless_def when_def magnitudeCheck_def)
-  done
+  by (clarsimp simp: getObject_def in_monad split_def obind_def gets_def get_def
+                     readObject_def omonad_defs bind_def return_def gets_the_def assert_opt_def
+              split: option.splits)
 
 lemma cte_wp_at_obj_cases':
   "cte_wp_at' P p s =
@@ -907,6 +912,14 @@ lemma ctes_of_valid_cap':
 lemma valid_capAligned:
   "valid_cap' c s \<Longrightarrow> capAligned c"
   by (simp add: valid_cap'_def)
+
+lemma valid_SchedContextCap_sc_at':
+  "\<lbrakk>valid_cap' (SchedContextCap sc_ptr n) s\<rbrakk> \<Longrightarrow> sc_at' sc_ptr s"
+  apply (clarsimp simp: valid_cap'_def obj_at'_real_def)
+  apply (rule ko_wp_at'_weakenE)
+   apply (fastforce simp: objBits_simps
+                   split: kernel_object.splits)+
+  done
 
 lemma caps_no_overlap'_no_region:
   "\<lbrakk> caps_no_overlap' m (capRange cap); valid_objs' s;
@@ -1929,20 +1942,16 @@ lemma valid_mdb_ctes_init:
    apply clarsimp
    apply (case_tac ctea, clarsimp)
    apply (rule valid_capAligned, erule(1) ctes_of_valid_cap')
-  apply (rule conjI)
-   apply (erule (1) irq_control_init)
-  apply (simp add: ran_def reply_masters_rvk_fb_def)
-  apply (auto simp: initMDBNode_def)[1]
+  apply (erule (1) irq_control_init)
   done
 
 lemma setCTE_state_refs_of'[wp]:
   "\<lbrace>\<lambda>s. P (state_refs_of' s)\<rbrace> setCTE p cte \<lbrace>\<lambda>rv s. P (state_refs_of' s)\<rbrace>"
   unfolding setCTE_def
   apply (rule setObject_state_refs_of_eq)
-  apply (clarsimp simp: updateObject_cte in_monad typeError_def
-                        in_magnitude_check objBits_simps
-                 split: kernel_object.split_asm if_split_asm)
-  done
+   by (clarsimp simp: updateObject_cte in_monad typeError_def
+                         in_magnitude_check objBits_simps
+                  split: kernel_object.split_asm if_split_asm)+
 
 lemma setCTE_valid_mdb:
   fixes cap

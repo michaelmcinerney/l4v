@@ -9,9 +9,30 @@ imports Refine
 begin
 
 crunch_ignore (empty_fail)
-  (add: handleE' getCTE getObject updateObject
+  (add: handleE' getCTE getObject updateObject ifM andM orM whileM ifM
         CSpaceDecls_H.resolveAddressBits
         doMachineOp suspend restart schedule)
+
+(* FIXME RT: move up to Lib *)
+lemma ifM_empty_fail[intro!, wp, simp]:
+  "\<lbrakk> empty_fail P; empty_fail a; empty_fail b \<rbrakk> \<Longrightarrow> empty_fail (ifM P a b)"
+  by (simp add: ifM_def)
+
+lemma whenM_empty_fail[intro!, wp, simp]:
+  "\<lbrakk> empty_fail P; empty_fail f \<rbrakk> \<Longrightarrow> empty_fail (whenM P f)"
+  by (simp add: whenM_def)
+
+lemma andM_empty_fail[intro!, wp, simp]:
+  "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (andM A B)"
+  by (simp add: andM_def)
+
+lemma opM_empty_fail[intro!, wp, simp]:
+  "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (orM A B)"
+  by (simp add: orM_def)
+
+lemma whileM_empty_fail[intro!, wp, simp]:
+  "\<lbrakk> empty_fail C; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (whileM C B)"
+  unfolding whileM_def by (wpsimp wp: empty_fail_whileLoop)
 
 context begin interpretation Arch . (*FIXME: arch_split*)
 
@@ -80,13 +101,14 @@ proof (induct arbitrary: s rule: resolveAddressBits.induct)
 lemmas resolveAddressBits_empty_fail[intro!, wp, simp] =
        resolveAddressBits_spec_empty_fail[THEN use_spec_empty_fail]
 
-crunch (empty_fail) empty_fail[intro!, wp, simp]: lookupIPCBuffer
-(simp:Let_def)
-
 declare ef_dmo'[intro!, wp, simp]
 
 lemma empty_fail_getObject_ep [intro!, wp, simp]:
   "empty_fail (getObject p :: endpoint kernel)"
+  by (simp add: empty_fail_getObject)
+
+lemma empty_fail_getObject_reply [intro!, wp, simp]:
+  "empty_fail (getObject p :: reply kernel)"
   by (simp add: empty_fail_getObject)
 
 lemma getEndpoint_empty_fail [intro!, wp, simp]:
@@ -173,7 +195,7 @@ crunch (empty_fail) "_H_empty_fail"[intro!, wp, simp]: "ThreadDecls_H.suspend"
 
 lemma ThreadDecls_H_restart_empty_fail[intro!, wp, simp]:
   "empty_fail (ThreadDecls_H.restart target)"
-  by (simp add:restart_def)
+  unfolding restart_def getCurSc_def by wpsimp
 
 lemma empty_fail_lookupPTFromLevel[intro!, wp, simp]:
   "empty_fail (lookupPTFromLevel level ptPtr vPtr target)"

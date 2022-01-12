@@ -1,0 +1,16 @@
+--- Init_R.thy
++++ Init_R.thy
+@@ -72,13 +83,6 @@ definition zeroed_extended_state ::
+   where
+   "zeroed_extended_state \<equiv> \<lparr>
+     work_units_completed_internal = 0,
+-    scheduler_action_internal = resume_cur_thread,
+-    ekheap_internal = K None,
+-    domain_list_internal = [],
+-    domain_index_internal = 0,
+-    cur_domain_internal = 0,
+-    domain_time_internal = 0,
+-    ready_queues_internal = (\<lambda>_ _. []),
+     cdt_list_internal = K []
+   \<rparr>"
+ 

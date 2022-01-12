@@ -113,7 +113,8 @@ lemma decodeIRQHandlerInvocation_corres:
   apply (clarsimp split: cap_relation_split_asm arch_cap.split_asm simp: returnOk_def)
   done
 
-crunch inv[wp]: decodeIRQHandlerInvocation "P"
+crunches decodeIRQHandlerInvocation
+  for inv[wp]: "P"
   (simp: crunch_simps)
 
 lemma decode_irq_handler_valid'[wp]:
@@ -133,7 +134,7 @@ lemma decode_irq_handler_valid'[wp]:
   apply (rule conjI)
    apply (clarsimp simp: cte_wp_at_ctes_of)
    apply (drule (1) valid_irq_handlers_ctes_ofD)
-    apply (simp add: invs'_def valid_state'_def)
+    apply (simp add: invs'_def)
    apply (simp add: irq_issued'_def)
   apply clarsimp
   done
@@ -148,7 +149,7 @@ lemma is_irq_active_corres:
             split: irqstate.split_asm irq_state.split_asm)
   done
 
-crunch inv: isIRQActive "P"
+crunches isIRQActive for inv: "P"
 
 lemma isIRQActive_wp:
   "\<lbrace>\<lambda>s. \<forall>rv. (irq_issued' irq s \<longrightarrow> rv) \<longrightarrow> Q rv s\<rbrace> isIRQActive irq \<lbrace>Q\<rbrace>"
@@ -361,8 +362,8 @@ lemma arch_invokeIRQHandler_corres:
 
 lemma invokeIRQHandler_corres:
   "irq_handler_inv_relation i i' \<Longrightarrow>
-   corres dc (einvs and irq_handler_inv_valid i)
-             (invs' and irq_handler_inv_valid' i')
+   corres dc (einvs and irq_handler_inv_valid i and simple_sched_action and current_time_bounded 2)
+             (invs' and irq_handler_inv_valid' i' and sch_act_simple)
      (invoke_irq_handler i)
      (InterruptDecls_H.invokeIRQHandler i')"
   supply arch_invoke_irq_handler.simps[simp del]
@@ -376,11 +377,11 @@ lemma invokeIRQHandler_corres:
        apply (rule corres_split_nor [OF _ cap_delete_one_corres])
          apply (rule cteInsert_corres, simp+)
         apply (rule_tac Q="\<lambda>rv s. einvs s \<and> cte_wp_at (\<lambda>c. c = cap.NullCap) irq_slot s
-                                  \<and> (a, b) \<noteq> irq_slot
+                                  \<and> (a, b) \<noteq> irq_slot \<and> current_time_bounded 2 s
                                   \<and> cte_wp_at (is_derived (cdt s) (a, b) cap) (a, b) s"
                       in hoare_post_imp)
          apply fastforce
-        apply (wp cap_delete_one_still_derived)+
+        apply (wp cap_delete_one_still_derived cap_delete_one_valid_sched)+
        apply (strengthen invs_mdb_strengthen')
        apply wp+
       apply (simp add: conj_comms eq_commute)
@@ -524,7 +525,7 @@ lemma performIRQControl_corres:
     apply (clarsimp simp: invs_def valid_state_def valid_pspace_def
                           cte_wp_at_caps_of_state is_simple_cap_def is_simple_cap_arch_def
                           is_cap_simps safe_parent_for_def)
-   apply (clarsimp simp: invs'_def valid_state'_def valid_pspace'_def
+   apply (clarsimp simp: invs'_def valid_pspace'_def
                          IRQHandler_valid  IRQHandler_valid' is_simple_cap'_def
                          isCap_simps)
    apply (clarsimp simp: safe_parent_for'_def cte_wp_at_ctes_of)
@@ -533,7 +534,8 @@ lemma performIRQControl_corres:
    apply (auto dest: valid_irq_handlers_ctes_ofD)[1]
   by (clarsimp simp: arch_performIRQControl_corres)
 
-crunch valid_cap'[wp]: setIRQState "valid_cap' cap"
+crunches setIRQState
+  for valid_cap'[wp]: "valid_cap' cap"
 
 lemma setIRQState_cte_cap_to'[wp]:
   "\<lbrace>ex_cte_cap_to' p\<rbrace> setIRQState st irq \<lbrace>\<lambda>_. ex_cte_cap_to' p\<rbrace>"
@@ -560,6 +562,10 @@ lemma dmo_setIRQTrigger_invs'[wp]:
     apply (wpsimp simp: setIRQTrigger_def machine_op_lift_def machine_rest_lift_def split_def)+
   done
 
+crunches doMachineOp
+  for ex_cte_cap_wp_to'[wp]: "ex_cte_cap_wp_to' P ptr"
+  (wp: ex_cte_cap_to'_pres)
+
 lemma arch_invoke_irq_control_invs'[wp]:
   "\<lbrace>invs' and arch_irq_control_inv_valid' i\<rbrace> RISCV64_H.performIRQControl i \<lbrace>\<lambda>rv. invs'\<rbrace>"
   apply (simp add: RISCV64_H.performIRQControl_def)
@@ -570,7 +576,7 @@ lemma arch_invoke_irq_control_invs'[wp]:
   apply (rule conjI, clarsimp simp: cte_wp_at_ctes_of)
   apply (case_tac ctea)
   apply (auto dest: valid_irq_handlers_ctes_ofD
-              simp: invs'_def valid_state'_def IRQ_def)
+              simp: invs'_def IRQ_def)
   done
 
 lemma invoke_irq_control_invs'[wp]:
@@ -583,7 +589,7 @@ lemma invoke_irq_control_invs'[wp]:
                         safe_parent_for'_def sameRegionAs_def3)
   apply (case_tac ctea)
   apply (auto dest: valid_irq_handlers_ctes_ofD
-              simp: invs'_def valid_state'_def)
+              simp: invs'_def)
   done
 
 lemma getIRQState_corres:
@@ -729,7 +735,7 @@ apply (rule corres_split_deprecated)
      apply (rule corres_split_deprecated [OF _ getIRQSlot_corres])
        apply simp
        apply (rule corres_split_deprecated [OF _ get_cap_corres,
-                                 where R="\<lambda>rv. einvs and valid_cap rv"
+                                 where R="\<lambda>rv. ?Q and valid_cap rv"
                                   and R'="\<lambda>rv. invs' and valid_cap' (cteCap rv)"])
          apply (rule corres_split'[where r'=dc])
             apply (case_tac xb, simp_all add: doMachineOp_return)[1]
@@ -826,7 +832,7 @@ lemma resetTimer_invs'[wp]:
   done
 
 lemma dmo_ackInterrupt[wp]:
-"\<lbrace>invs'\<rbrace> doMachineOp (ackInterrupt irq) \<lbrace>\<lambda>y. invs'\<rbrace>"
+  "\<lbrace>invs'\<rbrace> doMachineOp (ackInterrupt irq) \<lbrace>\<lambda>y. invs'\<rbrace>"
   apply (wp dmo_invs' no_irq no_irq_ackInterrupt)
   apply safe
    apply (drule_tac Q="\<lambda>_ m'. underlying_memory m' p = underlying_memory m p"
@@ -850,10 +856,6 @@ lemma hint_invs[wp]:
   apply (wp hoare_post_comb_imp_conj hoare_drop_imp getIRQState_inv)
   apply (assumption)+
   done
-
-
-crunch st_tcb_at'[wp]: timerTick "st_tcb_at' P t"
-  (wp: threadSet_pred_tcb_no_state)
 
 end
 
