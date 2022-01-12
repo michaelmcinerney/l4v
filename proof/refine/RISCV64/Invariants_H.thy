@@ -71,7 +71,7 @@ definition pspace_no_overlap' :: "obj_ref \<Rightarrow> nat \<Rightarrow> kernel
      \<lambda>s. \<forall>x ko. ksPSpace s x = Some ko \<longrightarrow>
                 (mask_range x (objBitsKO ko)) \<inter> {ptr .. (ptr && ~~ mask bits) + mask bits} = {}"
 
-definition
+definition ko_wp_at' :: "(kernel_object \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "ko_wp_at' P p s \<equiv> \<exists>ko. ksPSpace s p = Some ko \<and> is_aligned p (objBitsKO ko) \<and> P ko \<and>
                            ps_clear p (objBitsKO ko) s \<and> objBitsKO ko < word_bits"
 
@@ -86,34 +86,35 @@ lemma valid_sz_simps:
                      pteBits_def wordSizeCase_def wordBits_def replySizeBits_def
               split: arch_kernel_object.splits)
 
-definition
-  obj_at' :: "('a::pspace_storable \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool"
-where obj_at'_real_def:
-  "obj_at' P p s \<equiv>
-   ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj \<and> P obj) p s"
+definition obj_at' :: "('a::pspace_storable \<Rightarrow> bool) \<Rightarrow> machine_word \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  obj_at'_real_def:
+  "obj_at' P p s \<equiv> ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj \<and> P obj) p s"
 
-definition
-  typ_at' :: "kernel_object_type \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool"
-where
+definition typ_at' :: "kernel_object_type \<Rightarrow> machine_word \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "typ_at' T \<equiv> ko_wp_at' (\<lambda>ko. koTypeOf ko = T)"
 
-abbreviation
-  "ep_at' \<equiv> obj_at' (\<lambda>_ :: endpoint. True)"
-abbreviation
-  "ntfn_at' \<equiv> obj_at' (\<lambda>_:: notification. True)"
-abbreviation
-  "tcb_at' \<equiv> obj_at' (\<lambda>_:: tcb. True)"
-abbreviation
-  "real_cte_at' \<equiv> obj_at' (\<lambda>_ :: cte. True)"
-abbreviation
+abbreviation ep_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "ep_at' \<equiv> obj_at' ((\<lambda>x. True) :: endpoint \<Rightarrow> bool)"
+
+abbreviation ntfn_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "ntfn_at' \<equiv> obj_at' ((\<lambda>x. True) :: notification \<Rightarrow> bool)"
+
+abbreviation tcb_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "tcb_at' \<equiv> obj_at' ((\<lambda>x. True) :: tcb \<Rightarrow> bool)"
+
+abbreviation real_cte_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "real_cte_at' \<equiv> obj_at' ((\<lambda>x. True) :: cte \<Rightarrow> bool)"
+
+abbreviation sc_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "sc_at' \<equiv> obj_at' (\<lambda>_ :: sched_context. True)"
-abbreviation
+
+abbreviation reply_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "reply_at' \<equiv> obj_at' (\<lambda>_ :: reply. True)"
 
-abbreviation
+abbreviation ko_at' :: "'a::pspace_storable \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "ko_at' v \<equiv> obj_at' (\<lambda>k. k = v)"
 
-abbreviation
+abbreviation pte_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "pte_at' \<equiv> typ_at' (ArchT PTET)"
 
 end
@@ -166,9 +167,7 @@ lemma st_tcb_at'_def:
   "st_tcb_at' test \<equiv> obj_at' (test \<circ> tcbState)"
   by (simp add: pred_tcb_at'_def o_def)
 
-definition
-  active_sc_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool"
-where
+definition active_sc_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "active_sc_at' \<equiv> obj_at' (\<lambda>ko :: sched_context. 0 < scRefillMax ko)"
 
 text \<open> cte with property at \<close>
@@ -180,10 +179,10 @@ abbreviation cte_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" 
 
 text \<open>replyNext aliases\<close>
 
-abbreviation
+abbreviation replySC :: "reply \<Rightarrow> obj_ref option" where
   "replySC \<equiv> \<lambda>r. getHeadScPtr (replyNext r)"
 
-abbreviation
+abbreviation replyNext_of :: "reply \<Rightarrow> obj_ref option" where
   "replyNext_of \<equiv> \<lambda>r. getReplyNextPtr (replyNext r)"
 
 lemma getReplyNextPtr_None[simp]:
@@ -282,7 +281,7 @@ definition tcb_cte_cases :: "machine_word \<rightharpoonup> ((tcb \<Rightarrow> 
  "tcb_cte_cases \<equiv>  [ 0 << cteSizeBits \<mapsto> (tcbCTable, tcbCTable_update),
                     1 << cteSizeBits \<mapsto> (tcbVTable, tcbVTable_update),
                     2 << cteSizeBits \<mapsto> (tcbIPCBufferFrame, tcbIPCBufferFrame_update),
-                    3 << cteSizeBits \<mapsto>  (tcbFaultHandler, tcbFaultHandler_update),
+                    3 << cteSizeBits \<mapsto> (tcbFaultHandler, tcbFaultHandler_update),
                     4 << cteSizeBits \<mapsto> (tcbTimeoutHandler, tcbTimeoutHandler_update) ]"
 
 definition max_ipc_words :: machine_word where
@@ -512,7 +511,7 @@ primrec zombieCTEs :: "zombie_type \<Rightarrow> nat" where
 
 context begin interpretation Arch .
 
-abbreviation
+abbreviation sc_at'_n :: "nat \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "sc_at'_n n \<equiv> ko_wp_at' (\<lambda>ko. koTypeOf ko = SchedContextT \<and> objBitsKO ko = n)"
 
 definition page_table_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
@@ -589,11 +588,11 @@ where valid_cap'_def:
       bits \<noteq> 0 \<and> bits + guard_sz \<le> word_bits \<and> guard && mask guard_sz = guard \<and>
       (\<forall>addr. real_cte_at' (r + 2^cteSizeBits * (addr && mask bits)) s)
   | ThreadCap r \<Rightarrow> tcb_at' r s
-  | Structures_H.ReplyCap r m \<Rightarrow> reply_at' r s
+  | ReplyCap r m \<Rightarrow> reply_at' r s
   | IRQControlCap \<Rightarrow> True
   | IRQHandlerCap irq \<Rightarrow> irq \<le> maxIRQ \<and> irq \<noteq> irqInvalid
-  | Structures_H.SchedControlCap \<Rightarrow> True
-  | Structures_H.SchedContextCap sc n \<Rightarrow> sc_at'_n n sc s
+  | SchedControlCap \<Rightarrow> True
+  | SchedContextCap sc n \<Rightarrow> sc_at'_n n sc s
              \<and> minSchedContextBits \<le> n \<and> n \<le> maxUntypedSizeBits
   | Zombie r b n \<Rightarrow> n \<le> zombieCTEs b \<and> zBits b < word_bits
                     \<and> (case b of ZombieTCB \<Rightarrow> tcb_at' r s | ZombieCNode n \<Rightarrow> n \<noteq> 0
@@ -611,16 +610,16 @@ definition valid_bound_obj' ::
   "(machine_word \<Rightarrow> kernel_state \<Rightarrow> bool) \<Rightarrow> machine_word option \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_bound_obj' f p_opt s \<equiv> case p_opt of None \<Rightarrow> True | Some p \<Rightarrow> f p s"
 
-abbreviation
+abbreviation valid_bound_ntfn' :: "obj_ref option \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_bound_ntfn' \<equiv> valid_bound_obj' ntfn_at'"
 
-abbreviation
+abbreviation valid_bound_tcb' :: "obj_ref option \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_bound_tcb' \<equiv> valid_bound_obj' tcb_at'"
 
-abbreviation
+abbreviation valid_bound_sc' :: "obj_ref option \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_bound_sc' \<equiv> valid_bound_obj' sc_at'"
 
-abbreviation
+abbreviation valid_bound_reply' :: "obj_ref option \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_bound_reply' \<equiv> valid_bound_obj' reply_at'"
 
 definition valid_tcb_state' :: "thread_state \<Rightarrow> kernel_state \<Rightarrow> bool" where
@@ -653,9 +652,7 @@ definition valid_ep' :: "Structures_H.endpoint \<Rightarrow> kernel_state \<Righ
    | SendEP ts \<Rightarrow> (ts \<noteq> [] \<and> (\<forall>t \<in> set ts. tcb_at' t s) \<and> distinct ts)
    | RecvEP ts \<Rightarrow> (ts \<noteq> [] \<and> (\<forall>t \<in> set ts. tcb_at' t s) \<and> distinct ts)"
 
-definition
-  valid_ntfn' :: "notification \<Rightarrow> kernel_state \<Rightarrow> bool"
-where
+definition valid_ntfn' :: "notification \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_ntfn' ntfn s \<equiv> (case ntfnObj ntfn of
     Structures_H.IdleNtfn \<Rightarrow> True
   | Structures_H.WaitingNtfn ts \<Rightarrow>
@@ -689,8 +686,7 @@ definition valid_mapping' :: "machine_word \<Rightarrow> vmpage_size \<Rightarro
   "valid_mapping' x sz s \<equiv> is_aligned x (pageBitsForSize sz) \<and> ptrFromPAddr x \<noteq> 0"
 
 definition sc_size_bounds :: "nat \<Rightarrow> bool" where
-  "sc_size_bounds us \<equiv>
-        minSchedContextBits \<le> us \<and> us \<le> maxUntypedSizeBits"
+  "sc_size_bounds us \<equiv> minSchedContextBits \<le> us \<and> us \<le> maxUntypedSizeBits"
 
 definition valid_sched_context_size' :: "sched_context \<Rightarrow> bool" where
   "valid_sched_context_size' sc \<equiv> sc_size_bounds (objBits sc)"
@@ -720,8 +716,7 @@ where
  "pspace_canonical' s \<equiv> \<forall>p \<in> dom (ksPSpace s). canonical_address p"
 
 definition pspace_bounded' :: "kernel_state \<Rightarrow> bool" where
- "pspace_bounded' s \<equiv>
-  \<forall>x \<in> dom (ksPSpace s). objBitsKO (the (ksPSpace s x)) < word_bits"
+  "pspace_bounded' s \<equiv> \<forall>x \<in> dom (ksPSpace s). objBitsKO (the (ksPSpace s x)) < word_bits"
 
 definition
   pspace_in_kernel_mappings' :: "kernel_state \<Rightarrow> bool"
@@ -744,9 +739,7 @@ definition valid_obj_size' :: "kernel_object \<Rightarrow> kernel_state \<Righta
     KOSchedContext sc \<Rightarrow> valid_sched_context_size' sc
   | _ \<Rightarrow> True"
 
-definition
-  valid_objs_size' :: "kernel_state \<Rightarrow> bool"
-where
+definition valid_objs_size' :: "kernel_state \<Rightarrow> bool" where
   "valid_objs_size' s \<equiv> \<forall>obj \<in> ran (ksPSpace s). valid_obj_size' obj s"
 
 lemma valid_objs'_valid_objs_size':
@@ -1000,7 +993,7 @@ where
 definition
   "no_0_obj' \<equiv> \<lambda>s. ksPSpace s 0 = None"
 
-abbreviation
+abbreviation is_reply_linked :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "is_reply_linked rptr s \<equiv> replyNexts_of s rptr \<noteq> None \<or> replyPrevs_of s rptr \<noteq> None"
 
 definition valid_replies'_except :: "obj_ref set \<Rightarrow> kernel_state \<Rightarrow> bool" where
@@ -1118,10 +1111,8 @@ lemmas bitmapQ_defs = valid_bitmapQ_def valid_bitmapQ_except_def bitmapQ_def
 definition valid_inQ_queues :: "kernel_state \<Rightarrow> bool" where
   "valid_inQ_queues \<equiv> \<lambda>s. \<forall>d p. (\<forall>t\<in>set (ksReadyQueues s (d, p)). obj_at' (inQ d p) t s)"
 
-definition
-  (* when in the middle of updates, a particular queue might not be entirely valid *)
-  valid_inQ_queues_except :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool"
-where
+(* when in the middle of updates, a particular queue might not be entirely valid *)
+definition valid_inQ_queues_except :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
  "valid_inQ_queues_except t'
    \<equiv> \<lambda>s. (\<forall>d p. (\<forall>t \<in> set (ksReadyQueues s (d, p)). t \<noteq> t' \<longrightarrow> obj_at' (inQ d p) t s))"
 
@@ -1130,19 +1121,13 @@ definition
 where
  "valid_queues' \<equiv> \<lambda>s. \<forall>d p t. obj_at' (inQ d p) t s \<longrightarrow> t \<in> set (ksReadyQueues s (d, p))"
 
-definition
-  valid_release_queue :: "kernel_state \<Rightarrow> bool"
-where
+definition valid_release_queue :: "kernel_state \<Rightarrow> bool" where
  "valid_release_queue \<equiv> \<lambda>s. \<forall>t. t \<in> set (ksReleaseQueue s) \<longrightarrow> obj_at' (tcbInReleaseQueue) t s"
 
-definition
-  valid_release_queue' :: "kernel_state \<Rightarrow> bool"
-where
+definition valid_release_queue' :: "kernel_state \<Rightarrow> bool" where
  "valid_release_queue' \<equiv> \<lambda>s. \<forall>t. obj_at' (tcbInReleaseQueue) t s \<longrightarrow> t \<in> set (ksReleaseQueue s)"
 
-abbreviation
-  valid_release_queue_iff :: "kernel_state \<Rightarrow> bool"
-where
+abbreviation valid_release_queue_iff :: "kernel_state \<Rightarrow> bool" where
   "valid_release_queue_iff \<equiv> valid_release_queue and valid_release_queue'"
 
 definition tcb_in_cur_domain' :: "machine_word \<Rightarrow> kernel_state \<Rightarrow> bool" where
@@ -1200,7 +1185,7 @@ where
   "idle_tcb'_2 \<equiv> \<lambda>(st, ntfn_opt, sc_opt, yt_opt).
                     (idle' st \<and> ntfn_opt = None \<and> sc_opt = Some idle_sc_ptr \<and> yt_opt = None)"
 
-abbreviation
+abbreviation  idle_tcb' :: "tcb \<Rightarrow> bool" where
   "idle_tcb' tcb \<equiv>
       idle_tcb'_2 (tcbState tcb, tcbBoundNotification tcb, tcbSchedContext tcb, tcbYieldTo tcb)"
 
@@ -1216,16 +1201,13 @@ abbreviation idle_sc' :: "sched_context \<Rightarrow> bool" where
       \<and> scYieldFrom sc = None
       \<and> scReply sc = None"
 
-abbreviation
+abbreviation idle_sc_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "idle_sc_at' \<equiv> obj_at' idle_sc'"
 
-definition
-  valid_idle' :: "kernel_state \<Rightarrow> bool"
-where
-  "valid_idle' \<equiv>
-     \<lambda>s. obj_at' idle_tcb' (ksIdleThread s) s
-         \<and> idle_sc_at' idle_sc_ptr s
-         \<and> idle_thread_ptr = ksIdleThread s"
+definition valid_idle' :: "kernel_state \<Rightarrow> bool" where
+  "valid_idle' \<equiv> \<lambda>s. obj_at' idle_tcb' (ksIdleThread s) s
+                      \<and> idle_sc_at' idle_sc_ptr s
+                      \<and> idle_thread_ptr = ksIdleThread s"
 
 defs valid_idle'_asrt_def:
   "valid_idle'_asrt \<equiv> \<lambda>s. valid_idle' s"
@@ -1317,7 +1299,7 @@ abbreviation
   "untyped_ranges_zero' s \<equiv> untyped_ranges_zero_inv (cteCaps_of s) (gsUntypedZeroRanges s)"
 
 (* The schedule is invariant. *)
-definition
+definition valid_dom_schedule' :: "kernel_state \<Rightarrow> bool" where
   "valid_dom_schedule' \<equiv>
    \<lambda>s. ksDomSchedule s \<noteq> [] \<and> (\<forall>x\<in>set (ksDomSchedule s). dschDomain x \<le> maxDomain \<and> 0 < dschLength x)
        \<and> ksDomSchedule s = ksDomSchedule (newKernelState undefined)
@@ -1569,10 +1551,8 @@ lemma tcb_bound_refs'_simps[simp]:
   "tcb_bound_refs' None None None = {}"
   by (auto simp: tcb_bound_refs'_def)
 
-\<comment>\<open>
-  Useful rewrite rules for extracting the existence of objects on the other side of symmetric refs.
-  There should be a rewrite corresponding to each entry of @{term symreftype}.
-\<close>
+\<comment>\<open> Useful rewrite rules for extracting the existence of objects on the other side of symmetric refs.
+   There should be a rewrite corresponding to each entry of @{term symreftype}.\<close>
 lemma refs_of_rev':
   "(x, TCBBlockedSend) \<in> refs_of' ko =
     (\<exists>tcb. ko = KOTCB tcb \<and> (\<exists>a b c d. tcbState tcb = BlockedOnSend x a b c d))"
@@ -1749,10 +1729,8 @@ lemma get_refs_empty[simp]:
 abbreviation idle_refs :: "(machine_word \<times> reftype) set" where
   "idle_refs \<equiv> {(idle_sc_ptr, TCBSchedContext), (idle_thread_ptr, SCTcb)}"
 
-\<comment>\<open>
-  This set subtraction gets simplified into a subset relation at all the places
-  we might want to use this rule, so we do that ahead of time.
-\<close>
+\<comment>\<open> This set subtraction gets simplified into a subset relation at all the places
+    we might want to use this rule, so we do that ahead of time. \<close>
 lemma refs_of_live'[simplified]:
   "refs_of' ko - idle_refs \<noteq> {} \<Longrightarrow> live' ko"
   apply (cases ko; simp)
@@ -2176,7 +2154,6 @@ lemma magnitudeCheck_wp:
             split: option.split)
   done
 
-
 lemma alignCheck_wp:
   "\<lbrace>\<lambda>s. is_aligned ptr bits \<longrightarrow> P s\<rbrace>
    alignCheck ptr bits
@@ -2268,9 +2245,9 @@ lemma in_magnitude_check3:
      (1 :: machine_word) < 2 ^ n; ksPSpace s x = Some v; x \<le> y; y - x < 2 ^ n \<rbrakk> \<Longrightarrow>
    fst (magnitudeCheck x (snd (lookupAround2 y (ksPSpace s))) n s)
      = (if ps_clear x n s then {((), s)} else {})"
-   apply (clarsimp simp: magnitudeCheck_def gets_the_def
-                         exec_gets in_monad return_def assert_opt_def fail_def
-                  split: option.split_asm)
+  apply (clarsimp simp: magnitudeCheck_def gets_the_def
+                        exec_gets in_monad return_def assert_opt_def fail_def
+                 split: option.split_asm)
   done
 
 lemma read_alignCheck_simp[simp]:
@@ -2585,11 +2562,10 @@ lemma typ_at_lift_valid_tcb_state'_strong:
       and ntfn: "\<And>p. f \<lbrace>\<lambda>s. P (typ_at' NotificationT p s)\<rbrace>"
   shows "f \<lbrace>\<lambda>s. P (valid_tcb_state' st s)\<rbrace>"
   unfolding valid_tcb_state'_def valid_bound_reply'_def
-  apply (case_tac st
-         ; clarsimp split: option.splits
-         , wpsimp wp: hoare_vcg_imp_lift' hoare_vcg_all_lift hoare_vcg_conj_lift_N[where N=P]
-                           typ_at_lift_ep'_strong[OF ep] typ_at_lift_reply'_strong[OF reply]
-                           typ_at_lift_ntfn'_strong[OF ntfn])
+  apply (case_tac st ; clarsimp split: option.splits,
+         wpsimp wp: hoare_vcg_imp_lift' hoare_vcg_all_lift hoare_vcg_conj_lift_N[where N=P]
+                    typ_at_lift_ep'_strong[OF ep] typ_at_lift_reply'_strong[OF reply]
+                    typ_at_lift_ntfn'_strong[OF ntfn])
   done
 
 lemma typ_at_lift_frame_at'_strong:
@@ -2626,8 +2602,6 @@ lemma typ_at_lift_valid_irq_node':
   apply (simp add: valid_irq_node'_def)
   apply (wp hoare_vcg_all_lift P typ_at_lifts_strong)
   done
-
-
 
 lemma valid_dom_schedule'_lift:
   assumes dsi: "\<And>Q. \<lbrace>\<lambda>s. Q (ksDomScheduleIdx s)\<rbrace> f \<lbrace>\<lambda>rv s. Q (ksDomScheduleIdx s)\<rbrace>"
@@ -2669,24 +2643,22 @@ lemma valid_sc_lift':
   by (wpsimp wp: valid_bound_ntfn_lift valid_bound_tcb_lift valid_bound_reply_lift)
 
 context begin
-\<comment>\<open>
-  We're using @{command ML_goal} here because there are two useful formulations
-  of typ_at lifting lemmas and we do not want to write all of the possibilities
-  out by hand. If we use typ_at_lift_tcb' as an example, then the first is
-  @{term "\<lbrace>\<lambda>s. P (typ_at' TCBT p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (typ_at' TCBT p s)\<rbrace>
-          \<Longrightarrow> \<lbrace>\<lambda>s. P (tcb_at' p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (tcb_at' p s)\<rbrace>"} and the second is
-  @{term "(\<And>P. \<lbrace>\<lambda>s. P (typ_at' TCBT p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (typ_at' TCBT p s)\<rbrace>)
-          \<Longrightarrow> \<lbrace>\<lambda>s. P (tcb_at' p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (tcb_at' p s)\<rbrace>"}.
-  The first form is stronger, and therefore preferred for backward reasoning
-  using rule. However, since the P in the premise is free in the first form,
-  forward unification using the OF attribute produces flex-flex pairs which
-  causes problems. The second form avoids the unification issue by demanding
-  that there is a P that is free in the lemma supplied to the OF attribute.
-  However, it can only be applied if @{term f} preserves both
-  @{term "typ_at' TCBT p s"} and @{term "\<not> typ_at' TCBT p s"}.
-  The following @{command ML_goal} generates lemmas of the second form based on
-  the previously proven stronger lemmas of the first form.
-\<close>
+\<comment>\<open> We're using @{command ML_goal} here because there are two useful formulations
+    of typ_at lifting lemmas and we do not want to write all of the possibilities
+    out by hand. If we use typ_at_lift_tcb' as an example, then the first is
+    @{term "\<lbrace>\<lambda>s. P (typ_at' TCBT p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (typ_at' TCBT p s)\<rbrace>
+            \<Longrightarrow> \<lbrace>\<lambda>s. P (tcb_at' p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (tcb_at' p s)\<rbrace>"} and the second is
+    @{term "(\<And>P. \<lbrace>\<lambda>s. P (typ_at' TCBT p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (typ_at' TCBT p s)\<rbrace>)
+            \<Longrightarrow> \<lbrace>\<lambda>s. P (tcb_at' p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (tcb_at' p s)\<rbrace>"}.
+    The first form is stronger, and therefore preferred for backward reasoning
+    using rule. However, since the P in the premise is free in the first form,
+    forward unification using the OF attribute produces flex-flex pairs which
+    causes problems. The second form avoids the unification issue by demanding
+    that there is a P that is free in the lemma supplied to the OF attribute.
+    However, it can only be applied if @{term f} preserves both
+    @{term "typ_at' TCBT p s"} and @{term "\<not> typ_at' TCBT p s"}.
+    The following @{command ML_goal} generates lemmas of the second form based on
+    the previously proven stronger lemmas of the first form. \<close>
 ML \<open>
 local
   val strong_thms = @{thms typ_at_lifts_strong[no_vars]};

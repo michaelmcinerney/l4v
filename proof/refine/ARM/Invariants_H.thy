@@ -62,10 +62,9 @@ definition
            \<lambda>s. \<forall>x ko. ksPSpace s x = Some ko \<longrightarrow>
                 ({x .. x + (2 ^ objBitsKO ko) - 1}) \<inter> {ptr .. (ptr &&~~ mask bits) + (2 ^ bits - 1)} = {}"
 
-definition
-  "ko_wp_at' P p s \<equiv>
-   \<exists>ko. ksPSpace s p = Some ko \<and> is_aligned p (objBitsKO ko) \<and> P ko \<and>
-        ps_clear p (objBitsKO ko) s \<and> objBitsKO ko < word_bits"
+definition ko_wp_at' :: "(kernel_object \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "ko_wp_at' P p s \<equiv> \<exists>ko. ksPSpace s p = Some ko \<and> is_aligned p (objBitsKO ko) \<and> P ko \<and>
+                           ps_clear p (objBitsKO ko) s \<and> objBitsKO ko < word_bits"
 
 lemma valid_sz_simps:
   "objBitsKO ko < word_bits =
@@ -78,37 +77,31 @@ lemma valid_sz_simps:
                      pdeBits_def pteBits_def wordSizeCase_def wordBits_def replySizeBits_def
               split: arch_kernel_object.splits)
 
-definition
-  obj_at' :: "('a::pspace_storable \<Rightarrow> bool) \<Rightarrow> word32 \<Rightarrow> kernel_state \<Rightarrow> bool"
-where obj_at'_real_def:
-  "obj_at' P p s \<equiv>
-   ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj \<and> P obj) p s"
+definition obj_at' :: "('a::pspace_storable \<Rightarrow> bool) \<Rightarrow> machine_word \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  obj_at'_real_def:
+  "obj_at' P p s \<equiv> ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj \<and> P obj) p s"
 
-definition
-  typ_at' :: "kernel_object_type \<Rightarrow> word32 \<Rightarrow> kernel_state \<Rightarrow> bool"
-where
+definition typ_at' :: "kernel_object_type \<Rightarrow> machine_word \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "typ_at' T \<equiv> ko_wp_at' (\<lambda>ko. koTypeOf ko = T)"
 
-abbreviation
-  "ep_at' \<equiv> obj_at' (\<lambda>_ :: endpoint. True)"
-abbreviation
-  "ntfn_at' \<equiv> obj_at' (\<lambda>_:: notification. True)"
-abbreviation
-  "tcb_at' \<equiv> obj_at' (\<lambda>_:: tcb. True)"
-abbreviation
-  "real_cte_at' \<equiv> obj_at' (\<lambda>_ :: cte. True)"
-abbreviation
-  "sc_at' \<equiv> obj_at' (\<lambda>_ :: sched_context. True)"
-abbreviation
-  "reply_at' \<equiv> obj_at' (\<lambda>_ :: reply. True)"
+abbreviation ep_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "ep_at' \<equiv> obj_at' ((\<lambda>x. True) :: endpoint \<Rightarrow> bool)"
 
-abbreviation
+abbreviation ntfn_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "ntfn_at' \<equiv> obj_at' ((\<lambda>x. True) :: notification \<Rightarrow> bool)"
+
+abbreviation tcb_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "tcb_at' \<equiv> obj_at' ((\<lambda>x. True) :: tcb \<Rightarrow> bool)"
+
+abbreviation real_cte_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "real_cte_at' \<equiv> obj_at' ((\<lambda>x. True) :: cte \<Rightarrow> bool)"
+
+abbreviation ko_at' :: "'a::pspace_storable \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "ko_at' v \<equiv> obj_at' (\<lambda>k. k = v)"
 
-abbreviation
-  "pde_at' \<equiv> typ_at' (ArchT PDET)"
-abbreviation
+abbreviation pte_at' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "pte_at' \<equiv> typ_at' (ArchT PTET)"
+
 end
 
 

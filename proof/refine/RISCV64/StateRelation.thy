@@ -111,7 +111,8 @@ definition ntfn_relation :: "Structures_A.notification \<Rightarrow> Structures_
         Structures_A.IdleNtfn      \<Rightarrow> ntfnObj ntfn' = Structures_H.IdleNtfn
       | Structures_A.WaitingNtfn q \<Rightarrow> ntfnObj ntfn' = Structures_H.WaitingNtfn q
       | Structures_A.ActiveNtfn b  \<Rightarrow> ntfnObj ntfn' = Structures_H.ActiveNtfn b)
-  \<and> ntfn_bound_tcb ntfn = ntfnBoundTCB ntfn' \<and> ntfn_sc ntfn = ntfnSc ntfn'"
+                                      \<and> ntfn_bound_tcb ntfn = ntfnBoundTCB ntfn'
+                                      \<and> ntfn_sc ntfn = ntfnSc ntfn'"
 
 definition ep_relation :: "Structures_A.endpoint \<Rightarrow> Structures_H.endpoint \<Rightarrow> bool" where
  "ep_relation \<equiv> \<lambda>ep ep'. case ep of
@@ -205,8 +206,7 @@ definition refills_map :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow>
 (* This leaves those Haskell refills unconstrained that are not in the abstract sc_refills list.
    This is intentional: for instance, refillPopHead will leave "garbage" behind in memory which
    is not captured on the abstract side, and we can't demand that the Haskell side has empty
-   refills there. This should be fine, from concrete to abstract we still have a function.
- *)
+   refills there. This should be fine, from concrete to abstract we still have a function. *)
 definition sc_relation ::
   "Structures_A.sched_context \<Rightarrow> nat \<Rightarrow> Structures_H.sched_context \<Rightarrow> bool" where
   "sc_relation \<equiv> \<lambda>sc n sc'.
@@ -243,11 +243,11 @@ lemma active_sc_at'_rewrite:
    the refill list circular buffer to make sense. In other words, these are the constraints
    we expect for wrap_slice to give what we want. *)
 
-abbreviation sc_valid_refills' where
+abbreviation sc_valid_refills' :: "sched_context \<Rightarrow> bool" where
   "sc_valid_refills' sc \<equiv> scRefillMax sc \<le> length (scRefills sc) \<and> scRefillHead sc < scRefillMax sc \<and>
                     scRefillCount sc \<le> scRefillMax sc \<and> 0 < scRefillCount sc"
 
-definition valid_refills' where
+definition valid_refills' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_refills' sc_ptr s' \<equiv> (sc_valid_refills' |< scs_of' s') sc_ptr"
 
 lemma valid_refills'_nonzero_scRefillCount:
@@ -559,12 +559,8 @@ lemmas cap_relation_split =
 lemmas cap_relation_split_asm =
   eq_trans_helper [where P=P, OF cap_relation_case cap.split_asm[where P=P]] for P
 
-
-
-text \<open>
-  Relations on other data types that aren't stored but used as intermediate values
-  in the specs.
-\<close>
+text \<open> Relations on other data types that aren't stored but used as intermediate values
+       in the specs. \<close>
 primrec message_info_map :: "Structures_A.message_info \<Rightarrow> Types_H.message_info" where
   "message_info_map (Structures_A.MI a b c d) = (Types_H.MI a b c d)"
 
@@ -727,11 +723,8 @@ lemma isCNodeCap_cap_map[simp]:
 
 lemma cap_rel_valid_fh:
   "cap_relation a b \<Longrightarrow> valid_fault_handler a = isValidFaultHandler b"
-  apply (case_tac a
-         ; case_tac b
-         ; simp add: valid_fault_handler_def isValidFaultHandler_def)
-  apply (rule iffI
-         ; clarsimp simp: has_handler_rights_def split: bool.split_asm)
+  apply (case_tac a ; case_tac b; simp add: valid_fault_handler_def isValidFaultHandler_def)
+  apply (rule iffI; clarsimp simp: has_handler_rights_def split: bool.split_asm)
   done
 
 lemma sts_rel_idle :
@@ -1053,11 +1046,11 @@ qed
 
 lemma min_sched_context_bits_cond:
   "sizeof_sched_context_t + refill_size_bytes < (2::nat) ^ (min_sched_context_bits - 1)"
-   by (clarsimp simp: sizeof_sched_context_t_def refill_size_bytes_def min_sched_context_bits_def)
+  by (clarsimp simp: sizeof_sched_context_t_def refill_size_bytes_def min_sched_context_bits_def)
 
 lemma minSchedContextBits_cond:
   "sizeof_sched_context_t + refill_size_bytes < (2::nat) ^ (minSchedContextBits - 1)"
-   by (clarsimp simp: sizeof_sched_context_t_def refill_size_bytes_def minSchedContextBits_def)
+  by (clarsimp simp: sizeof_sched_context_t_def refill_size_bytes_def minSchedContextBits_def)
 
 lemma scBits_inverse_us:
   notes sc_const_eq[simp]

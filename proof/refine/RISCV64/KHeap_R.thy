@@ -15,7 +15,7 @@ lemma obj_at_replyTCBs_of:
    \<Longrightarrow> replyTCBs_of s rptr = tptr_opt"
   by (clarsimp simp: obj_at'_def projectKOs opt_map_def)
 
-abbreviation
+abbreviation valid_replies'_alt :: "kernel_state \<Rightarrow> bool" where
   "valid_replies'_alt s \<equiv>
      (\<forall>rptr rp. ko_at' rp rptr s \<and> ((\<exists>rp'. replyNext rp = Some (Next rp')) \<or> replyPrev rp \<noteq> None)
                 \<longrightarrow> (\<exists>tptr. replyTCB rp = Some tptr
@@ -320,10 +320,10 @@ lemma updateObject_cte_is_tcb_or_cte:
   (\<exists>cte'. ko = KOCTE cte' \<and> ko' = KOCTE cte \<and> s' = s
         \<and> p = q \<and> is_aligned p cte_level_bits \<and> ps_clear p cte_level_bits s)"
   apply (clarsimp simp: updateObject_cte typeError_def alignError_def
-               tcbVTableSlot_def tcbCTableSlot_def to_bl_1 rev_take objBits_simps'
-               in_monad map_bits_to_bl cte_level_bits_def in_magnitude_check
-               lookupAround2_char1
-         split: kernel_object.splits)
+                        tcbVTableSlot_def tcbCTableSlot_def to_bl_1 rev_take objBits_simps'
+                        in_monad map_bits_to_bl cte_level_bits_def in_magnitude_check
+                        lookupAround2_char1
+                 split: kernel_object.splits)
   apply (subst(asm) in_magnitude_check3, simp+)
    apply (simp add: in_monad tcbSlot_defs
              split: if_split_asm)
@@ -381,11 +381,9 @@ lemma obj_at_setObject2:
   apply (clarsimp simp: ps_clear_upd lookupAround2_char1)
   done
 
-\<comment>\<open>
-  If the old and new versions of an object are the same size, then showing
-  `obj_at'` for the updated state is the same as showing the predicate for
-  the new value; we get to "reuse" the existing PSpace properties.
-\<close>
+\<comment>\<open> If the old and new versions of an object are the same size, then showing
+    `obj_at'` for the updated state is the same as showing the predicate for
+    the new value; we get to "reuse" the existing PSpace properties. \<close>
 lemma same_size_obj_at'_set_obj'_iff:
   fixes obj :: "'a :: pspace_storable"
   assumes "obj_at' (\<lambda>old_obj :: 'a. objBits old_obj = objBits obj) ptr s"
@@ -407,10 +405,8 @@ lemma tcb_at'_obj_at'_set_obj'[unfolded injectKO_tcb]:
                         same_size_obj_at'_set_obj'_iff[where 'a=tcb, simplified])
   done
 
-\<comment>\<open>
-  Keeps a generic @{term obj_at'} (rather than a specific @{term "obj_at' (\<lambda>_. True)"}) to match
-  in more simp contexts.
-\<close>
+\<comment>\<open> Keeps a generic @{term obj_at'} (rather than a specific @{term "obj_at' (\<lambda>_. True)"}) to match
+    in more simp contexts. \<close>
 lemma tcb_obj_at'_set_obj'_iff:
   fixes tcb :: tcb
     and P Q :: "tcb \<Rightarrow> bool"
@@ -436,9 +432,7 @@ lemma same_size_ko_wp_at'_set_ko'_iff:
   apply blast
   done
 
-\<comment>\<open>
-  Moves the @{term ksPSpace_update} to the top.
-\<close>
+\<comment>\<open> Moves the @{term ksPSpace_update} to the top. \<close>
 lemma unfold_set_ko':
   "set_ko' ptr ko s = ksPSpace_update (\<lambda>ps. ps(ptr := Some ko)) s"
   by clarsimp
@@ -497,13 +491,9 @@ lemma typ_at'_ksPSpace_exI:
          (rename_tac arch, case_tac arch; clarsimp)?)+
   done
 
-\<comment>\<open>
-  Used to show a stronger variant of @{thm obj_at_setObject2}
-  for many concrete types.
+\<comment>\<open> Used to show a stronger variant of @{thm obj_at_setObject2} for many concrete types.
 
-  Needs to be a definition so we can easily refer to it within
-  ML as a constant.
-\<close>
+    Needs to be a definition so we can easily refer to it within ML as a constant. \<close>
 definition distinct_updateObject_types ::
   "('a :: pspace_storable) itself \<Rightarrow> ('b :: pspace_storable) itself \<Rightarrow> bool"
 where
@@ -533,13 +523,11 @@ lemma setObject_distinct_types_preserves_obj_at'_pre:
   apply (intro impI conjI iffI; metis project_koType)
   done
 
-\<comment>\<open>
-  We're using @{command ML_goal} here because we want to show
-  `distinct_updateObject_types TYPE('a) TYPE('b)` for around
-  50 different combinations of 'a and 'b. Doing that by hand would
-  be painful, and not as clear for future readers as this comment
-  plus this ML code.
-\<close>
+\<comment>\<open> We're using @{command ML_goal} here because we want to show
+    `distinct_updateObject_types TYPE('a) TYPE('b)` for around
+    50 different combinations of 'a and 'b. Doing that by hand would
+    be painful, and not as clear for future readers as this comment
+    plus this ML code. \<close>
 ML \<open>
 local
   val ko_types = [
@@ -556,13 +544,11 @@ local
   ];
 
   val skipped_pairs = [
-    \<comment>\<open>
-      This corresponds to the case where we're inserting a CTE into
-      a TCB, which is the only case where the first two arguments
-      to `updateObject` should have different types.
+    \<comment>\<open>This corresponds to the case where we're inserting a CTE into
+       a TCB, which is the only case where the first two arguments
+       to `updateObject` should have different types.
 
-      See the comment on @{term updateObject} for more information.
-    \<close>
+       See the comment on @{term updateObject} for more information.\<close>
     (@{typ cte}, @{typ tcb})
   ];
 
@@ -586,9 +572,7 @@ ML_goal distinct_updateObject_types: \<open>
   distinct_updateObject_types_goals
 \<close>
   apply -
-  \<comment>\<open>
-    The produced goals match the following pattern:
-  \<close>
+  \<comment>\<open> The produced goals match the following pattern: \<close>
   apply (all \<open>match conclusion in \<open>distinct_updateObject_types _ _\<close> \<Rightarrow> -\<close>)
   unfolding distinct_updateObject_types_def
   apply safe
@@ -746,26 +730,20 @@ lemma setObject_cte_replies_of'[wp]:
   "setObject c (cte::cte) \<lbrace>\<lambda>s. P' (replies_of' s)\<rbrace>"
   by setObject_easy_cases
 
-\<comment>\<open>
-  Warning: this may not be a weakest precondition. `setObject c`
-  asserts that there's already a correctly-typed object at `c`,
-  so a weaker valid precondition might be @{term
-    "\<lambda>s. replies_of' s c \<noteq> None \<longrightarrow>  P' ((replies_of' s)(c \<mapsto> reply))"
-  }
-\<close>
+\<comment>\<open> Warning: this may not be a weakest precondition. `setObject c`
+    asserts that there's already a correctly-typed object at `c`,
+    so a weaker valid precondition might be
+    @{term "\<lambda>s. replies_of' s c \<noteq> None \<longrightarrow>  P' ((replies_of' s)(c \<mapsto> reply))"} \<close>
 lemma setObject_reply_replies_of'[wp]:
   "\<lbrace>\<lambda>s. P' ((replies_of' s)(c \<mapsto> reply))\<rbrace>
   setObject c (reply::reply)
   \<lbrace>\<lambda>_ s. P' (replies_of' s)\<rbrace>"
   by setObject_easy_cases
 
-\<comment>\<open>
-  Warning: this may not be a weakest precondition. `setObject c`
-  asserts that there's already a correctly-typed object at `c`,
-  so a weaker valid precondition might be @{term
-    "\<lambda>s. scs_of' s c \<noteq> None \<longrightarrow>  P' ((scs_of' s)(c \<mapsto> sched_context))"
-  }
-\<close>
+\<comment>\<open> Warning: this may not be a weakest precondition. `setObject c`
+    asserts that there's already a correctly-typed object at `c`,
+    so a weaker valid precondition might be
+    @{term "\<lambda>s. scs_of' s c \<noteq> None \<longrightarrow>  P' ((scs_of' s)(c \<mapsto> sched_context))"} \<close>
 lemma setObject_sched_context_scs_of'[wp]:
   "\<lbrace>\<lambda>s. P' ((scs_of' s)(c \<mapsto> sched_context))\<rbrace>
   setObject c (sched_context::sched_context)
@@ -1894,17 +1872,13 @@ lemma setObject_it[wp]:
   apply (wp x | simp)+
   done
 
-\<comment>\<open>
-  `idle_tcb_ps val` asserts that `val` is a pspace_storable value
-  which corresponds to an idle TCB.
-\<close>
+\<comment>\<open> `idle_tcb_ps val` asserts that `val` is a pspace_storable value
+    which corresponds to an idle TCB. \<close>
 definition idle_tcb_ps :: "('a :: pspace_storable) \<Rightarrow> bool" where
   "idle_tcb_ps val \<equiv> (\<exists>tcb. projectKO_opt (injectKO val) = Some tcb \<and> idle_tcb' tcb)"
 
-\<comment>\<open>
-  `idle_sc_ps val` asserts that `val` is a pspace_storable value
-  which corresponds to an idle SchedContext.
-\<close>
+\<comment>\<open> `idle_sc_ps val` asserts that `val` is a pspace_storable value
+    which corresponds to an idle SchedContext. \<close>
 definition idle_sc_ps :: "('a :: pspace_storable) \<Rightarrow> bool" where
   "idle_sc_ps val \<equiv> (\<exists>sc. sc_of' (injectKO val) = Some sc \<and> idle_sc' sc)"
 
@@ -2202,7 +2176,7 @@ lemma irqs_masked_lift:
 lemma setObject_pspace_domain_valid[wp]:
   "setObject ptr val \<lbrace>pspace_domain_valid\<rbrace>"
   by (clarsimp simp: setObject_def split_def pspace_domain_valid_def valid_def
-                      in_monad lookupAround2_char1 updateObject_size
+                     in_monad lookupAround2_char1 updateObject_size
               split: if_split_asm)
 
 lemma ct_not_inQ_lift:
@@ -2359,10 +2333,8 @@ lemma setObject_wp:
 
 lemmas set_wp = setObject_wp[folded f_def]
 
-\<comment>\<open>
-  Keeps the redundant @{term "obj_at \<top>"} precondition because this matches common abbreviations
-  like @{term "tcb_at'"}.
-\<close>
+\<comment>\<open> Keeps the redundant @{term "obj_at \<top>"} precondition because this matches common abbreviations
+    like @{term "tcb_at'"} \<close>
 lemma setObject_pre:
   fixes obj :: 'a
   assumes "\<lbrace>P and obj_at' (\<lambda>old_obj :: 'a. objBits old_obj = objBits obj) p
@@ -2385,12 +2357,10 @@ lemma setObject_pre:
   apply (fastforce simp: simps)
   done
 
-\<comment>\<open>
-  Keeps the redundant @{term "obj_at \<top>"} precondition because this matches common abbreviations
-  like @{term "tcb_at'"}.
+\<comment>\<open> Keeps the redundant @{term "obj_at \<top>"} precondition because this matches common abbreviations
+    like @{term "tcb_at'"}.
 
-  Lets the postcondition pointer depend on the state for things like @{term "ksCurThread"}.
-\<close>
+    Lets the postcondition pointer depend on the state for things like @{term "ksCurThread"}. \<close>
 lemma setObject_obj_at'_strongest:
   fixes obj :: 'a
   shows "\<lbrace>\<lambda>s. obj_at' (\<lambda>_:: 'a. True) ptr s
@@ -2678,9 +2648,7 @@ locale simple_non_tcb_non_reply_ko' =
                       "g:: obj_ref \<Rightarrow> 'a kernel" for f g
 begin
 
-\<comment>\<open>
-  preservation of valid_replies' requires us to not be touching either of a Reply or a TCB
-\<close>
+\<comment>\<open> preservation of valid_replies' requires us to not be touching either of a Reply or a TCB \<close>
 
 lemma valid_replies'[wp]:
   "\<lbrace>valid_replies' and pspace_distinct' and pspace_aligned'\<rbrace>
@@ -2725,9 +2693,7 @@ locale simple_non_tcb_non_sc_ko' =
                       "g:: obj_ref \<Rightarrow> 'a kernel" for f g
 begin
 
-\<comment>\<open>
-  preservation of valid_idle' requires us to not be touching either of an SC or a TCB
-\<close>
+\<comment>\<open> preservation of valid_idle' requires us to not be touching either of an SC or a TCB \<close>
 
 lemma idle'[wp]:
   "f p v \<lbrace>valid_idle'\<rbrace>"
@@ -2949,7 +2915,6 @@ lemma setObject_ksInterrupt:
   "\<lbrakk> \<And>p q n ko. \<lbrace>\<lambda>s. P (ksInterruptState s)\<rbrace> updateObject val p q n ko \<lbrace>\<lambda>rv s. P (ksInterruptState s)\<rbrace> \<rbrakk>
      \<Longrightarrow> \<lbrace>\<lambda>s. P (ksInterruptState s)\<rbrace> setObject ptr val \<lbrace>\<lambda>rv s. P (ksInterruptState s)\<rbrace>"
   by (simp add: setObject_ksPSpace_only)
-
 
 lemma set_ntfn_iflive'[wp]:
   "\<lbrace>\<lambda>s. if_live_then_nonz_cap' s
@@ -4126,7 +4091,7 @@ lemma scs_of_rewrite:
   by (fastforce simp: sc_heap_of_state_def opt_map_def
               split: option.splits Structures_A.kernel_object.splits)
 
-abbreviation
+abbreviation sc_replies_of2 :: "'z state \<Rightarrow> obj_ref \<Rightarrow>obj_ref list option" where
   "sc_replies_of2 s \<equiv> scs_of2 s ||> sc_replies"
 
 lemma sc_replies_of_rewrite:
@@ -4151,7 +4116,7 @@ lemma sc_replies_relation_rewrite:
   unfolding sc_replies_relation_def sc_replies_relation2_def sc_replies_of_rewrite
   by simp
 
-definition is_active_sc2 where
+definition is_active_sc2 :: "obj_ref \<Rightarrow> 'z state \<Rightarrow> bool" where
   "is_active_sc2 p s \<equiv> ((\<lambda>sc. 0 < sc_refill_max sc) |< scs_of2 s) p"
 
 lemma is_active_sc_rewrite:
@@ -4168,7 +4133,7 @@ lemma active_sc_at'_rewrite:
   "active_sc_at' scp s = (is_active_sc' scp s \<and> sc_at' scp s)"
   by (fastforce simp: active_sc_at'_def is_active_sc'_def obj_at'_def opt_map_def projectKOs)
 
-abbreviation
+abbreviation valid_refills2 :: "obj_ref \<Rightarrow> 'z state \<Rightarrow> bool" where
   "valid_refills2 scp s \<equiv>
      ((\<lambda>sc. if sc_period sc = 0 then rr_valid_refills (sc_refills sc) (sc_refill_max sc) (sc_budget sc)
       else sp_valid_refills (sc_refills sc) (sc_refill_max sc) (sc_period sc) (sc_budget sc)) |<
@@ -4181,9 +4146,7 @@ lemma valid_refills_rewrite:
   by (fastforce simp: opt_map_red vs_all_heap_simps valid_refills_def
                split: option.splits Structures_A.kernel_object.splits)
 
-definition
-  round_robin2 :: "obj_ref \<Rightarrow> 'z state \<Rightarrow> bool"
-where
+definition round_robin2 :: "obj_ref \<Rightarrow> 'z state \<Rightarrow> bool" where
   "round_robin2 sc_ptr s \<equiv> ((\<lambda>sc. sc_period sc = 0) |< scs_of2 s) sc_ptr"
 
 lemma round_robin_rewrite:
@@ -4191,8 +4154,9 @@ lemma round_robin_rewrite:
   by (clarsimp simp: round_robin_def round_robin2_def vs_all_heap_simps opt_map_def
               split: option.splits Structures_A.kernel_object.splits)
 
-abbreviation
-  sc_refills_sc_at2 where
+abbreviation sc_refills_sc_at2 ::
+  "(Structures_A.refill list \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> 'z state \<Rightarrow> bool"
+  where
   "sc_refills_sc_at2 P scp s \<equiv> ((\<lambda>sc. P (sc_refills sc)) |< scs_of2 s) scp"
 
 lemma sc_refills_sc_at_rewrite:
@@ -4684,7 +4648,6 @@ lemma getObject_tcb_wp:
                      split_def objBits_simps' loadObject_default_def
                      projectKOs obj_at'_def in_magnitude_check
               dest!: readObject_misc_ko_at')
-
 
 lemma threadSet_tcbSCs_of:
   "\<lbrace>\<lambda>s. P (\<lambda>a. if a = t then tcbSchedContext (f (the (tcbs_of' s a))) else tcbSCs_of s a)\<rbrace>
