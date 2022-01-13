@@ -11,8 +11,9 @@ begin
 (* Collect empty_fail lemmas here. naming convention is emtpy_fail_NAME.
    Unless there is a good reason, they should all be [intro!, wp, simp] *)
 
-lemma empty_fail_projectKO [simp, intro!]:
-  "empty_fail (gets_the $ projectKO v)" by wpsimp
+lemma empty_fail_fun_app[intro!]:
+  "empty_fail (f x) \<Longrightarrow> empty_fail (f $ x)"
+  by simp
 
 lemma empty_fail_alignCheck [intro!, wp, simp]:
   "empty_fail (alignCheck a b)"

@@ -12,10 +12,6 @@ imports
   ArchMove_R
 begin
 
-(* FIXME: this should go somewhere in spec *)
-translations
-  (type) "'a kernel" <=(type) "kernel_state \<Rightarrow> ('a \<times> kernel_state) set \<times> bool"
-
 (* global data and code of the kernel, not covered by any cap *)
 axiomatization
   kernel_data_refs :: "word64 set"
@@ -185,23 +181,9 @@ abbreviation replySC :: "reply \<Rightarrow> obj_ref option" where
 abbreviation replyNext_of :: "reply \<Rightarrow> obj_ref option" where
   "replyNext_of \<equiv> \<lambda>r. getReplyNextPtr (replyNext r)"
 
-lemma getReplyNextPtr_None[simp]:
-  "getReplyNextPtr None = None" by (simp add: getReplyNextPtr_def)
+lemmas getReplyNextPr_simps[simp] = getReplyNextPtr_def[split_simps option.split reply_next.split]
 
-lemma getHeadScPtr_None[simp]:
-  "getHeadScPtr None = None" by (simp add: getHeadScPtr_def)
-
-lemma getReplyNextPtr_Some_Next[simp]:
-  "getReplyNextPtr (Some (Next rn)) = Some rn" by (simp add: getReplyNextPtr_def)
-
-lemma getHeadScPtr_Some_Head[simp]:
-  "getHeadScPtr (Some (Head sc)) = Some sc" by (simp add: getHeadScPtr_def)
-
-lemma theReplyNextPtr_Some_Next[simp]:
-  "theReplyNextPtr (Some (Next rn)) = rn" by (simp add: theReplyNextPtr_def)
-
-lemma theHeadScPtr_Some_Head[simp]:
-  "theHeadScPtr (Some (Head sc)) = sc" by (simp add: theHeadScPtr_def)
+lemmas getHeadScPtr_simps[simp] = getHeadScPtr_def[split_simps option.split reply_next.split]
 
 lemma getReplyNextPtr_Some_iff[iff]:
   "(getReplyNextPtr x) = (Some rn) \<longleftrightarrow> x = Some (Next rn)"
@@ -291,19 +273,14 @@ type_synonym ref_set = "(obj_ref \<times> reftype) set"
 
 definition tcb_st_refs_of' :: "thread_state \<Rightarrow> ref_set" where
   "tcb_st_refs_of' z \<equiv> case z of
-    Running                    => {}
-  | Inactive                   => {}
-  | Restart                    => {}
-  | (BlockedOnReply r)         => if bound r then {(the r, TCBReply)} else {}
-  | IdleThreadState            => {}
-  | (BlockedOnReceive x _ r)   => if bound r then {(x, TCBBlockedRecv), (the r, TCBReply)}
+    (BlockedOnReply r)         \<Rightarrow> if bound r then {(the r, TCBReply)} else {}
+  | (BlockedOnReceive x _ r)   \<Rightarrow> if bound r then {(x, TCBBlockedRecv), (the r, TCBReply)}
                                   else {(x, TCBBlockedRecv)}
-  | (BlockedOnSend x _ _ _ _)  => {(x, TCBBlockedSend)}
-  | (BlockedOnNotification x)  => {(x, TCBSignal)}"
+  | (BlockedOnSend x _ _ _ _)  \<Rightarrow> {(x, TCBBlockedSend)}
+  | (BlockedOnNotification x)  \<Rightarrow> {(x, TCBSignal)}
+  | _                          \<Rightarrow> {}"
 
-definition
-  tcb_bound_refs' ::
-  "obj_ref option \<Rightarrow> obj_ref option \<Rightarrow> obj_ref option \<Rightarrow> ref_set" where
+definition tcb_bound_refs' :: "obj_ref option \<Rightarrow> obj_ref option \<Rightarrow> obj_ref option \<Rightarrow> ref_set" where
   "tcb_bound_refs' ntfn sc yt \<equiv> get_refs TCBBound ntfn
                                   \<union> get_refs TCBSchedContext sc
                                   \<union> get_refs TCBYieldTo yt"
@@ -349,10 +326,6 @@ definition list_refs_of_reply' :: "reply \<Rightarrow> ref_set" where
 abbreviation list_refs_of_replies_opt' :: "kernel_state \<Rightarrow> obj_ref \<Rightarrow> ref_set option" where
   "list_refs_of_replies_opt' s \<equiv> replies_of' s ||> list_refs_of_reply'"
 
-(* FIXME RT: move to Option_Monad? *)
-definition map_set :: "('a \<Rightarrow> 'b set option) \<Rightarrow> 'a \<Rightarrow> 'b set" where
-  "map_set f \<equiv> case_option {} id \<circ> f"
-
 abbreviation list_refs_of_replies' :: "kernel_state \<Rightarrow> obj_ref \<Rightarrow> ref_set" where
   "list_refs_of_replies' s \<equiv> map_set (list_refs_of_replies_opt' s)"
 
@@ -363,7 +336,6 @@ lemmas refs_of'_defs[simp] = refs_of_tcb'_def refs_of_ntfn'_def refs_of_sc'_def 
 definition refs_of' :: "kernel_object \<Rightarrow> ref_set" where
   "refs_of' x \<equiv> case x of
     (KOTCB tcb)           => refs_of_tcb' tcb
-  | (KOCTE cte)           => {}
   | (KOEndpoint ep)       => ep_q_refs_of' ep
   | (KONotification ntfn) => refs_of_ntfn' ntfn
   | (KOSchedContext sc)   => refs_of_sc' sc
@@ -393,22 +365,18 @@ definition live_ntfn' :: "notification \<Rightarrow> bool" where
 definition live_reply' :: "reply \<Rightarrow> bool" where
   "live_reply' reply \<equiv> bound (replyTCB reply) \<or> bound (replyNext reply) \<or> bound (replyPrev reply)"
 
-primrec live' :: "kernel_object \<Rightarrow> bool" where
+fun live' :: "kernel_object \<Rightarrow> bool" where
   "live' (KOTCB tcb) =
      (bound (tcbBoundNotification tcb) \<or>
       bound (tcbSchedContext tcb) \<and> tcbSchedContext tcb \<noteq> Some idle_sc_ptr \<or>
       bound (tcbYieldTo tcb) \<or>
       tcbState tcb \<noteq> Inactive \<and> tcbState tcb \<noteq> IdleThreadState \<or>
       tcbQueued tcb)"
-| "live' (KOCTE cte)           = False"
 | "live' (KOEndpoint ep)       = (ep \<noteq> IdleEP)"
 | "live' (KONotification ntfn) = live_ntfn' ntfn"
 | "live' (KOSchedContext sc)   = live_sc' sc"
 | "live' (KOReply r)           = live_reply' r"
-| "live' (KOUserData)          = False"
-| "live' (KOUserDataDevice)    = False"
-| "live' (KOKernelData)        = False"
-| "live' (KOArch ako)          = False"
+| "live' _                     = False"
 
 fun zobj_refs' :: "capability \<Rightarrow> obj_ref set" where
   "zobj_refs' (EndpointCap r _ _ _ _ _)  = {r}"
@@ -416,7 +384,7 @@ fun zobj_refs' :: "capability \<Rightarrow> obj_ref set" where
 | "zobj_refs' (ThreadCap r)              = {r}"
 | "zobj_refs' (SchedContextCap r _)      = {r}"
 | "zobj_refs' (ReplyCap r _)             = {r}"
-| "zobj_refs'                 _          = {}"
+| "zobj_refs' _                          = {}"
 
 definition ex_nonz_cap_to' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "ex_nonz_cap_to' ref \<equiv> \<lambda>s. \<exists>cref. cte_wp_at' (\<lambda>c. ref \<in> zobj_refs' (cteCap c)) cref s"
@@ -424,21 +392,12 @@ definition ex_nonz_cap_to' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> 
 definition if_live_then_nonz_cap' :: "kernel_state \<Rightarrow> bool" where
   "if_live_then_nonz_cap' s \<equiv> \<forall>ptr. ko_wp_at' live' ptr s \<longrightarrow> ex_nonz_cap_to' ptr s"
 
-primrec cte_refs' :: "capability \<Rightarrow> obj_ref \<Rightarrow> obj_ref set" where
-  "cte_refs' (UntypedCap _ _ _ _) _      = {}"
-| "cte_refs' NullCap _                   = {}"
-| "cte_refs' DomainCap _                 = {}"
-| "cte_refs' (EndpointCap _ _ _ _ _ _) _ = {}"
-| "cte_refs' (NotificationCap _ _ _ _) _ = {}"
-| "cte_refs' (CNodeCap ref bits _ _) x   = (\<lambda>x. ref + (x * 2^cteSizeBits)) ` {0 .. 2 ^ bits - 1}"
-| "cte_refs' (ThreadCap ref) x           = (\<lambda>x. ref + x) ` (dom tcb_cte_cases)"
-| "cte_refs' (Zombie r _ n) x            = (\<lambda>x. r + (x * 2 ^ cteSizeBits)) ` {0 ..< of_nat n}"
-| "cte_refs' (ArchObjectCap _) _         = {}"
-| "cte_refs' (IRQControlCap) _           = {}"
-| "cte_refs' (IRQHandlerCap irq) x       = {x + (ucast irq) * 16}"
-| "cte_refs' (ReplyCap _ _) _            = {}"
-| "cte_refs' (SchedContextCap _ _) _     = {}"
-| "cte_refs' SchedControlCap _           = {}"
+fun cte_refs' :: "capability \<Rightarrow> obj_ref \<Rightarrow> obj_ref set" where
+  "cte_refs' (CNodeCap ref bits _ _) x = (\<lambda>x. ref + (x << cteSizeBits)) ` {0 .. mask bits}"
+| "cte_refs' (ThreadCap ref) x         = (\<lambda>x. ref + x) ` dom tcb_cte_cases"
+| "cte_refs' (Zombie ref _ n) x        = (\<lambda>x. ref + (x << cteSizeBits)) ` {0 ..< of_nat n}"
+| "cte_refs' (IRQHandlerCap irq) x     = {x + (ucast irq << cteSizeBits)}"
+| "cte_refs' _ _                       = {}"
 
 abbreviation irq_node' :: "kernel_state \<Rightarrow> obj_ref" where
   "irq_node' s \<equiv> intStateIRQNode (ksInterruptState s)"
@@ -654,13 +613,13 @@ definition valid_ep' :: "Structures_H.endpoint \<Rightarrow> kernel_state \<Righ
 
 definition valid_ntfn' :: "notification \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_ntfn' ntfn s \<equiv> (case ntfnObj ntfn of
-    Structures_H.IdleNtfn \<Rightarrow> True
-  | Structures_H.WaitingNtfn ts \<Rightarrow>
+    IdleNtfn \<Rightarrow> True
+  | WaitingNtfn ts \<Rightarrow>
       ts \<noteq> [] \<and> (\<forall>t \<in> set ts. tcb_at' t s) \<and> distinct ts
       \<and> (case ntfnBoundTCB ntfn of Some tcb \<Rightarrow> ts = [tcb] | _ \<Rightarrow> True)
-  | Structures_H.ActiveNtfn b \<Rightarrow> True)
-      \<and> valid_bound_tcb' (ntfnBoundTCB ntfn) s
-      \<and> valid_bound_sc' (ntfnSc ntfn) s"
+  | ActiveNtfn b \<Rightarrow> True)
+  \<and> valid_bound_tcb' (ntfnBoundTCB ntfn) s
+  \<and> valid_bound_sc' (ntfnSc ntfn) s"
 
 definition valid_sched_context' :: "sched_context \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_sched_context' sc s \<equiv>
@@ -998,9 +957,9 @@ abbreviation is_reply_linked :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow
 
 definition valid_replies'_except :: "obj_ref set \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "valid_replies'_except RS s \<equiv>
-     (\<forall>rptr. rptr \<notin> RS \<and> is_reply_linked rptr s
-             \<longrightarrow> (\<exists>tptr. replyTCBs_of s rptr = Some tptr
-                         \<and> st_tcb_at' ((=) (BlockedOnReply (Some rptr))) tptr s))"
+     \<forall>rptr. rptr \<notin> RS \<and> is_reply_linked rptr s
+            \<longrightarrow> (\<exists>tptr. replyTCBs_of s rptr = Some tptr
+                        \<and> st_tcb_at' ((=) (BlockedOnReply (Some rptr))) tptr s)"
 
 definition [simplified empty_iff simp_thms valid_replies'_except_def]:
   "valid_replies' s \<equiv> valid_replies'_except {} s"
@@ -1024,17 +983,10 @@ where
                    no_0_obj' and
                    valid_mdb'"
 
-primrec
-  runnable' :: "Structures_H.thread_state \<Rightarrow> bool"
-where
-  "runnable' (Structures_H.Running)                 = True"
-| "runnable' (Structures_H.Inactive)                = False"
-| "runnable' (Structures_H.Restart)                 = True"
-| "runnable' (Structures_H.IdleThreadState)         = False"
-| "runnable' (Structures_H.BlockedOnReceive _ _ _)  = False"
-| "runnable' (Structures_H.BlockedOnReply _)        = False"
-| "runnable' (Structures_H.BlockedOnSend a b c d e) = False"
-| "runnable' (Structures_H.BlockedOnNotification x) = False"
+fun runnable' :: "thread_state \<Rightarrow> bool" where
+  "runnable' Running = True"
+| "runnable' Restart = True"
+| "runnable' _       = False"
 
 definition
   inQ :: "domain \<Rightarrow> priority \<Rightarrow> tcb \<Rightarrow> bool"
@@ -1050,18 +1002,16 @@ where
                      \<and> ksReadyQueuesL2Bitmap s (d, invertL1Index (prioToL1Index p))
                          !! unat (p && mask wordRadix)"
 
-definition
-  valid_queues_no_bitmap :: "kernel_state \<Rightarrow> bool"
-where
+definition valid_queues_no_bitmap :: "kernel_state \<Rightarrow> bool" where
  "valid_queues_no_bitmap \<equiv> \<lambda>s.
-   (\<forall>d p. (\<forall>t \<in> set (ksReadyQueues s (d, p)). obj_at' (inQ d p) t s)
-          \<and> (d > maxDomain \<or> p > maxPriority \<longrightarrow> ksReadyQueues s (d,p) = []))"
+   \<forall>d p. (\<forall>t \<in> set (ksReadyQueues s (d, p)). obj_at' (inQ d p) t s)
+          \<and> (d > maxDomain \<or> p > maxPriority \<longrightarrow> ksReadyQueues s (d,p) = [])"
 
 defs ready_qs_runnable_def:
   "ready_qs_runnable \<equiv> \<lambda>s. \<forall>d p. \<forall>t \<in> set (ksReadyQueues s (d, p)). st_tcb_at' runnable' t s"
 
 definition notQueued :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
-  "notQueued t s \<equiv> (\<forall>a b. t \<notin> set (ksReadyQueues s (a, b)))"
+  "notQueued t s \<equiv> (\<forall>d p. t \<notin> set (ksReadyQueues s (d, p)))"
 
 definition
   (* A priority is used as a two-part key into the bitmap structure. If an L2 bitmap entry
@@ -1109,12 +1059,12 @@ lemmas bitmapQ_defs = valid_bitmapQ_def valid_bitmapQ_except_def bitmapQ_def
 
 (* valid_queues is too strong sometimes *)
 definition valid_inQ_queues :: "kernel_state \<Rightarrow> bool" where
-  "valid_inQ_queues \<equiv> \<lambda>s. \<forall>d p. (\<forall>t\<in>set (ksReadyQueues s (d, p)). obj_at' (inQ d p) t s)"
+  "valid_inQ_queues \<equiv> \<lambda>s. \<forall>d p. \<forall>t\<in>set (ksReadyQueues s (d, p)). obj_at' (inQ d p) t s"
 
 (* when in the middle of updates, a particular queue might not be entirely valid *)
 definition valid_inQ_queues_except :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
  "valid_inQ_queues_except t'
-   \<equiv> \<lambda>s. (\<forall>d p. (\<forall>t \<in> set (ksReadyQueues s (d, p)). t \<noteq> t' \<longrightarrow> obj_at' (inQ d p) t s))"
+   \<equiv> \<lambda>s. \<forall>d p. \<forall>t \<in> set (ksReadyQueues s (d, p)). t \<noteq> t' \<longrightarrow> obj_at' (inQ d p) t s"
 
 definition
   valid_queues' :: "kernel_state \<Rightarrow> bool"
@@ -1178,10 +1128,9 @@ definition sch_act_sane :: "kernel_state \<Rightarrow> bool" where
 abbreviation
   "sch_act_not t \<equiv> \<lambda>s. ksSchedulerAction s \<noteq> SwitchToThread t"
 
-definition
-  idle_tcb'_2 :: "Structures_H.thread_state \<times> obj_ref option \<times> obj_ref option \<times> obj_ref option
-                  \<Rightarrow> bool"
-where
+definition idle_tcb'_2 ::
+  "thread_state \<times> obj_ref option \<times> obj_ref option \<times> obj_ref option \<Rightarrow> bool"
+  where
   "idle_tcb'_2 \<equiv> \<lambda>(st, ntfn_opt, sc_opt, yt_opt).
                     (idle' st \<and> ntfn_opt = None \<and> sc_opt = Some idle_sc_ptr \<and> yt_opt = None)"
 
@@ -2546,11 +2495,8 @@ lemma typ_at_lift_cte_at':
   done
 
 lemma typ_at_lift_page_table_at'_strong:
-  assumes x: "\<And>p. f \<lbrace>\<lambda>s. P (typ_at' (ArchT PTET) p s)\<rbrace>"
-  shows      "f \<lbrace>\<lambda>s. P (page_table_at' p s)\<rbrace>"
+  "(\<And>p. f \<lbrace>\<lambda>s. P (typ_at' (ArchT PTET) p s)\<rbrace>) \<Longrightarrow> f \<lbrace>\<lambda>s. P (page_table_at' p s)\<rbrace>"
   unfolding page_table_at'_def All_less_Ball
-  using x
-  apply -
   apply (rule P_bool_lift[where P=P])
   apply (wpsimp wp: hoare_vcg_const_Ball_lift hoare_vcg_bex_lift hoare_vcg_imp_lift
                     hoare_vcg_all_lift hoare_vcg_ex_lift
@@ -4034,11 +3980,10 @@ lemma no_replySC_valid_replies'_sc_asrt:
 
 (** sc_with_reply' **)
 
-definition sc_with_reply' where
-  "sc_with_reply' rp s' =
-     the_pred_option
-         (\<lambda>sc_ptr. \<exists>xs. heap_ls (replyPrevs_of s') (scReplies_of s' sc_ptr) xs
-                     \<and> rp \<in> set xs)"
+definition sc_with_reply' :: "obj_ref \<Rightarrow> kernel_state \<Rightarrow> obj_ref option" where
+  "sc_with_reply' rp s'
+     \<equiv> the_pred_option (\<lambda>sc_ptr. \<exists>xs. heap_ls (replyPrevs_of s') (scReplies_of s' sc_ptr) xs
+                                       \<and> rp \<in> set xs)"
 
 lemma sc_with_reply'_SomeD:
   "sc_with_reply' rp s' = Some scp \<Longrightarrow>

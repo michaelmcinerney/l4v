@@ -6,7 +6,6 @@
 
 theory KHeap_R
 imports
-  "AInvs.AInvs"
   Machine_R
 begin
 
@@ -31,9 +30,7 @@ lemma valid_replies'_def2:
                   split: option.splits)
   done
 
-primrec
-  same_caps' :: "Structures_H.kernel_object \<Rightarrow> Structures_H.kernel_object \<Rightarrow> bool"
-where
+primrec same_caps' :: "kernel_object \<Rightarrow> kernel_object \<Rightarrow> bool" where
   "same_caps' val (KOTCB tcb) = (\<exists>tcb'. val = KOTCB tcb' \<and>
                                         (\<forall>(getF, t) \<in> ran tcb_cte_cases. getF tcb' = getF tcb))"
 | "same_caps' val (KOCTE cte) = (val = KOCTE cte)"
@@ -64,14 +61,12 @@ lemma lookupAround2_known1:
   "m x = Some y \<Longrightarrow> fst (lookupAround2 x m) = Some (x, y)"
   by (fastforce simp: lookupAround2_char1)
 
-abbreviation (input)
-  set_ko' :: "machine_word \<Rightarrow> kernel_object \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
-where
+abbreviation (input) set_ko' :: "machine_word \<Rightarrow> kernel_object \<Rightarrow> kernel_state \<Rightarrow> kernel_state" where
   "set_ko' ptr ko s \<equiv> s\<lparr>ksPSpace := (ksPSpace s)(ptr := Some ko)\<rparr>"
 
-abbreviation (input)
-  set_obj' :: "machine_word \<Rightarrow> ('a :: pspace_storable) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
-where
+abbreviation (input) set_obj' ::
+  "machine_word \<Rightarrow> ('a :: pspace_storable) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+  where
   "set_obj' ptr obj s \<equiv> set_ko' ptr (injectKO obj) s"
 
 context begin interpretation Arch . (*FIXME: arch_split*)
@@ -351,9 +346,7 @@ lemma obj_at_setObject1:
   \<lbrace> \<lambda>rv. obj_at' (\<lambda>x::'a::pspace_storable. True) t \<rbrace>"
   apply (simp add: setObject_def split_def)
   apply (rule hoare_seq_ext [OF _ hoare_gets_post])
-  apply (clarsimp simp: valid_def in_monad obj_at'_def
-                        projectKOs lookupAround2_char1
-                        project_inject)
+  apply (clarsimp simp: valid_def in_monad obj_at'_def lookupAround2_char1 project_inject)
   apply (frule updateObject_size, drule R)
    apply (intro conjI impI, simp_all)
       apply fastforce+
@@ -373,7 +366,7 @@ lemma obj_at_setObject2:
   apply (clarsimp simp: valid_def in_monad)
   apply (frule updateObject_type)
   apply (drule R)
-  apply (clarsimp simp: obj_at'_def projectKOs)
+  apply (clarsimp simp: obj_at'_def)
   apply (rule conjI)
    apply (clarsimp simp: lookupAround2_char1)
    apply (drule iffD1 [OF project_koType, OF exI])
@@ -453,11 +446,9 @@ lemma ko_wp_at'_set_ko'_distinct:
   done
 
 lemma obj_at'_set_obj'_distinct:
-  assumes "p \<noteq> p'"
-          "obj_at' Q p' s"
-  shows "obj_at' P p (set_ko' p' ko s) = obj_at' P p s"
-  using assms apply -
-  apply (rule iffI; fastforce simp: obj_at'_def projectKO_eq project_inject ps_clear_upd)
+  "\<lbrakk>p \<noteq> p'; obj_at' Q p' s\<rbrakk>
+   \<Longrightarrow> obj_at' P p (set_ko' p' ko s) = obj_at' P p s"
+  apply (fastforce simp: obj_at'_def ps_clear_upd)
   done
 
 lemmas pred_tcb_at'_set_obj'_distinct =
@@ -496,7 +487,7 @@ lemma typ_at'_ksPSpace_exI:
     Needs to be a definition so we can easily refer to it within ML as a constant. \<close>
 definition distinct_updateObject_types ::
   "('a :: pspace_storable) itself \<Rightarrow> ('b :: pspace_storable) itself \<Rightarrow> bool"
-where
+  where
   "distinct_updateObject_types t t' \<equiv>
     (\<forall>ko' s' (v :: 'a) ko p before after s.
       (ko', s') \<in> fst (updateObject v ko p before after s)
@@ -675,7 +666,7 @@ lemma obj_at_setObject3:
   fixes P::"'a::pspace_storable \<Rightarrow> bool"
   assumes R: "\<And>ko s y n. (updateObject v ko p y n s)
                    = (updateObject_default v ko p y n s)"
-  assumes P: "\<And>(v::'a::pspace_storable). (1 :: word32) < 2 ^ (objBits v)"
+  assumes P: "\<And>(v::'a::pspace_storable). (1 :: machine_word) < 2 ^ (objBits v)"
   shows "\<lbrace>(\<lambda>s. P v)\<rbrace> setObject p v \<lbrace>\<lambda>rv. obj_at' P p\<rbrace>"
   apply (clarsimp simp add: valid_def in_monad obj_at'_def
                             setObject_def split_def projectKOs
@@ -959,7 +950,7 @@ proof -
 qed
 
 (* FIXME rt merge: move to Word_lib *)
-lemma max_word_minus_1[simp]: "0xFFFFFFFF + 2^x = (2^x - 1::32 word)"
+lemma max_word_minus_1[simp]: "0xFFFFFFFFFFFFFFFF + 2^x = (2^x - 1::64 word)"
   by simp
 
 lemma ctes_of'_after_update:
@@ -1151,8 +1142,7 @@ lemma getEndpoint_corres:
   apply (clarsimp simp: in_monad split_def bind_def gets_def get_def return_def
                  dest!: readObject_misc_ko_at')
   apply (clarsimp simp: assert_def fail_def obj_at_def return_def is_ep partial_inv_def)
-  apply (rename_tac ep' ep)
-  apply (clarsimp simp: state_relation_def pspace_relation_def obj_at'_def projectKOs)
+  apply (clarsimp simp: state_relation_def pspace_relation_def obj_at'_def)
   apply (drule bspec)
    apply blast
   apply (simp add: other_obj_relation_def)
@@ -1292,7 +1282,7 @@ lemma setObject_other_corres:
   corres dc (obj_at (\<lambda>ko. a_type ko = a_type ob) ptr and obj_at (same_caps ob) ptr)
             (obj_at' (P :: 'a \<Rightarrow> bool) ptr)
             (set_object ptr ob) (setObject ptr ob')"
-  supply image_cong_simp [cong del]
+  supply image_cong_simp [cong del] projectKOs[simp del]
   apply (rule corres_no_failI)
    apply (rule no_fail_pre)
     apply wp
@@ -1301,8 +1291,8 @@ lemma setObject_other_corres:
   apply (unfold set_object_def setObject_def)
   apply (clarsimp simp: in_monad split_def bind_def gets_def get_def Bex_def
                         put_def return_def modify_def get_object_def x
-                        projectKOs obj_at_def in_magnitude_check[OF _ P]
-                        updateObject_default_def)
+                        projectKOs obj_at_def
+                        updateObject_default_def in_magnitude_check [OF _ P])
   apply (rename_tac ko)
   apply (clarsimp simp add: state_relation_def z)
   apply (clarsimp simp add: caps_of_state_after_update cte_wp_at_after_update
@@ -1347,7 +1337,7 @@ lemma setObject_other_corres:
   apply (clarsimp simp add: opt_map_def)
   done
 
-lemmas obj_at_simps = obj_at_def obj_at'_def projectKOs map_to_ctes_upd_other
+lemmas obj_at_simps = obj_at_def obj_at'_def map_to_ctes_upd_other
                       is_other_obj_relation_type_def
                       a_type_def objBits_simps other_obj_relation_def pageBits_def
                       archObjSize_def
@@ -1386,7 +1376,7 @@ lemma set_reply_corres: (* for reply update that doesn't touch the reply stack *
   corres dc \<top>
             (obj_at' (\<lambda>ko. replyPrev_same ae' ko) ptr)
             (set_reply ptr ae) (setReply ptr ae')"
-  proof -
+proof -
   have x: "updateObject ae' = updateObject_default ae'" by clarsimp
   have z: "\<And>s. reply_at' ptr s
                \<Longrightarrow> map_to_ctes ((ksPSpace s) (ptr \<mapsto> injectKO ae')) = map_to_ctes (ksPSpace s)"
@@ -1448,13 +1438,13 @@ lemma set_reply_corres: (* for reply update that doesn't touch the reply stack *
     apply (drule_tac x=p in spec)
     by (subst replyPrevs_of_replyPrev_same_update[simplified, where ob'=ae', simplified];
         simp add: typ_at'_def ko_wp_at'_def obj_at'_def project_inject opt_map_def)
-  qed
+qed
 
 lemma setReply_not_queued_corres: (* for reply updates on replies not in fst ` replies_with_sc *)
   "reply_relation r1 r2 \<Longrightarrow>
   corres dc (\<lambda>s. ptr \<notin> fst ` replies_with_sc s) (reply_at' ptr)
             (set_reply ptr r1) (setReply ptr r2)"
-  proof -
+proof -
   have x: "updateObject r2 = updateObject_default r2" by clarsimp
   have z: "\<And>s. reply_at' ptr s
                \<Longrightarrow> map_to_ctes ((ksPSpace s) (ptr \<mapsto> injectKO r2)) = map_to_ctes (ksPSpace s)"
@@ -1525,7 +1515,7 @@ lemma setReply_not_queued_corres: (* for reply updates on replies not in fst ` r
     apply (simp add: typ_at'_def ko_wp_at'_def obj_at'_def project_inject opt_map_def)
    apply (simp add: typ_at'_def ko_wp_at'_def obj_at'_def project_inject opt_map_def)
   done
-  qed
+qed
 
 lemma sc_at'_cross:
   assumes p: "pspace_relation (kheap s) (ksPSpace s')"
@@ -2700,7 +2690,6 @@ lemma idle'[wp]:
   unfolding f_def
   apply (wp setObject_idle'
          ; simp add: default_update updateObject_default_inv idle_tcb_ps_def idle_sc_ps_def)
-  apply (clarsimp simp: projectKOs)
   done
 
 end
@@ -3912,7 +3901,7 @@ lemma valid_replies_sc_cross:
     pspace_aligned s; pspace_distinct s; reply_at rptr s\<rbrakk>
    \<Longrightarrow> valid_replies'_sc_asrt rptr s'"
   apply (clarsimp simp: valid_replies_defs valid_replies'_sc_asrt_def)
-  apply (rename_tac scptr rp ko)
+  apply (rename_tac scptr rp)
   apply (prop_tac "sc_replies_sc_at (\<lambda>rs. rptr \<in> set rs) scptr s")
    apply (frule_tac sc_ptr=scptr and reply_ptr=rptr in sym_refs_sc_replies_sc_at)
     apply (rule ccontr)
@@ -4095,15 +4084,13 @@ lemma sc_replies_of_rewrite:
   by (fastforce simp: sc_heap_of_state_def sc_replies_of_scs_def opt_map_def map_project_def
               split: option.splits Structures_A.kernel_object.splits)
 
-definition
-  sc_replies_relation2_2 ::
+definition sc_replies_relation2_2 ::
   "(obj_ref \<rightharpoonup> obj_ref list) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> bool"
   where
   "sc_replies_relation2_2 sc_repls scRepl replPrevs \<equiv>
      \<forall>p replies. sc_repls p = Some replies \<longrightarrow> heap_ls replPrevs (scRepl p) replies"
 
-abbreviation sc_replies_relation2 :: "det_state \<Rightarrow> kernel_state \<Rightarrow> bool"
-  where
+abbreviation sc_replies_relation2 :: "det_state \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "sc_replies_relation2 s s' \<equiv>
     sc_replies_relation2_2 (sc_replies_of2 s) (scReplies_of s') (replyPrevs_of s')"
 
@@ -4367,7 +4354,7 @@ end
 
 (* FIXME RT: rename *)
 (* this lets cross the sc size information from concrete to abstract *)
-lemma ko_at'_cross:
+lemma ko_at_sc__cross:
   assumes p: "pspace_relation (kheap s) (ksPSpace s')"
   assumes t: "ko_at' (sc'::sched_context) ptr s'"
   shows "sc_obj_at (objBits sc' - minSchedContextBits) ptr s" using assms
@@ -4477,11 +4464,6 @@ lemma sch_act_simple_cross_rel:
                 dest: state_relation_sched_act_relation
                split: Structures_A.scheduler_action.splits)
 
-(* FIXME RT: move to Corres_UL.thy *)
-lemma cross_relF:
-  "(s, s') \<in> state_relation \<Longrightarrow> cross_rel A B \<Longrightarrow> A s \<Longrightarrow> B s'"
-  by (clarsimp simp: cross_rel_def)
-
 lemma valid_tcb_state'_simps[simp]:
   "valid_tcb_state' Running = \<top>"
   "valid_tcb_state' Inactive = \<top>"
@@ -4493,7 +4475,7 @@ lemma valid_tcb_state'_simps[simp]:
 
 lemma tcb_at'_ex1_ko_at':
   "tcb_at' t s \<Longrightarrow> \<exists>!tcb. ko_at' (tcb::tcb) t s"
-  by (clarsimp simp: obj_at'_def)
+  by (fastforce simp: obj_at'_def)
 
 lemma ex1_ex_eq_all:
   "\<exists>!x. Q x \<Longrightarrow> (\<exists>x. Q x \<and> P x) = (\<forall>x. Q x \<longrightarrow> P x)"

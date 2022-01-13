@@ -131,7 +131,7 @@ lemma projectKO_user_data_device:
   by (cases ko)
      (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)
 
-lemmas projectKOs =
+lemmas projectKOs[simp] =
   projectKO_ntfn projectKO_ep projectKO_cte projectKO_tcb projectKO_reply projectKO_sc
   projectKO_ASID projectKO_PTE projectKO_user_data projectKO_user_data_device
   projectKO_eq
@@ -143,7 +143,7 @@ lemma capAligned_epI:
   apply (drule ko_wp_at_norm)
   apply clarsimp
   apply (drule ko_wp_at_aligned)
-  apply (simp add: objBits_simps' projectKOs capUntypedPtr_def isCap_simps)
+  apply (simp add: objBits_simps' capUntypedPtr_def isCap_simps)
   done
 
 lemma capAligned_ntfnI:
@@ -151,7 +151,7 @@ lemma capAligned_ntfnI:
   apply (clarsimp simp: obj_at'_real_def capAligned_def
                         objBits_simps word_bits_def capUntypedPtr_def isCap_simps)
   apply (fastforce dest: ko_wp_at_norm
-                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)
+                  dest!: ko_wp_at_aligned simp: objBits_simps')
   done
 
 lemma capAligned_tcbI:
@@ -159,7 +159,7 @@ lemma capAligned_tcbI:
   apply (clarsimp simp: obj_at'_real_def capAligned_def
                         objBits_simps word_bits_def capUntypedPtr_def isCap_simps)
   apply (fastforce dest: ko_wp_at_norm
-                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)
+                  dest!: ko_wp_at_aligned simp: objBits_simps')
   done
 
 lemma capAligned_replyI:
@@ -167,7 +167,7 @@ lemma capAligned_replyI:
   apply (clarsimp simp: obj_at'_real_def capAligned_def
                         objBits_simps word_bits_def capUntypedPtr_def isCap_simps)
   apply (fastforce dest: ko_wp_at_norm
-                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)
+                  dest!: ko_wp_at_aligned simp: objBits_simps')
   done
 
 lemma capAligned_sched_contextI:
@@ -233,7 +233,6 @@ lemma tcb_in_valid_state':
   apply (clarsimp simp: pred_tcb_at'_def)
   apply (drule obj_at_valid_objs')
    apply fastforce
-  apply (clarsimp simp: projectKOs)
   apply (fastforce simp add: valid_obj'_def valid_tcb'_def)
   done
 
@@ -397,9 +396,8 @@ lemma ko_at_imp_cte_wp_at':
   fixes x :: cte
   shows "\<lbrakk> ko_at' x ptr s \<rbrakk> \<Longrightarrow> cte_wp_at' (\<lambda>cte. cte = x) ptr s"
   apply (erule obj_atE')
-  apply (clarsimp simp: projectKOs objBits_simps')
-  apply (erule cte_wp_at_cteI')
-    apply (simp add: cte_level_bits_def)+
+  apply (clarsimp simp: objBits_simps')
+  apply (erule cte_wp_at_cteI'; simp add: cte_level_bits_def)
   done
 
 lemma modify_map_casesD:
@@ -498,9 +496,9 @@ lemma withoutPreemption_R:
 
 lemma ko_at_cte_ipcbuffer:
   "ko_at' tcb p s \<Longrightarrow> cte_wp_at' (\<lambda>x. x = tcbIPCBufferFrame tcb) (p + tcbIPCBufferSlot * 0x20) s"
-  apply (clarsimp simp: obj_at'_def projectKOs objBits_simps)
+  apply (clarsimp simp: obj_at'_def objBits_simps)
   apply (erule (2) cte_wp_at_tcbI')
-   apply (fastforce simp add: tcb_cte_cases_def cteSizeBits_def tcbIPCBufferSlot_def)
+   apply (fastforce simp add: tcb_cte_cases_def tcbIPCBufferSlot_def cteSizeBits_def)
   apply simp
   done
 

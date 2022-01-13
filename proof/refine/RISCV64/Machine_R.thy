@@ -12,9 +12,9 @@ theory Machine_R
 imports Bits_R
 begin
 
-definition "irq_state_independent_H (P :: kernel_state \<Rightarrow> bool)\<equiv>
-              \<forall>(f :: nat \<Rightarrow> nat) (s :: kernel_state). P s \<longrightarrow> P (s\<lparr>ksMachineState := ksMachineState s
-                                \<lparr>irq_state := f (irq_state (ksMachineState s))\<rparr>\<rparr>)"
+definition irq_state_independent_H :: "(kernel_state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "irq_state_independent_H P
+    \<equiv> \<forall>f s. P s \<longrightarrow> P (s\<lparr>ksMachineState := ksMachineState s \<lparr>irq_state := f (irq_state (ksMachineState s))\<rparr>\<rparr>)"
 
 lemma irq_state_independent_HI[intro!, simp]:
   "\<lbrakk>\<And>s f. P (s\<lparr>ksMachineState := ksMachineState s
@@ -22,24 +22,25 @@ lemma irq_state_independent_HI[intro!, simp]:
    \<Longrightarrow> irq_state_independent_H P"
   by (simp add: irq_state_independent_H_def)
 
-definition "getCurrentTime_independent_H (P :: kernel_state \<Rightarrow> bool)
-  \<equiv> \<forall>f s. P s \<longrightarrow>
-           P (s\<lparr>ksMachineState :=
+definition  getCurrentTime_independent_H :: "(kernel_state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "getCurrentTime_independent_H P
+    \<equiv> \<forall>f s. P s \<longrightarrow>
+             P (s\<lparr>ksMachineState :=
                        ksMachineState s\<lparr>last_machine_time :=
                           f (last_machine_time (ksMachineState s)) (time_state (ksMachineState s))\<rparr>\<rparr>)"
 
 lemma getCurrentTime_independent_HI[intro!, simp]:
-   "\<lbrakk>\<And>s f.
-     P (s\<lparr>ksMachineState
-          := (ksMachineState s)\<lparr>last_machine_time :=
+   "\<lbrakk>\<And>s f. P (s\<lparr>ksMachineState
+              := (ksMachineState s)\<lparr>last_machine_time :=
                                 f (last_machine_time (ksMachineState s)) (time_state (ksMachineState s))\<rparr>\<rparr>)
-     = P s\<rbrakk>
+           = P s\<rbrakk>
     \<Longrightarrow> getCurrentTime_independent_H P"
    by (simp add: getCurrentTime_independent_H_def)
 
-definition "time_state_independent_H (P :: kernel_state \<Rightarrow> bool)
-  \<equiv> \<forall>f s. P s \<longrightarrow>
-           P (s\<lparr>ksMachineState := ksMachineState s\<lparr>time_state := f (time_state (ksMachineState s))\<rparr>\<rparr>)"
+definition  time_state_independent_H :: "(global.kernel_state \<Rightarrow> bool) \<Rightarrow> bool" where
+  "time_state_independent_H P
+    \<equiv> \<forall>f s. P s \<longrightarrow>
+             P (s\<lparr>ksMachineState := ksMachineState s\<lparr>time_state := f (time_state (ksMachineState s))\<rparr>\<rparr>)"
 
 lemma time_state_independent_HI[intro!, simp]:
    "\<lbrakk>\<And>s f. P (s\<lparr>ksMachineState := ksMachineState s\<lparr>time_state := f (time_state (ksMachineState s))\<rparr>\<rparr>)

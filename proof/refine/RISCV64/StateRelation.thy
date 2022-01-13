@@ -318,17 +318,13 @@ primrec aobj_relation_cuts :: "RISCV64_A.arch_kernel_obj \<Rightarrow> machine_w
 | "aobj_relation_cuts (PageTable pt) x =
      (\<lambda>y. (x + (ucast y << pteBits), pte_relation y)) ` UNIV"
 
-abbreviation
-  sc_relation_cut :: "Structures_A.kernel_object \<Rightarrow> Structures_H.kernel_object \<Rightarrow> bool"
-  where
+abbreviation sc_relation_cut :: "Structures_A.kernel_object \<Rightarrow> kernel_object \<Rightarrow> bool" where
   "sc_relation_cut obj obj' \<equiv>
-  (case (obj, obj') of
+  case (obj, obj') of
         (Structures_A.SchedContext sc n, KOSchedContext sc') \<Rightarrow> sc_relation sc n sc'
-      | _ \<Rightarrow> False)"
+      | _ \<Rightarrow> False"
 
-abbreviation
-  reply_relation_cut :: "Structures_A.kernel_object \<Rightarrow> Structures_H.kernel_object \<Rightarrow> bool"
-  where
+abbreviation reply_relation_cut :: "Structures_A.kernel_object \<Rightarrow> kernel_object \<Rightarrow> bool" where
   "reply_relation_cut obj obj' \<equiv>
   (case (obj, obj') of
         (Structures_A.Reply r, KOReply r') \<Rightarrow> reply_relation r r'
@@ -427,8 +423,7 @@ definition pspace_relation ::
      (pspace_dom ab = dom con) \<and>
      (\<forall>x \<in> dom ab. \<forall>(y, P) \<in> obj_relation_cuts (the (ab x)) x. P (the (ab x)) (the (con y)))"
 
-definition
-  sc_replies_relation_2 ::
+definition sc_replies_relation_2 ::
   "(obj_ref \<rightharpoonup> obj_ref list) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> (obj_ref \<rightharpoonup> obj_ref) \<Rightarrow> bool"
   where
   "sc_replies_relation_2 sc_repls scRepl replPrevs \<equiv>
@@ -448,22 +443,18 @@ abbreviation sc_replies_relation_obj ::
      (Structures_A.SchedContext sc _, KOSchedContext sc') \<Rightarrow>
        heap_ls nexts (scReply sc') (sc_replies sc)"
 
-primrec
-  sched_act_relation :: "Structures_A.scheduler_action \<Rightarrow> Structures_H.scheduler_action \<Rightarrow> bool"
-  where
+primrec sched_act_relation :: "Structures_A.scheduler_action \<Rightarrow> scheduler_action \<Rightarrow> bool" where
   "sched_act_relation resume_cur_thread a' = (a' = ResumeCurrentThread)" |
   "sched_act_relation choose_new_thread a' = (a' = ChooseNewThread)" |
   "sched_act_relation (switch_thread x) a' = (a' = SwitchToThread x)"
 
-definition
-  ready_queues_relation :: "(Structures_A.domain \<Rightarrow> Structures_A.priority \<Rightarrow> Structures_A.ready_queue)
-                         \<Rightarrow> (domain \<times> priority \<Rightarrow> KernelStateData_H.ready_queue) \<Rightarrow> bool"
+definition ready_queues_relation ::
+  "(Structures_A.domain \<Rightarrow> Structures_A.priority \<Rightarrow> Structures_A.ready_queue)
+    \<Rightarrow> (domain \<times> priority \<Rightarrow> KernelStateData_H.ready_queue) \<Rightarrow> bool"
   where
   "ready_queues_relation qs qs' \<equiv> \<forall>d p. (qs d p = qs' (d, p))"
 
-definition
-  release_queue_relation :: "Structures_A.release_queue \<Rightarrow> KernelStateData_H.release_queue \<Rightarrow> bool"
-  where
+definition release_queue_relation :: "Structures_A.release_queue \<Rightarrow> release_queue \<Rightarrow> bool" where
   "release_queue_relation qs qs' \<equiv> (qs = qs')"
 
 definition ghost_relation ::
@@ -685,28 +676,28 @@ lemma state_relationD:
 lemma state_relationE [elim?]:
   assumes sr:  "(s, s') \<in> state_relation"
   and rl: "\<lbrakk>pspace_relation (kheap s) (ksPSpace s');
-  sc_replies_relation s s';
-  sched_act_relation (scheduler_action s) (ksSchedulerAction s');
-  ready_queues_relation (ready_queues s) (ksReadyQueues s');
-  release_queue_relation (release_queue s) (ksReleaseQueue s');
-  ghost_relation (kheap s) (gsUserPages s') (gsCNodes s');
-  cdt_relation (swp cte_at s) (cdt s) (ctes_of s') \<and>
-  revokable_relation (is_original_cap s) (null_filter (caps_of_state s)) (ctes_of s');
-  cdt_list_relation (cdt_list s) (cdt s) (ctes_of s');
-  (arch_state s, ksArchState s') \<in> arch_state_relation;
-  interrupt_state_relation (interrupt_irq_node s) (interrupt_states s) (ksInterruptState s');
-  cur_thread s = ksCurThread s';
-  idle_thread s = ksIdleThread s';
-  machine_state s = ksMachineState s';
-  work_units_completed s = ksWorkUnitsCompleted s';
-  domain_index s = ksDomScheduleIdx s';
-  domain_list s = ksDomSchedule s';
-  cur_domain s = ksCurDomain s';
-  domain_time s = ksDomainTime s';
-  consumed_time s = ksConsumedTime s';
-  cur_time s = ksCurTime s';
-  cur_sc s = ksCurSc s';
-  reprogram_timer s = ksReprogramTimer s' \<rbrakk> \<Longrightarrow> R"
+            sc_replies_relation s s';
+            sched_act_relation (scheduler_action s) (ksSchedulerAction s');
+            ready_queues_relation (ready_queues s) (ksReadyQueues s');
+            release_queue_relation (release_queue s) (ksReleaseQueue s');
+            ghost_relation (kheap s) (gsUserPages s') (gsCNodes s');
+            cdt_relation (swp cte_at s) (cdt s) (ctes_of s') \<and>
+            revokable_relation (is_original_cap s) (null_filter (caps_of_state s)) (ctes_of s');
+            cdt_list_relation (cdt_list s) (cdt s) (ctes_of s');
+            (arch_state s, ksArchState s') \<in> arch_state_relation;
+            interrupt_state_relation (interrupt_irq_node s) (interrupt_states s) (ksInterruptState s');
+            cur_thread s = ksCurThread s';
+            idle_thread s = ksIdleThread s';
+            machine_state s = ksMachineState s';
+            work_units_completed s = ksWorkUnitsCompleted s';
+            domain_index s = ksDomScheduleIdx s';
+            domain_list s = ksDomSchedule s';
+            cur_domain s = ksCurDomain s';
+            domain_time s = ksDomainTime s';
+            consumed_time s = ksConsumedTime s';
+            cur_time s = ksCurTime s';
+            cur_sc s = ksCurSc s';
+            reprogram_timer s = ksReprogramTimer s' \<rbrakk> \<Longrightarrow> R"
   shows "R"
   using sr by (blast intro!: rl dest: state_relationD)
 
