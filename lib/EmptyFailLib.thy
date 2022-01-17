@@ -60,7 +60,7 @@ lemma andM_empty_fail[intro!, wp, simp]:
   "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (andM A B)"
   by (simp add: andM_def)
 
-lemma opM_empty_fail[intro!, wp, simp]:
+lemma orM_empty_fail[intro!, wp, simp]:
   "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (orM A B)"
   by (simp add: orM_def)
 
