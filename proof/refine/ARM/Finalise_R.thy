@@ -3777,12 +3777,6 @@ lemma rescheduleRequired_sch_act_not[wp]:
   apply (wp hoare_post_taut | simp)+
   done
 
-(* FIXME RT: cancelAllIPC calls possibleSwitchTo
-crunch sch_act_not[wp]: cteDeleteOne "sch_act_not t"
-  (simp: crunch_simps case_Null_If unless_def
-   wp: crunch_wps getObject_inv loadObject_default_inv)
-*)
-
 lemma rescheduleRequired_oa_queued':
   "\<lbrace>obj_at' (\<lambda>tcb. Q (tcbDomain tcb) (tcbPriority tcb)) t'\<rbrace>
     rescheduleRequired
