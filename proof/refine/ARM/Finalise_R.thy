@@ -3150,6 +3150,21 @@ lemma finaliseCapTrue_standin_bound_tcb_at':
   apply (case_tac cap; simp add: finaliseCapTrue_standin_def isCap_simps)
   by wpsimp
 
+lemma capDeleteOne_bound_tcb_at':
+  "\<lbrace>bound_tcb_at' P tptr and cte_wp_at' (isReplyCap \<circ> cteCap) callerCap\<rbrace>
+   cteDeleteOne callerCap
+   \<lbrace>\<lambda>_. bound_tcb_at' P tptr\<rbrace>"
+  apply (simp add: cteDeleteOne_def unless_def)
+  apply (rule hoare_pre)
+    apply (wp finaliseCapTrue_standin_bound_tcb_at' hoare_vcg_all_lift
+              hoare_vcg_if_lift2 getCTE_cteCap_wp
+           | clarsimp simp: isFinalCapability_def Let_def cteCaps_of_def isReplyCap_def
+                            cte_wp_at_ctes_of
+                     split: option.splits
+           | intro conjI impI | wp (once) hoare_drop_imp)+
+   apply (case_tac "cteCap cte", simp_all)
+   done
+
 crunches cleanReply
   for bound_sc_tcb_at'[wp]: "bound_sc_tcb_at' P t"
 
