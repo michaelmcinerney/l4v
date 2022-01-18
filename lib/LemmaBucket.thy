@@ -579,10 +579,7 @@ lemma filter_hd_equals_tl:
   done
 
 lemma case_list_when:
-  "(case l of
-      [] \<Rightarrow> return ()
-      | r # x \<Rightarrow> f r x)
-   = (when (l \<noteq> []) $ f (hd l) (tl l))"
+  "(case l of [] \<Rightarrow> return () | r # xs \<Rightarrow> f r xs) = (when (l \<noteq> []) $ f (hd l) (tl l))"
   by (clarsimp simp: list_case_If2)
 
 end
