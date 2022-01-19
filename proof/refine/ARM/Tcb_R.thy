@@ -882,21 +882,6 @@ lemma reorder_ep_corres:
   apply (clarsimp simp: sym_refs_asrt_def)
   done
 
-lemma thread_set_valid_tcbs:
-  "\<lbrace>valid_tcbs and (\<lambda>s. \<forall>p tcb. valid_tcb p tcb s \<longrightarrow> valid_tcb p (f tcb) s)\<rbrace>
-   thread_set f t
-   \<lbrace>\<lambda>rv. valid_tcbs\<rbrace>"
-  apply (simp add: thread_set_def)
-  apply (wp set_object_valid_tcbs)
-  apply (fastforce simp: obj_at_def valid_tcbs_def dest: get_tcb_SomeD)
-  done
-
-lemma thread_set_priority_valid_tcbs[wp]:
-  "thread_set (tcb_priority_update (\<lambda>_. x)) t \<lbrace>valid_tcbs\<rbrace>"
-  apply (wp thread_set_valid_tcbs)
-  apply (clarsimp simp: valid_tcbs_def valid_tcb_def tcb_cap_cases_def)
-  done
-
 lemma threadSetPriority_valid_tcbs'[wp]:
   "\<lbrace>valid_tcbs' and K (prio \<le> maxPriority)\<rbrace>
    threadSet (tcbPriority_update (\<lambda>_. prio)) t
@@ -2553,19 +2538,6 @@ lemma setSchedulerAction_invs'[wp]:
   apply (clarsimp simp add: invs'_def valid_irq_node'_def valid_dom_schedule'_def
                 valid_queues_def valid_queues_no_bitmap_def bitmapQ_defs cur_tcb'_def
                 ct_not_inQ_def valid_release_queue_def valid_release_queue'_def)
-  done
-
-(* FIXME RT: move to...? *)
-lemma as_user_valid_tcbs[wp]:
-  "as_user ptr f \<lbrace>valid_tcbs\<rbrace>"
-  unfolding as_user_def
-  apply wpsimp
-  apply (clarsimp simp: valid_tcbs_def get_tcb_ko_at)
-  apply (rename_tac s tcb a b)
-  apply (prop_tac "valid_tcb ptr tcb s")
-   apply blast
-  apply (clarsimp simp: valid_tcb_def valid_tcb_state_def obj_at_def is_reply_def
-                        valid_arch_tcb_def tcb_cap_cases_def)
   done
 
 lemma invokeTCB_corres:

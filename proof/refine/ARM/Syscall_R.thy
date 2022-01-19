@@ -371,7 +371,7 @@ lemma setDomain_corres:
           apply (rule corres_split[OF isSchedulable_corres])
             apply (rule corres_split[OF corres_when[OF _ tcbSchedEnqueue_corres]], simp)
               apply (rule corres_when[OF _ rescheduleRequired_corres], simp)
-             apply (wpsimp wp: hoare_drop_imp hoare_vcg_if_lift2
+             apply (wpsimp wp: hoare_drop_imp hoare_vcg_if_lift2 thread_set_valid_tcbs
                                thread_set_weak_valid_sched_action threadSet_valid_tcbs'
                                threadSet_vrq_inv threadSet_vrq'_inv threadSet_valid_queues_no_state
                                threadSet_valid_queues'_no_state)+
