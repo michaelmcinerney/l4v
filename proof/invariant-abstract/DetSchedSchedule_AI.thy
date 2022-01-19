@@ -4712,6 +4712,12 @@ lemma reply_push_valid_sched_misc[wp]:
   by (wpsimp wp: get_simple_ko_wp hoare_vcg_if_lift2 hoare_drop_imps hoare_vcg_all_lift
            simp: reply_push_def bind_sc_reply_def)
 
+crunches bind_sc_reply
+  for pspace_distinct[wp]: pspace_distinct
+  and pspace_aligned[wp]: pspace_aligned
+  and active_sc_valid_refills[wp]: active_sc_valid_refills
+  (ignore: update_sched_context)
+
 crunch valid_refills[wp]: set_cdt,set_original,set_extra_badge "valid_refills scp"
   (wp_del: set_original_wp)
 
@@ -5861,6 +5867,43 @@ crunch st_tcb_at_not_runnable[wp]: reply_remove_tcb "st_tcb_at (\<lambda>st. \<n
 lemma reply_remove_tcb_not_runnable[wp]:
   "reply_unlink_tcb t r \<lbrace>\<lambda>s. \<not> pred_map runnable (tcb_sts_of s) t\<rbrace>"
   by (wpsimp wp: reply_unlink_tcb_valid_sched_pred simp: vs_all_heap_simps)
+
+definition
+  "reply_unlink_ts_pred t s
+    \<equiv> \<forall>ep r_opt pl.
+       pred_map ((=) (Structures_A.thread_state.BlockedOnReceive ep (Some r_opt) pl)) (tcb_sts_of s) t
+       \<longrightarrow> reply_tcb_reply_at ((=) (Some t)) r_opt s"
+
+lemma restart_thread_if_no_fault_tcb_sts_of_other:
+  "\<lbrace>\<lambda>s. Q (pred_map P (tcb_sts_of s) t') \<and> t \<noteq> t'\<rbrace>
+   restart_thread_if_no_fault t
+   \<lbrace>\<lambda>_ s. Q (pred_map P (tcb_sts_of s) t')\<rbrace>"
+  apply (clarsimp simp: restart_thread_if_no_fault_def)
+  apply (rule hoare_seq_ext_skip, wpsimp)
+  apply (wpsimp wp: possible_switch_to_pred_tcb_at[unfolded obj_at_kh_kheap_simps]
+                    set_thread_state_pred_map_tcb_sts_of thread_get_inv)
+  done
+
+lemma reply_unlink_tcb_tcb_sts_of_other:
+  "\<lbrace>\<lambda>s. Q (pred_map P (tcb_sts_of s) t') \<and> t \<noteq> t'\<rbrace>
+   reply_unlink_tcb t r
+   \<lbrace>\<lambda>_ s. Q (pred_map P (tcb_sts_of s) t')\<rbrace>"
+  apply (clarsimp simp: reply_unlink_tcb_def)
+  apply (rule hoare_seq_ext_skip, wpsimp)+
+  apply (wpsimp wp: set_thread_state_pred_map_tcb_sts_of)
+  done
+
+lemma cancel_all_ipc_loop_body_reply_unlink_ts_pred_other:
+  "\<lbrace>\<lambda>s. reply_unlink_ts_pred t s \<and> t' \<noteq> t\<rbrace>
+   cancel_all_ipc_loop_body t'
+   \<lbrace>\<lambda>_. reply_unlink_ts_pred t\<rbrace>"
+  unfolding reply_unlink_ts_pred_def cancel_all_ipc_loop_body_def
+  apply (rule hoare_seq_ext_skip, wpsimp)
+  apply (rule hoare_seq_ext_skip, wpsimp)
+  apply (wpsimp wp: restart_thread_if_no_fault_tcb_sts_of_other reply_unlink_tcb_tcb_sts_of_other
+                    reply_unlink_tcb_reply_tcb_reply_at_other hoare_vcg_all_lift
+                    hoare_vcg_imp_lift')
+  done
 
 global_interpretation blocked_cancel_ipc:
   set_thread_state_Inactive_valid_sched_pred_equiv "\<lambda>t. blocked_cancel_ipc st t r"
