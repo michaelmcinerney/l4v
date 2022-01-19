@@ -150,6 +150,10 @@ lemma suspend_nonz_cap_to_tcb[wp]:
   unfolding suspend_def sched_context_cancel_yield_to_def
   by (wpsimp wp: cancel_ipc_ex_nonz_cap_to_tcb hoare_drop_imps)
 
+crunches restart
+  for ex_nonz_cap_to[wp]: "ex_nonz_cap_to tcb_ptr"
+  (wp: crunch_wps cancel_ipc_cap_to simp: crunch_simps)
+
 lemmas suspend_tcb_at[wp] = tcb_at_typ_at [OF suspend_typ_at]
 
 lemma readreg_invs:
@@ -887,6 +891,24 @@ lemma cap_delete_ep:
      apply (rule hoare_strengthen_post, rule finalise_cap_ep[where P=P and p=p and slot=slot], clarsimp)
     apply (wpsimp wp: get_cap_wp)+
   apply (simp add: cte_wp_at_caps_of_state valid_fault_handler_def)
+  done
+
+lemma cap_delete_deletes_fh:
+  "\<lbrace>\<lambda>s. p \<noteq> ptr \<longrightarrow> cte_wp_at valid_fault_handler ptr s \<and>
+                     cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s\<rbrace>
+   cap_delete ptr
+   \<lbrace>\<lambda>_. cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p\<rbrace>, -"
+  apply (rule_tac Q'="\<lambda>rv s. ((p = ptr) \<longrightarrow> cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s) \<and>
+                             ((p \<noteq> ptr) \<longrightarrow> cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s)"
+               in hoare_post_imp_R)
+   apply (rule hoare_vcg_precond_impE_R)
+    apply (rule hoare_vcg_conj_lift_R)
+     apply (rule hoare_post_imp_R[OF cap_delete_deletes])
+     apply (clarsimp simp: cte_wp_at_def)
+    apply (rule hoare_vcg_const_imp_lift_R)
+    apply (rule cap_delete_ep)
+   apply simp
+  apply clarsimp
   done
 
 lemma checked_insert_cte_wp_at_weak:
