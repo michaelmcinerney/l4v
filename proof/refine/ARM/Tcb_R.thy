@@ -337,11 +337,6 @@ lemma asUser_postModifyRegisters_corres:
   apply (rule corres_stateAssert_assume)
    by simp+
 
-(* FIXME RT: move *)
-crunches Tcb_A.restart
-  for ex_nonz_cap_to[wp]: "ex_nonz_cap_to tcb_ptr"
-  (wp: crunch_wps cancel_ipc_cap_to simp: crunch_simps)
-
 crunches restart
   for ex_nonz_cap_to'[wp]: "ex_nonz_cap_to' tcbPtr"
   (wp: crunch_wps threadSet_cap_to simp: crunch_simps tcb_cte_cases_def)
@@ -1582,25 +1577,6 @@ where
                                           and bound_tcb_at' ((=) None) t) )"
 | "tcb_inv_wf' (tcbinvocation.SetTLSBase ref w)
              = (tcb_at' ref and ex_nonz_cap_to' ref)"
-
-(* FIXME RT: move to a more appropriate place *)
-lemma cap_delete_deletes_fh:
-  "\<lbrace>\<lambda>s. p \<noteq> ptr \<longrightarrow> cte_wp_at valid_fault_handler ptr s \<and>
-                     cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s\<rbrace>
-   cap_delete ptr
-   \<lbrace>\<lambda>rv. cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p\<rbrace>, -"
-  apply (rule_tac Q'="\<lambda>rv s. ((p = ptr) \<longrightarrow> cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s) \<and>
-                             ((p \<noteq> ptr) \<longrightarrow> cte_wp_at (\<lambda>c. P c \<or> c = cap.NullCap) p s)"
-               in hoare_post_imp_R)
-   apply (rule hoare_vcg_precond_impE_R)
-    apply (rule hoare_vcg_conj_lift_R)
-     apply (rule hoare_post_imp_R[OF cap_delete_deletes])
-     apply (clarsimp simp: cte_wp_at_def)
-    apply (rule hoare_vcg_const_imp_lift_R)
-    apply (rule cap_delete_ep)
-   apply simp
-  apply clarsimp
-  done
 
 lemma installTCBCap_corres_helper:
   "n \<in> {0,1,3,4} \<Longrightarrow>
