@@ -656,11 +656,6 @@ lemma ct_in_state_irq_state_independent[intro!, simp]:
 
 text \<open>The top-level correspondence\<close>
 
-(* FIXME RT: move to DetSchedInvs *)
-lemma active_sc_tcb_at_ct_cur_sc_active:
-  "cur_sc_tcb_are_bound s \<Longrightarrow> cur_sc_active s \<longleftrightarrow> active_sc_tcb_at (cur_thread s) s"
-   by (clarsimp simp: vs_all_heap_simps)
-
 lemma kernel_preemption_corres:
   "corres (dc \<oplus> dc)
      (einvs and current_time_bounded and scheduler_act_sane

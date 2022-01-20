@@ -1751,12 +1751,6 @@ lemma valid_sc_strengthen:
                 valid_sched_context' ko s \<and> valid_sched_context_size' ko"
   by (clarsimp elim!: sc_ko_at_valid_objs_valid_sc')
 
-(* FIXME RT: move to DetSchedInvs *)
-lemma cur_sc_tcb_are_bound_sym:
-  "\<lbrakk>cur_sc_tcb_are_bound s; sym_refs (state_refs_of s)\<rbrakk>
-   \<Longrightarrow> heap_ref_eq (cur_thread s) (cur_sc s) (sc_tcbs_of s) "
-  by (drule sym_refs_inv_tcb_scps, clarsimp simp: heap_refs_inv_def2)
-
 lemma endTimeslice_corres: (* called when ct_schedulable *)
   "corres dc
      (invs and valid_list and valid_sched_action and active_sc_valid_refills and valid_release_q

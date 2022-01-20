@@ -2056,23 +2056,6 @@ lemma bind_sc_reply_invs[wp]:
   apply (erule (1) valid_objs_sc_replies_distinct)
   done
 
-(* FIXME RT: move to AInvs *)
-crunches bind_sc_reply
-  for pspace_distinct[wp]: pspace_distinct
-  and pspace_aligned[wp]: pspace_aligned
-  and active_sc_valid_refills[wp]: active_sc_valid_refills
-  (ignore: update_sched_context)
-
-lemma bind_sc_reply_valid_objs[wp]:
-  "\<lbrace>valid_objs and reply_at reply_ptr and sc_at sc_ptr and
-    sc_replies_sc_at (\<lambda>a. reply_ptr \<notin> set a) sc_ptr\<rbrace>
-   bind_sc_reply sc_ptr reply_ptr
-   \<lbrace>\<lambda>_. valid_objs\<rbrace>"
-  unfolding bind_sc_reply_def
-  apply (wpsimp wp: hoare_list_all_lift)
-  apply (drule (1) valid_objs_ko_at)
-  by (clarsimp simp: valid_obj_def valid_sched_context_def sc_at_pred_n_def obj_at_def)
-
 lemma replyPush_corres:
   "can_donate = can_donate' \<Longrightarrow>
    corres dc (valid_replies and pspace_aligned and pspace_distinct and valid_objs
@@ -2327,12 +2310,6 @@ lemma tcbEPFindIndex_inv[wp]:
 
 crunches tcbEPAppend
   for ep_at'[wp]: "ep_at' epptr"
-
-(* FIXME RT: move to AInvs *)
-crunches reply_push
-  for pspace_aligned[wp]: pspace_aligned
-  and pspace_distinct[wp]: pspace_distinct
-  (wp: crunch_wps simp: crunch_simps)
 
 crunches bindScReply
   for typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
