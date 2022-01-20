@@ -1944,8 +1944,6 @@ lemma possibleSwitchTo_valid_queues[wp]:
 lemma cancelAllIPC_valid_queues':
   "cancelAllIPC t \<lbrace> valid_queues' \<rbrace>"
   apply (clarsimp simp: cancelAllIPC_def)
-  apply (fold restartThreadIfNoFault_def)
-  apply (fold cancelAllIPC_loop_body_def)
   apply (wpsimp wp: mapM_x_wp' get_ep_inv' getEndpoint_wp)
   done
 
