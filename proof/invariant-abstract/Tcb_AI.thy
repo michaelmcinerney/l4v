@@ -274,10 +274,6 @@ lemma thread_set_valid_objs':
   apply (simp add: valid_obj_def)
   done
 
-lemma thread_set_empty_tcb_sched_context_valid_tcbs[wp]:
-  "thread_set (tcb_sched_context_update Map.empty) t \<lbrace>valid_tcbs\<rbrace>"
-  by (wp thread_set_valid_tcbs) (simp add: valid_tcbs_def valid_tcb_def tcb_cap_cases_def)
-
 lemma thread_set_valid_tcbs:
   "\<lbrace>valid_tcbs and (\<lambda>s. \<forall>p tcb. valid_tcb p tcb s \<longrightarrow> valid_tcb p (f tcb) s)\<rbrace>
    thread_set f t
@@ -286,6 +282,10 @@ lemma thread_set_valid_tcbs:
   apply (wp set_object_valid_tcbs)
   apply (fastforce simp: obj_at_def valid_tcbs_def dest: get_tcb_SomeD)
   done
+
+lemma thread_set_empty_tcb_sched_context_valid_tcbs[wp]:
+  "thread_set (tcb_sched_context_update Map.empty) t \<lbrace>valid_tcbs\<rbrace>"
+  by (wp thread_set_valid_tcbs) (simp add: valid_tcbs_def valid_tcb_def tcb_cap_cases_def)
 
 lemma thread_set_priority_valid_tcbs[wp]:
   "thread_set (tcb_priority_update f) t \<lbrace>valid_tcbs\<rbrace>"
