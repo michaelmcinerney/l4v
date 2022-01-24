@@ -2343,10 +2343,10 @@ lemma setObject_wp:
 
 lemmas set_wp = setObject_wp[folded f_def]
 
-\<comment>\<open>
+\<comment> \<open>\<comment>\<open>
   Keeps the redundant @{term "obj_at \<top>"} precondition because this matches common abbreviations
   like @{term "tcb_at'"}.
-\<close>
+\<close>\<close>
 lemma setObject_pre:
   fixes obj :: 'a
   assumes "\<lbrace>P and obj_at' (\<lambda>old_obj :: 'a. objBits old_obj = objBits obj) p
@@ -4913,5 +4913,49 @@ method add_ready_qs_runnable =
 method add_valid_replies for rptr uses simp =
   rule_tac Q="\<lambda>s. valid_replies'_sc_asrt rptr s" in corres_cross_add_guard,
   fastforce elim: valid_replies_sc_cross simp: simp
+
+lemma setObject_tcb_pre':
+  "\<lbrace>P and tcb_at' p\<rbrace> setObject p (t::tcb) \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> setObject p (t::tcb) \<lbrace>Q\<rbrace>"
+  apply (rule setObject_tcb_pre)
+  apply (clarsimp simp: valid_def setObject_def in_monad
+                        split_def updateObject_default_def
+                        projectKOs in_magnitude_check objBits_simps')
+  done
+
+context begin interpretation Arch . (*FIXME: arch_split*)
+
+(* FIXME RT: move to KHeap, including instances below, replace single setObject lemmas *)
+lemma setObject_at_pre:
+  assumes pre: "\<lbrace>P and obj_at' (\<lambda>_::'a. True) p\<rbrace> setObject p (v::'a::pspace_storable) \<lbrace>Q\<rbrace>"
+  assumes R: "\<And>ko s y n. updateObject v ko p y n s = updateObject_default v ko p y n s"
+  shows "\<lbrace>P\<rbrace> setObject p v \<lbrace>Q\<rbrace>"
+  using pre
+  apply (clarsimp simp: valid_def setObject_def in_monad R
+                        split_def updateObject_default_def
+                        projectKOs in_magnitude_check split_paired_Ball)
+  apply (drule spec, drule mp, erule conjI)
+   apply (simp add: obj_at'_def projectKOs objBits_def project_inject)
+   apply metis
+  apply (simp add: split_paired_Ball)
+  apply (drule spec, erule mp)
+  apply (clarsimp simp: in_monad projectKOs in_magnitude_check)
+  done
+
+lemma setObject_pspace_no_overlap':
+  assumes R: "\<And>ko s y n. updateObject v ko p y n s = updateObject_default v ko p y n s"
+  shows "setObject p (v::'a::pspace_storable) \<lbrace>pspace_no_overlap' w s\<rbrace>"
+  apply (clarsimp simp: setObject_def split_def valid_def in_monad R  objBits_def
+                        updateObject_default_def in_monad projectKOs in_magnitude_check)
+  apply (fastforce simp: pspace_no_overlap'_def project_inject)
+  done
+
+lemma setObject_tcb_pspace_no_overlap':
+  "setObject t (tcb::tcb) \<lbrace>pspace_no_overlap' w s\<rbrace>"
+  apply (rule setObject_pspace_no_overlap')
+   apply (clarsimp simp: setObject_def)
+  apply (clarsimp simp: objBits_simps')
+  done
+
+end
 
 end

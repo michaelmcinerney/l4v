@@ -1277,15 +1277,6 @@ end
 
 context begin interpretation Arch .
 
-(* FIXME RT: replace the one in KHeap *)
-lemma setObject_tcb_pspace_no_overlap2:
-  "\<lbrace>pspace_no_overlap' w s\<rbrace>
-  setObject t (tcb::tcb)
-  \<lbrace>\<lambda>rv. pspace_no_overlap' w s\<rbrace>"
-  apply (rule setObject_tcb_pre)
-  apply (rule setObject_tcb_pspace_no_overlap')
-  done
-
 crunch pspace_no_overlap'[wp]: setThreadState "pspace_no_overlap' w s"
   (simp: unless_def wp: crunch_wps setObject_tcb_pspace_no_overlap2)
 
