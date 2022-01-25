@@ -8,6 +8,9 @@ theory Schedule_R
 imports SchedContext_R InterruptAcc_R
 begin
 
+crunches scReleased
+  for inv: P
+
 context begin interpretation Arch . (*FIXME: arch_split*)
 
 declare static_imp_wp[wp_split del]
@@ -189,18 +192,14 @@ lemma obj_at'_tcbQueued_cross:
   apply clarsimp
   done
 
-(* FIXME RT: It might be better to have tcb_at on the abstract side and lift it
-             across the state relation *)
 lemma tcbSchedAppend_corres:
   notes trans_state_update'[symmetric, simp del]
   shows
-  "corres dc \<top> (tcb_at' t and valid_queues and valid_queues')
+  "corres dc (pspace_aligned and pspace_distinct and tcb_at t)
+             (valid_queues and valid_queues')
           (tcb_sched_action (tcb_sched_append) t) (tcbSchedAppend t)"
-  apply (rule corres_cross_back[where P="tcb_at t" and P'="tcb_at' t"])
-    apply (fastforce dest: pspace_relation_tcb_at
-                     simp: state_relation_def opt_map_def obj_at'_def projectKOs
-                    split: option.splits)
-   apply simp
+  apply (rule_tac Q="tcb_at' t" in corres_cross_add_guard)
+   apply (fastforce dest!: state_relationD elim!: tcb_at_cross)
   apply (simp only: tcbSchedAppend_def tcb_sched_action_def)
   apply (rule corres_symb_exec_r [OF _ _ threadGet_inv,
                                   where Q'="\<lambda>rv. tcb_at' t and Invariants_H.valid_queues and
@@ -2678,13 +2677,6 @@ lemma switchSchedContext_invs':
   apply (fastforce simp: obj_at'_def projectKO_eq projectKO_opt_tcb)
   done
 
-(* FIXME RT: move, and shouldn't we have all of these? *)
-lemma setSchedulerAction_ksSchedulerAction[wp]:
-  "\<lbrace>\<lambda>_. P (schact)\<rbrace>
-   setSchedulerAction schact
-   \<lbrace>\<lambda>rv s. P (ksSchedulerAction s)\<rbrace>"
-  by (wpsimp simp: setSchedulerAction_def)
-
 lemma isSchedulable_bool_runnableE:
   "isSchedulable_bool t s \<Longrightarrow> tcb_at' t s \<Longrightarrow> st_tcb_at' runnable' t s"
   unfolding isSchedulable_bool_def
@@ -2700,7 +2692,7 @@ lemma rescheduleRequired_invs'[wp]:
 
 lemma rescheduleRequired_ksSchedulerAction[wp]:
   "\<lbrace>\<lambda>_. P ChooseNewThread\<rbrace> rescheduleRequired \<lbrace>\<lambda>_ s. P (ksSchedulerAction s)\<rbrace>"
-  unfolding rescheduleRequired_def by wpsimp
+  unfolding rescheduleRequired_def by (wpsimp wp: isSchedulable_wp)
 
 lemma inReleaseQueue_wp:
   "\<lbrace>\<lambda>s. \<forall>ko. ko_at' ko tcb_ptr s \<longrightarrow> P (tcbInReleaseQueue ko) s\<rbrace>
@@ -3127,18 +3119,6 @@ lemma readRefillReady_simp:
         of None \<Rightarrow> None
          | Some sc' \<Rightarrow> Some (rTime (refillHd sc') \<le> (ksCurTime s) + kernelWCETTicks))"
   by (clarsimp simp: readRefillReady_def readCurTime_def readSchedContext_SomeD asks_def obind_def)
-
-lemma readRefillReady_no_ofail[wp]:
-  "no_ofail (sc_at' t) (readRefillReady t)"
-  apply (clarsimp simp: readRefillReady_def readSchedContext_def)
-  apply (rule no_ofail_pre_imp[rotated])
-   apply (rule no_ofail_obind2[where R="\<lambda>_. \<top> and \<top>", rotated -1])
-     apply (rule no_ofail_obind2[rotated -1])
-       apply wp
-      apply (rule no_ofail_readCurTime)
-     apply (clarsimp simp: ovalid_def)
-    apply wp
-  by (simp add: ovalid_def)+
 
 lemma refillReady_corres:
   "corres (=)
