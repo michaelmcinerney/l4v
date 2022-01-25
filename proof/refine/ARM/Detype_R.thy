@@ -3460,11 +3460,6 @@ lemma curDomain_commute:
 
 crunch inv[wp]: curDomain P
 
-(* FIXME RT: move to first occurence of atLeastatMost_subset_iff; usually the "notes" can just be removed *)
-lemmas atLeastAtMost_simps =
-  atLeastatMost_subset_iff atLeastLessThan_iff Int_atLeastAtMost atLeastatMost_empty_iff
-  atLeastAtMost_iff split_paired_Ex
-
 lemma placeNewObject_tcb_at':
   "\<lbrace>pspace_aligned' and pspace_distinct'
     and pspace_no_overlap' ptr (objBits (makeObject::tcb))
