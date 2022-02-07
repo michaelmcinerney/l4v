@@ -124,6 +124,7 @@ lemma no_0_obj'_abstract:
   "(s, s') \<in> state_relation \<Longrightarrow> no_0_obj' s' \<Longrightarrow> kheap s 0 = None"
   by (auto intro: pspace_relation_None simp add: no_0_obj'_def)
 
+(* FIXME RT: remove *)
 declare if_cong[cong]
 
 lemma corres_gets_asid[corres]:

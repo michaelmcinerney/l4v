@@ -415,9 +415,7 @@ proof -
    defer
    apply (clarsimp simp: simps the_arch_cap_def)
    apply (rename_tac arch_cap)
-   apply (case_tac arch_cap)
-        apply (simp_all add: arch_update_cap_data_def
-                             RISCV64_H.updateCapData_def)[5]
+   apply (case_tac arch_cap; simp add: arch_update_cap_data_def RISCV64_H.updateCapData_def)
   \<comment> \<open>CNodeCap\<close>
   apply (simp add: word_bits_def the_cnode_cap_def andCapRights_def
                    rightsFromWord_def data_to_rights_def nth_ucast cteRightsBits_def
