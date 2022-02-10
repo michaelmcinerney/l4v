@@ -332,10 +332,39 @@ lemma deleteASIDPool_corres:
   apply clarsimp
   done
 
-crunch typ_at' [wp]: setVMRoot "\<lambda>s. P (typ_at' T p s)"
-  (simp: crunch_simps wp: crunch_wps)
+crunches unmapPageTable, unmapPage, setVMRoot, setMessageInfo, setMRs, performPageTableInvocation,
+         performASIDPoolInvocation, performPageInvocation
+  for typ_at' [wp]: "\<lambda>s. P (typ_at' T p s)"
+  and sc_at'_n[wp]: "\<lambda>s. P (sc_at'_n n p s)"
+  (wp: crunch_wps getASID_wp simp: crunch_simps)
 
-lemmas setVMRoot_typ_ats [wp] = typ_at_lifts [OF setVMRoot_typ_at']
+end
+
+sublocale Arch < unmapPageTable: typ_at_all_props' "unmapPageTable asid vaddr pt"
+  by typ_at_props'
+
+sublocale Arch < unmapPage: typ_at_all_props' "unmapPage magnitude asid vptr ptr"
+  by typ_at_props'
+
+sublocale Arch < setVMRoot: typ_at_all_props' "setVMRoot tcb"
+  by typ_at_props'
+
+sublocale Arch < setMessageInfo: typ_at_all_props' "setMessageInfo thread info"
+  by typ_at_props'
+
+sublocale Arch < setMRs: typ_at_all_props' "setMRs thread buffer messageData"
+  by typ_at_props'
+
+sublocale Arch < performPageTableInvocation: typ_at_all_props' "performPageTableInvocation iv"
+  by typ_at_props'
+
+sublocale Arch < performASIDPoolInvocation: typ_at_all_props' "performASIDPoolInvocation iv"
+  by typ_at_props'
+
+sublocale Arch < performPageInvocation: typ_at_all_props' "performPageInvocation iv"
+  by typ_at_props'
+
+context begin interpretation Arch . (*FIXME: arch_split*)
 
 lemma getObject_PTE_corres'':
   assumes "p' = p"
@@ -347,7 +376,6 @@ crunches unmapPageTable, unmapPage
   for aligned'[wp]: "pspace_aligned'"
   and distinct'[wp]: "pspace_distinct'"
   and ctes [wp]: "\<lambda>s. P (ctes_of s)"
-  and typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
   (simp: crunch_simps
    wp: crunch_wps getObject_inv loadObject_default_inv)
 
@@ -509,17 +537,6 @@ lemma setMessageInfo_corres:
 lemma set_mi_invs'[wp]: "\<lbrace>invs' and tcb_at' t\<rbrace> setMessageInfo t a \<lbrace>\<lambda>x. invs'\<rbrace>"
   by (simp add: setMessageInfo_def) wp
 
-lemma set_mi_tcb' [wp]:
-  "\<lbrace> tcb_at' t \<rbrace> setMessageInfo receiver msg \<lbrace>\<lambda>rv. tcb_at' t\<rbrace>"
-  by (simp add: setMessageInfo_def) wp
-
-
-lemma setMRs_typ_at':
-  "\<lbrace>\<lambda>s. P (typ_at' T p s)\<rbrace> setMRs receiver recv_buf mrs \<lbrace>\<lambda>rv s. P (typ_at' T p s)\<rbrace>"
-  by (simp add: setMRs_def zipWithM_x_mapM split_def, wp crunch_wps)
-
-lemmas setMRs_typ_at_lifts[wp] = typ_at_lifts [OF setMRs_typ_at']
-
 lemma set_mrs_invs'[wp]:
   "\<lbrace> invs' and tcb_at' receiver \<rbrace> setMRs receiver recv_buf mrs \<lbrace>\<lambda>rv. invs' \<rbrace>"
   apply (simp add: setMRs_def)
@@ -645,8 +662,6 @@ lemma clear_page_table_corres:
    apply (simp add: bit_simps word_less_nat_alt word_le_nat_alt unat_of_nat)
   apply simp
   done
-
-lemmas unmapPageTable_typ_ats[wp] = typ_at_lifts[OF unmapPageTable_typ_at']
 
 lemma performPageTableInvocation_corres:
   "page_table_invocation_map pti pti' \<Longrightarrow>
@@ -832,26 +847,6 @@ crunch it' [wp]: deleteASID "\<lambda>s. P (ksIdleThread s)"
   (simp: crunch_simps loadObject_default_def updateObject_default_def
    wp: getObject_inv)
 
-crunch typ_at' [wp]: performPageTableInvocation "\<lambda>s. P (typ_at' T p s)"
-  (wp: crunch_wps)
-
-crunch typ_at' [wp]: performPageInvocation "\<lambda>s. P (typ_at' T p s)"
-  (wp: crunch_wps simp: crunch_simps)
-
-lemma performASIDPoolInvocation_typ_at' [wp]:
-  "\<lbrace>\<lambda>s. P (typ_at' T p s)\<rbrace> performASIDPoolInvocation api \<lbrace>\<lambda>_ s. P (typ_at' T p s)\<rbrace>"
-  by (wpsimp simp: performASIDPoolInvocation_def
-               wp: getASID_wp hoare_vcg_imp_lift[where P'=\<bottom>, simplified])
-
-lemmas performPageTableInvocation_typ_ats' [wp] =
-  typ_at_lifts [OF performPageTableInvocation_typ_at']
-
-lemmas performPageInvocation_typ_ats' [wp] =
-  typ_at_lifts [OF performPageInvocation_typ_at']
-
-lemmas performASIDPoolInvocation_typ_ats' [wp] =
-  typ_at_lifts [OF performASIDPoolInvocation_typ_at']
-
 lemma storePTE_iflive [wp]:
   "\<lbrace>if_live_then_nonz_cap'\<rbrace> storePTE p pte \<lbrace>\<lambda>rv. if_live_then_nonz_cap'\<rbrace>"
   apply (simp add: storePTE_def)
@@ -938,17 +933,6 @@ crunch invs'[wp]: unmapPageTable "invs'"
        wp: storePTE_Invalid_invs mapM_wp' crunch_wps
      simp: crunch_simps)
 
-crunches unmapPageTable
-  for typ_at' [wp]: "\<lambda>s. P (typ_at' T p s)"
-  and sc_at'_n[wp]: "\<lambda>s. P (sc_at'_n n p s)"
-
-end
-
-sublocale Arch < unmapPageTable: typ_at_all_props' "unmapPageTable asid vaddr pt"
-  by typ_at_props'
-
-context begin interpretation Arch . (*FIXME: arch_split*)
-
 lemma perform_pti_invs [wp]:
   "\<lbrace>invs' and valid_pti' pti\<rbrace> performPageTableInvocation pti \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (clarsimp simp: performPageTableInvocation_def getSlotCap_def valid_pti'_def
@@ -963,8 +947,6 @@ crunches unmapPage
   for cte_wp_at': "\<lambda>s. P (cte_wp_at' P' p s)"
   (wp: crunch_wps lookupPTSlotFromLevel_inv simp: crunch_simps)
 
-lemmas unmapPage_typ_ats [wp] = typ_at_lifts [OF unmapPage_typ_at']
-
 lemma unmapPage_invs' [wp]:
   "unmapPage sz asid vptr pptr \<lbrace>invs'\<rbrace>"
   unfolding unmapPage_def
@@ -976,34 +958,17 @@ lemma perform_page_invs [wp]:
   apply (cases pt)
      apply clarsimp
      apply ((wpsimp wp: hoare_vcg_all_lift hoare_vcg_ex_lift hoare_vcg_const_imp_lift
-                       arch_update_updateCap_invs unmapPage_cte_wp_at' getSlotCap_wp
-                  simp: valid_page_inv'_def is_arch_update'_def
+                        arch_update_updateCap_invs unmapPage_cte_wp_at' getSlotCap_wp
+                  simp: valid_page_inv'_def is_arch_update'_def cur_tcb'_asrt_def cur_tcb'_def
              | (auto simp: is_arch_update'_def)[1])+)[3]
   apply (clarsimp simp: cte_wp_at_ctes_of valid_page_inv'_def)
   apply (clarsimp simp: is_arch_update'_def isCap_simps valid_cap'_def capAligned_def
                   split: option.splits)
   done
 
-lemma setObject_cte_obj_at_ap':
-  shows
-  "\<lbrace>\<lambda>s. P' (obj_at' (P :: asidpool \<Rightarrow> bool) p s)\<rbrace>
-  setObject c (cte::cte)
-  \<lbrace>\<lambda>_ s. P' (obj_at' P p s)\<rbrace>"
-  apply (clarsimp simp: setObject_def in_monad split_def
-                        valid_def lookupAround2_char1
-                        obj_at'_def ps_clear_upd
-             split del: if_split)
-  apply (clarsimp elim!: rsubst[where P=P'])
-  apply (clarsimp simp: updateObject_cte in_monad objBits_simps
-                        tcbCTableSlot_def tcbVTableSlot_def
-                        typeError_def
-                 split: if_split_asm
-                        Structures_H.kernel_object.split_asm)
-  done
-
 lemma updateCap_ko_at_ap_inv'[wp]:
   "\<lbrace>\<lambda>s. P (ko_at' (ko::asidpool) p s )\<rbrace> updateCap a b \<lbrace>\<lambda>rv s. P ( ko_at' ko p s)\<rbrace>"
-  by (wpsimp simp: updateCap_def setCTE_def wp: setObject_cte_obj_at_ap')
+  by (wpsimp simp: updateCap_def setCTE_def wp: setObject_distinct_types_preserves_obj_at')
 
 lemma storePTE_asid_pool_obj_at'[wp]:
   "storePTE p pte \<lbrace>\<lambda>s. P (obj_at' (P'::asidpool \<Rightarrow> bool) t s)\<rbrace>"
@@ -1034,9 +999,5 @@ lemma perform_aci_invs [wp]:
   done
 
 end
-
-lemma cteCaps_of_ctes_of_lift:
-  "(\<And>P. \<lbrace>\<lambda>s. P (ctes_of s)\<rbrace> f \<lbrace>\<lambda>_ s. P (ctes_of s)\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. P (cteCaps_of s) \<rbrace> f \<lbrace>\<lambda>_ s. P (cteCaps_of s)\<rbrace>"
-  unfolding cteCaps_of_def .
 
 end
