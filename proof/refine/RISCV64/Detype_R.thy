@@ -5051,7 +5051,9 @@ lemma insertNewCap_wps[wp]:
   apply (fastforce elim!: rsubst[where P=P])
   done
 
-crunch typ_at'[wp]: insertNewCap "\<lambda>s. P (typ_at' T p s)"
+crunches insertNewCap
+  for typ_at'[wp]: "\<lambda>s. P (typ_at' T p s)"
+  and pspace_bounded'[wp]: pspace_bounded'
   (wp: crunch_wps)
 
 end
