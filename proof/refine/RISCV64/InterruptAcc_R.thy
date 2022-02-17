@@ -98,18 +98,15 @@ lemma update_work_units_corres[corres]:
 
 lemma getCurTime_corres[corres]:
   "corres (=) \<top> \<top> (gets cur_time) getCurTime"
-  apply (simp add: getCurTime_def state_relation_def)
-  done
+  by (simp add: getCurTime_def state_relation_def)
 
 lemma getDomainTime_corres[corres]:
   "corres (=) \<top> \<top> (gets domain_time) getDomainTime"
-  apply (simp add: getDomainTime_def state_relation_def)
-  done
+  by (simp add: getDomainTime_def state_relation_def)
 
 lemma getCurTime_sp:
   "\<lbrace>P\<rbrace> getCurTime \<lbrace>\<lambda>rv s. rv = ksCurTime s \<and> P s\<rbrace>"
-  apply wpsimp
-  done
+  by wpsimp
 
 lemma updateTimeStamp_corres[corres]:
   "corres dc \<top> \<top> update_time_stamp updateTimeStamp"
@@ -171,7 +168,7 @@ lemma refillSufficient_corres:
                     simp: getRefills_def)+
    apply (fastforce dest: valid_objs_valid_sched_context_size
                     simp: sc_at_pred_n_def obj_at_def is_sc_obj_def)
-  apply (clarsimp simp: obj_at'_def projectKOs)
+  apply (clarsimp simp: obj_at'_def)
   done
 
 lemma modifyWorkUnits_valid_objs'[wp]:
@@ -192,13 +189,11 @@ crunches updateTimeStamp
 
 lemma getCurSc_sp:
   "\<lbrace>P\<rbrace> getCurSc \<lbrace>\<lambda>rv s. rv = ksCurSc s \<and> P s\<rbrace>"
-  apply (wpsimp wp: getCurSc_def)
-  done
+  by (wpsimp wp: getCurSc_def)
 
 lemma getConsumedTime_sp:
   "\<lbrace>P\<rbrace> getConsumedTime \<lbrace>\<lambda>rv s. rv = ksConsumedTime s \<and> P s\<rbrace>"
-  apply wpsimp
-  done
+  by wpsimp
 
 lemma scActive_corres:
   "corres (=) (sc_at scPtr and pspace_aligned and pspace_distinct)
@@ -242,7 +237,7 @@ lemma scActive_sp:
   apply (rule hoare_seq_ext[rotated])
    apply (rule get_sc_sp')
   apply (wp hoare_return_sp)
-  apply (clarsimp simp: obj_at'_def projectKOs)
+  apply (clarsimp simp: obj_at'_def)
   done
 
 lemma preemptionPoint_corres:
@@ -255,9 +250,9 @@ lemma preemptionPoint_corres:
   (is "corres _ ?abs ?conc _ _")
   supply if_split[split del]
   apply (simp add: preemption_point_def preemptionPoint_def)
-  apply (rule corres_splitEE_skip
-         ; corressimp corres: update_work_units_corres
-                        simp: update_work_units_def)
+  apply (rule corres_splitEE_skip;
+         corressimp corres: update_work_units_corres
+                      simp: update_work_units_def)
   apply (clarsimp simp: bindE_def liftE_def)
   apply (rule_tac Q'="\<lambda>rv s. rv = ksWorkUnitsCompleted s \<and> ?conc s" in corres_symb_exec_r[rotated])
      apply (wpsimp simp: getWorkUnits_def)+
@@ -391,20 +386,20 @@ lemma sch_act_simple_irq_state_independent[intro!, simp]:
   by (simp add: sch_act_simple_def)
 
 method invs'_independent_method
-  = (clarsimp simp: irq_state_independent_H_def invs'_def
-                    valid_pspace'_def valid_replies'_def sch_act_wf_def
-                    valid_queues_def sym_refs_def state_refs_of'_def
-                    if_live_then_nonz_cap'_def if_unsafe_then_cap'_def
-                    valid_global_refs'_def
-                    valid_arch_state'_def valid_irq_node'_def
-                    valid_irq_handlers'_def valid_irq_states'_def
-                    irqs_masked'_def bitmapQ_defs valid_queues_no_bitmap_def
-                    valid_queues'_def
-                    pspace_domain_valid_def cur_tcb'_def
-                    valid_machine_state'_def tcb_in_cur_domain'_def ex_cte_cap_wp_to'_def
-                    valid_mdb'_def ct_in_state'_def
-                    valid_release_queue_def valid_release_queue'_def valid_dom_schedule'_def
-              cong: if_cong option.case_cong)
+  = clarsimp simp: irq_state_independent_H_def invs'_def
+                   valid_pspace'_def valid_replies'_def sch_act_wf_def
+                   valid_queues_def sym_refs_def state_refs_of'_def
+                   if_live_then_nonz_cap'_def if_unsafe_then_cap'_def
+                   valid_global_refs'_def
+                   valid_arch_state'_def valid_irq_node'_def
+                   valid_irq_handlers'_def valid_irq_states'_def
+                   irqs_masked'_def bitmapQ_defs valid_queues_no_bitmap_def
+                   valid_queues'_def
+                   pspace_domain_valid_def cur_tcb'_def
+                   valid_machine_state'_def tcb_in_cur_domain'_def ex_cte_cap_wp_to'_def
+                   valid_mdb'_def ct_in_state'_def
+                   valid_release_queue_def valid_release_queue'_def valid_dom_schedule'_def
+             cong: if_cong option.case_cong
 
 lemma
   shows invs'_irq_state_independent [simp, intro!]:
