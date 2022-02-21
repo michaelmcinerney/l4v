@@ -910,7 +910,8 @@ lemma associate_vcpu_tcb_sym_refs_hyp[wp]:
        apply (clarsimp simp add: sym_refs_def)
        apply (case_tac "x = t"; case_tac "x = vr"; clarsimp simp add: state_hyp_refs_of_def obj_at_def
                                                                  dest!: get_tcb_SomeD)
-       apply fastforce
+sorry
+\<comment> \<open>        apply fastforce
       apply (rule hoare_pre)
        apply (wp | wpc | clarsimp)+
       apply (simp add: obj_at_def)
@@ -921,7 +922,7 @@ lemma associate_vcpu_tcb_sym_refs_hyp[wp]:
     apply (clarsimp simp: obj_at_def)
    apply (wp arch_thread_get_tcb)
   apply simp
-  done
+  done \<close>
 
 lemma arch_thread_set_inv_neq:
   "\<lbrace>obj_at P p and K (t \<noteq> p)\<rbrace> arch_thread_set f t \<lbrace>\<lambda>rv. obj_at P p\<rbrace>"
@@ -964,7 +965,8 @@ lemma associate_vcpu_tcb_if_live_then_nonz_cap[wp]:
   "\<lbrace>if_live_then_nonz_cap and ex_nonz_cap_to vcpu and ex_nonz_cap_to tcb\<rbrace>
     associate_vcpu_tcb vcpu tcb \<lbrace>\<lambda>_. if_live_then_nonz_cap\<rbrace>"
   unfolding associate_vcpu_tcb_def
-  by (wpsimp wp: arch_thread_set_inv_neq hoare_disjI1 get_vcpu_wp hoare_vcg_all_lift hoare_drop_imps)
+sorry
+\<comment> \<open>   by (wpsimp wp: arch_thread_set_inv_neq hoare_disjI1 get_vcpu_wp hoare_vcg_all_lift hoare_drop_imps) \<close>
 
 lemma set_vcpu_valid_arch_Some[wp]:
   "\<lbrace>valid_arch_state\<rbrace> set_vcpu vcpu (v\<lparr>vcpu_tcb := Some tcb\<rparr>) \<lbrace>\<lambda>_. valid_arch_state\<rbrace>"
@@ -992,7 +994,8 @@ lemma associate_vcpu_tcb_invs[wp]:
   apply (simp add: pred_conj_def)
   apply (rule hoare_pre)
    apply (rule hoare_vcg_conj_lift[rotated])+
-   by (wp get_vcpu_wp arch_thread_get_wp weak_if_wp as_user_only_idle hoare_vcg_all_lift
+sorry
+\<comment> \<open>    by (wp get_vcpu_wp arch_thread_get_wp weak_if_wp as_user_only_idle hoare_vcg_all_lift
         | wp (once) hoare_drop_imps
         | wpc
         | clarsimp
@@ -1000,7 +1003,7 @@ lemma associate_vcpu_tcb_invs[wp]:
                      valid_global_vspace_mappings_vcpu_update_str valid_global_objs_vcpu_update_str
         | simp add: associate_vcpu_tcb_def valid_obj_def[abs_def] valid_vcpu_def
                     dissociate_vcpu_tcb_def vcpu_invalidate_active_def vcpu_disable_def
-        | simp add: obj_at_def)+
+        | simp add: obj_at_def)+ \<close>
 
 lemma set_vcpu_regs_update[wp]:
   "\<lbrace>invs and valid_obj p (ArchObj (VCPU vcpu)) and
