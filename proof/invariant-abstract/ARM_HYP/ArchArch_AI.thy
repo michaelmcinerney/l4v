@@ -987,15 +987,6 @@ lemma valid_global_vspace_mappings_vcpu_update_str:
   "valid_global_vspace_mappings s \<Longrightarrow> valid_global_vspace_mappings (s\<lparr>arch_state := arm_current_vcpu_update f (arch_state s)\<rparr>)"
   by (simp add: valid_global_vspace_mappings_def)
 
-\<comment> \<open>A variant which works nicely with subgoals that do not contain schematics\<close>
-lemmas hoare_vcg_conj_lift_pre_fix
-  = hoare_vcg_conj_lift[where P=R and P'=R for R, simplified]
-
-\<comment> \<open>For forward reasoning in Hoare proofs, these lemmas allow skipping over the
-    left-hand-side of monadic bind, while keeping the same precondition.\<close>
-lemmas hoare_seq_ext_skip
-  = hoare_seq_ext[where B="\<lambda>_. A" and A=A for A, rotated]
-
 lemma arm_current_vcpu_update_valid_global_vspace_mappings[simp]:
   "valid_global_vspace_mappings (s\<lparr>arch_state := arm_current_vcpu_update f (arch_state s)\<rparr>)
    = valid_global_vspace_mappings s"
@@ -1059,6 +1050,11 @@ lemma is_irq_active_sp:
   "\<lbrace>P\<rbrace> get_irq_state irq \<lbrace>\<lambda>rv s. P s \<and> (rv = interrupt_states s irq)\<rbrace>"
   by (wpsimp simp: get_irq_state_def)
 
+\<comment> \<open>For forward reasoning in oare proofs, these lemmas allow skipping over the
+    left-hand-side of monadic bind, while keeping the same precondition.\<close>
+lemmas hoare_seq_ext_skip
+  = hoare_seq_ext[where B="\<lambda>_. A" and A=A for A, rotated]
+
 lemma restore_virt_timer_valid_irq_states[wp]:
   "restore_virt_timer vcpu_ptr \<lbrace>valid_irq_states\<rbrace>"
   apply (clarsimp simp: restore_virt_timer_def is_irq_active_def liftM_def)
@@ -1074,20 +1070,19 @@ lemma restore_virt_timer_valid_irq_states[wp]:
 crunches vcpu_restore_reg_range, vcpu_enable
   for valid_irq_states[wp]: valid_irq_states
   (wp: crunch_wps dmo_valid_irq_states set_gic_vcpu_ctrl_hcr_irq_masks
-   simp: writeVCPUHardwareReg_def maskInterrupt_def isb_def setHCR_def)
+   simp: maskInterrupt_def isb_def setHCR_def)
 
 lemma vcpu_restore_valid_irq_states[wp]:
   "vcpu_restore vcpu \<lbrace>valid_irq_states\<rbrace>"
-  unfolding vcpu_restore_def
+  unfolding vcpu_restore_def isb_def
   by (wpsimp wp: dmo_valid_irq_states set_gic_vcpu_ctrl_hcr_irq_masks set_gic_vcpu_ctrl_vmcr_irq_masks
-                 set_gic_vcpu_ctrl_lr_irq_masks mapM_wp_inv set_gic_vcpu_ctrl_apr_irq_masks
-           simp: isb_def)
+                 set_gic_vcpu_ctrl_lr_irq_masks mapM_wp_inv set_gic_vcpu_ctrl_apr_irq_masks)
 
 crunches vcpu_switch
   for valid_irq_states[wp]: valid_irq_states
-  (wp: crunch_wps dmo_valid_irq_states set_gic_vcpu_ctrl_hcr_irq_masks
-  simp: writeVCPUHardwareReg_def get_gic_vcpu_ctrl_lr_def get_gic_vcpu_ctrl_apr_def
-        get_gic_vcpu_ctrl_vmcr_def get_gic_vcpu_ctrl_hcr_def isb_def)
+  (wp: crunch_wps dmo_valid_irq_states
+   simp: get_gic_vcpu_ctrl_lr_def get_gic_vcpu_ctrl_apr_def
+         get_gic_vcpu_ctrl_vmcr_def get_gic_vcpu_ctrl_hcr_def isb_def)
 
 lemma associate_vcpu_tcb_valid_irq_states[wp]:
   "associate_vcpu_tcb vcpu tcb \<lbrace>valid_irq_states\<rbrace>"
@@ -1167,19 +1162,21 @@ crunches associate_vcpu_tcb
   for valid_machine_state[wp]: valid_machine_state
   (wp: crunch_wps ignore: do_machine_op simp: get_gic_vcpu_ctrl_lr_def do_machine_op_bind)
 
+lemma associate_vcpu_tcb_valid_objs[wp]:
+  "\<lbrace>valid_objs and vcpu_at vcpu\<rbrace>
+   associate_vcpu_tcb vcpu tcb
+   \<lbrace>\<lambda>_. valid_objs\<rbrace>"
+  by (wp arch_thread_get_wp
+      | wp (once) hoare_drop_imps
+      | wpc
+      | clarsimp simp: associate_vcpu_tcb_def valid_obj_def[abs_def] valid_vcpu_def
+      | simp add: obj_at_def)+
+
 lemma associate_vcpu_tcb_invs[wp]:
   "\<lbrace>invs and ex_nonz_cap_to vcpu and ex_nonz_cap_to tcb and vcpu_at vcpu and (\<lambda>s. tcb \<noteq> idle_thread s)\<rbrace>
    associate_vcpu_tcb vcpu tcb
    \<lbrace>\<lambda>_. invs\<rbrace>"
-  apply (clarsimp simp: invs_def valid_state_def valid_pspace_def pred_conj_def)
-  apply (intro hoare_vcg_conj_lift_pre_fix; (solves wpsimp)?)
-  by (wp get_vcpu_wp arch_thread_get_wp hoare_vcg_all_lift
-      | wp (once) hoare_drop_imps
-      | wpc
-      | clarsimp
-      | simp add: associate_vcpu_tcb_def valid_obj_def[abs_def] valid_vcpu_def
-                  dissociate_vcpu_tcb_def vcpu_invalidate_active_def vcpu_disable_def
-      | simp add: obj_at_def)+
+  by (wpsimp simp: invs_def valid_state_def valid_pspace_def pred_conj_def)
 
 lemma set_vcpu_regs_update[wp]:
   "\<lbrace>invs and valid_obj p (ArchObj (VCPU vcpu)) and
