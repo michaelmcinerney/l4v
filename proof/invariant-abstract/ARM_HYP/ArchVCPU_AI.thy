@@ -138,28 +138,8 @@ lemma switch_vcpu_cur_vcpu_valid[wp]:
    vcpu_switch v
    \<lbrace>\<lambda>_ s. cur_vcpu_valid (s\<lparr>cur_thread := t\<rparr>)\<rbrace>"
   apply (clarsimp simp: vcpu_switch_def)
-  apply (cases v; clarsimp)
-   apply (rule hoare_seq_ext[OF _ gets_sp], rename_tac cur_vcpu)
-   apply (case_tac cur_vcpu; clarsimp)
-    apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-   apply (clarsimp simp: when_def)
-   apply (intro conjI impI)
-    apply (rule hoare_seq_ext_skip, wpsimp)
-    apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-   apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-  apply (rule hoare_seq_ext[OF _ gets_sp], rename_tac cur_vcpu)
-  apply (case_tac cur_vcpu; clarsimp)
-   apply (rule hoare_seq_ext_skip, wpsimp)
-   apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-  apply (intro conjI impI)
-   apply (rule hoare_seq_ext_skip, solves wpsimp)+
-   apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-  apply (clarsimp simp: when_def)
-  apply (intro conjI impI)
-   apply (rule hoare_seq_ext_skip, solves wpsimp)+
-   apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
   apply (wpsimp simp: cur_vcpu_valid_def active_cur_vcpu_of_def)
-  done
+  by fastforce
 
 lemma store_hw_asid_active_cur_vcpu_of[wp]:
   "store_hw_asid pd asid \<lbrace>\<lambda>s. P (active_cur_vcpu_of s)\<rbrace>"
