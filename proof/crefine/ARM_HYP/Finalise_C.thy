@@ -2110,6 +2110,24 @@ lemma dissociateVCPUTCB_vcpu_ccorres:
      (dissociateVCPUTCB vcpuptr tptr) (Call dissociateVCPUTCB_'proc)"
   by (rule ccorres_guard_imp2[OF dissociateVCPUTCB_ccorres]) clarsimp
 
+lemma vcpuTCBPtr_update_Some_vcpu_live[wp]:
+  "setObject ptr' (vcpuTCBPtr_update (\<lambda>_. Some tptr) vcpu) \<lbrace>ko_wp_at' (is_vcpu' and hyp_live') ptr\<rbrace>"
+  apply (wp setObject_ko_wp_at, simp)
+    apply (simp add: objBits_simps archObjSize_def)
+   apply (clarsimp simp: vcpu_bits_def pageBits_def)
+  apply (fastforce simp: pred_conj_def is_vcpu'_def ko_wp_at'_def obj_at'_real_def projectKOs
+                         hyp_live'_def arch_live'_def
+                  split: if_splits)
+  done
+
+lemma vcpuTCBPtr_update_Some_valid_arch_state'[wp]:
+  "setObject vcpuptr (vcpuTCBPtr_update (\<lambda>_. Some tptr) vcpu) \<lbrace>valid_arch_state'\<rbrace>"
+  apply (simp add: valid_arch_state'_def valid_asid_table'_def option_case_all_conv)
+    apply (wp hoare_vcg_imp_lift hoare_vcg_all_lift vcpuTCBPtr_update_vcpu_live
+           | rule hoare_lift_Pf[where f=ksArchState])
+  apply (clarsimp simp: pred_conj_def o_def)
+  done
+
 lemma associateVCPUTCB_ccorres:
   "ccorres dc xfdc
      (invs' and tcb_at' tptr
@@ -2121,8 +2139,8 @@ lemma associateVCPUTCB_ccorres:
   apply (cinit lift: tcb_' vcpu_')
   apply (rule ccorres_move_c_guard_tcb)
    apply (rule ccorres_pre_archThreadGet, rename_tac tcbVCPU)
-    apply (rule ccorres_split_nothrow[where r'=dc and xf'=xfdc])
-   apply (rule_tac Q="(\<lambda>s. \<exists>tcb. ko_at' tcb tptr s \<and> (atcbVCPUPtr o tcbArch)  tcb = tcbVCPU) and
+   apply (rule ccorres_split_nothrow[where r'=dc and xf'=xfdc])
+       apply (rule_tac Q="(\<lambda>s. \<exists>tcb. ko_at' tcb tptr s \<and> (atcbVCPUPtr o tcbArch) tcb = tcbVCPU) and
                           no_0_obj' and
                           valid_objs'"
                    and Q'=UNIV
@@ -2145,12 +2163,12 @@ lemma associateVCPUTCB_ccorres:
      apply (rule ccorres_pre_getObject_vcpu, rename_tac vcpu)
      apply (rule ccorres_move_c_guard_vcpu)
      apply (rule ccorres_split_nothrow[where r'=dc and xf'=xfdc])
-    apply (rule_tac Q="(\<lambda>s. \<exists>tcb. ko_at' vcpu vcpuptr s) and
-                          no_0_obj' and
-                          valid_objs'"
-                   and Q'=UNIV
-                   and C'="{s. (vcpuTCBPtr vcpu \<noteq> None)}"
-                   in ccorres_rewrite_cond_sr)
+         apply (rule_tac Q="(\<lambda>s. \<exists>tcb. ko_at' vcpu vcpuptr s) and
+                            no_0_obj' and
+                            valid_objs'"
+                     and Q'=UNIV
+                     and C'="{s. (vcpuTCBPtr vcpu \<noteq> None)}"
+                     in ccorres_rewrite_cond_sr)
           apply clarsimp
           apply (frule cmap_relation_vcpu)
           apply (erule cmap_relationE1)
@@ -2179,29 +2197,38 @@ lemma associateVCPUTCB_ccorres:
           apply ceqv
          apply (rule ccorres_move_c_guard_vcpu)
          apply clarsimp
-         apply (subst ccorres_seq_skip'[symmetric])
          apply (rule ccorres_split_nothrow[where r'=dc and xf'=xfdc])
-             apply (rule  setObject_vcpuTCB_updated_Basic_ccorres[where tptr="Some tptr" and t="Map.empty"
-                                                                 , simplified option_to_ctcb_ptr_def, simplified])
+             apply (rule setObject_vcpuTCB_updated_Basic_ccorres[where tptr="Some tptr" and t="Map.empty",
+                                                                 simplified option_to_ctcb_ptr_def, simplified])
             apply ceqv
-           apply (rule ccorres_return_Skip)
-          apply (rule wp_post_taut)
+           apply (rule ccorres_pre_getCurThread, rename_tac curThread)
+           apply (subst ccorres_seq_skip'[symmetric])
+           apply (rule ccorres_split_nothrow[where r'=dc and xf'=xfdc])
+               apply (rule_tac R="\<lambda>s. curThread = ksCurThread s" in ccorres_when)
+                apply (intro allI impI)
+                apply (unfold mem_simps)[1]
+                apply (clarsimp simp: rf_sr_ksCurThread)
+               apply (ctac add: vcpu_switch_ccorres_Some)
+              apply ceqv
+             apply (rule ccorres_return_Skip)
+            apply (rule wp_post_taut)
+           apply (vcg exspec=vcpu_switch_modifies)
+          apply (rule_tac Q="\<lambda>_. pspace_aligned' and pspace_distinct' and valid_objs' and no_0_obj'
+                                 and valid_arch_state' and vcpu_at' vcpuptr"
+                 in hoare_post_imp, fastforce)
+          apply (wpsimp wp: setObject_vcpu_valid_objs')
          apply vcg
         apply wpsimp
-       apply vcg
-      apply wpc
-       apply (subgoal_tac "vcpuTCBPtr_update Map.empty vcpu = vcpu", simp, wp)
-       apply (case_tac vcpu; clarsimp)
+       apply (vcg exspec=dissociateVCPUTCB_modifies)
+      apply wpsimp
+      apply (rule_tac Q="\<lambda>_. invs' and vcpu_at' vcpuptr and tcb_at' tptr" in hoare_post_imp)
+       apply (fastforce simp: valid_vcpu'_def typ_at_tcb' valid_arch_tcb'_def)
       apply wpsimp
      apply (vcg exspec=dissociateVCPUTCB_modifies)
-    apply wpc
-     apply clarsimp
-     apply wp
-    apply clarsimp
-    apply (wpsimp wp: hoare_vcg_all_lift)
     apply (rule_tac Q="\<lambda>_. invs' and vcpu_at' vcpuptr and tcb_at' tptr" in hoare_post_imp)
-     apply (clarsimp simp: invs_no_0_obj' valid_vcpu'_def typ_at_tcb'
-                     split: option.splits)
+     apply (clarsimp simp: valid_vcpu'_def typ_at_tcb' obj_at'_def projectKOs)
+     apply (rename_tac vcpu obj, case_tac vcpu; clarsimp)
+     apply (fastforce simp: valid_arch_tcb'_def)
     apply wpsimp
    apply (vcg exspec=dissociateVCPUTCB_modifies)
   apply (fastforce simp: ctcb_relation_def carch_tcb_relation_def typ_heap_simps

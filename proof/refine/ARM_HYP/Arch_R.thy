@@ -1323,7 +1323,7 @@ lemma vcpuSwitch_corres'':
              (vcpu_switch vcpu)
              (vcpuSwitch vcpu')"
   apply (rule stronger_corres_guard_imp,
-         rule vcpuSwitch_corres[OF assms])
+         rule vcpuSwitch_corres'[OF assms])
    apply (clarsimp simp: valid_arch_state_def is_vcpu_def obj_at_def)
   apply simp
   done
