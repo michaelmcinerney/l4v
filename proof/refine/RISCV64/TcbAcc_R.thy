@@ -114,6 +114,14 @@ crunches setThreadState, threadSet
   and obj_at'_sc[wp]: "\<lambda>s. Q (obj_at' (P :: sched_context \<Rightarrow> bool) p s)"
   (wp: crunch_wps set_tcb'.set_preserves_some_obj_at')
 
+crunches tcbSchedDequeue, tcbSchedEnqueue
+  for replies_of'[wp]: "\<lambda>s. P (replies_of' s)"
+
+crunches tcbSchedDequeue, tcbSchedEnqueue, tcbReleaseRemove
+  for obj_at'_reply[wp]: "\<lambda>s. P (obj_at' (Q :: reply \<Rightarrow> bool) p s)"
+  and obj_at'_ep[wp]: "\<lambda>s. P (obj_at' (Q :: endpoint \<Rightarrow> bool) p s)"
+  and obj_at'_sc[wp]: "\<lambda>s. Q (obj_at' (P :: sched_context \<Rightarrow> bool) p s)"
+
 lemma valid_objs_valid_tcbE':
   assumes "valid_objs' s"
           "tcb_at' t s"
@@ -814,8 +822,6 @@ lemmas threadSet_cteCaps_of = ctes_of_cteCaps_of_lift [OF threadSet_ctes_of]
 lemmas threadSet_urz = untyped_ranges_zero_lift[where f="cteCaps_of", OF _ threadSet_cteCaps_of]
 
 lemma threadSet_idle'T:
-  assumes x: "\<forall>tcb. \<forall>(getF, setF) \<in> ran tcb_cte_cases. getF (F tcb) = getF tcb"
-  shows
   "\<lbrace>\<lambda>s. valid_idle' s
         \<and> (t = ksIdleThread s \<longrightarrow> (\<forall>tcb. ko_at' tcb t s \<and> idle_tcb' tcb \<longrightarrow> idle_tcb' (F tcb)))\<rbrace>
    threadSet F t
@@ -826,7 +832,8 @@ lemma threadSet_idle'T:
   done
 
 lemmas threadSet_idle' =
-    threadSet_idle'T [OF all_tcbI, OF ball_tcb_cte_casesI]
+    (*threadSet_idle'T [OF all_tcbI, OF ball_tcb_cte_casesI]*)
+    threadSet_idle'T
 
 lemma threadSet_valid_queues_no_bitmap:
   "\<lbrace>valid_queues_no_bitmap and
@@ -1660,7 +1667,7 @@ lemma asUser_sch_act_wf[wp]:
 lemma asUser_idle'[wp]:
   "\<lbrace>valid_idle'\<rbrace> asUser t m \<lbrace>\<lambda>rv. valid_idle'\<rbrace>"
   apply (simp add: asUser_def split_def)
-  apply (wpsimp wp: threadSet_idle' select_f_inv)
+  apply_trace (wpsimp wp: threadSet_idle' select_f_inv)
   done
 
 lemma no_fail_asUser [wp]:
