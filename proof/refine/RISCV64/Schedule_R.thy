@@ -5329,7 +5329,6 @@ crunches schedContextDonate
   and valid_machine_state'[wp]: "\<lambda>s. valid_machine_state' s"
   and ct_not_inQ[wp]: "ct_not_inQ"
   and ct_idle_or_in_cur_domain'[wp]: "ct_idle_or_in_cur_domain'"
-  and valid_pde_mappings'[wp]: "\<lambda>s. valid_pde_mappings' s"
   and pspace_domain_valid[wp]: "\<lambda>s. pspace_domain_valid s"
   and irqs_masked'[wp]: "\<lambda>s. irqs_masked' s"
   and cur_tcb'[wp]: "cur_tcb'"
@@ -5338,7 +5337,9 @@ crunches schedContextDonate
   and reply_projs[wp]: "\<lambda>s. P (replyNexts_of s) (replyPrevs_of s) (replyTCBs_of s) (replySCs_of s)"
   and valid_replies' [wp]: valid_replies'
   and pspace_bounded'[wp]: "pspace_bounded'"
-  (simp: comp_def tcb_cte_cases_def crunch_simps
+  and pspace_canonical'[wp]: pspace_canonical'
+  and pspace_in_kernel_mappings'[wp]: pspace_in_kernel_mappings'
+  (simp: comp_def tcb_cte_cases_def crunch_simps cteSizeBits_def
      wp: threadSet_not_inQ hoare_vcg_imp_lift' valid_irq_node_lift
          setQueue_cur threadSet_ifunsafe'T threadSet_cur crunch_wps
          cur_tcb_lift valid_dom_schedule'_lift valid_replies'_lift)
@@ -5354,7 +5355,8 @@ lemma schedContextDonate_if_live_then_nonz_cap':
    \<lbrace>\<lambda>_. if_live_then_nonz_cap'\<rbrace>"
   unfolding schedContextDonate_def
   by (wpsimp wp: threadSet_iflive'T setSchedContext_iflive' hoare_vcg_all_lift threadSet_cap_to'
-           simp: conj_ac cong: conj_cong | wp hoare_drop_imps | fastforce simp: tcb_cte_cases_def)+
+           simp: conj_ac cong: conj_cong | wp hoare_drop_imps
+      | fastforce simp: tcb_cte_cases_def cteSizeBits_def)+
 
 (* `obj_at' (\<lambda>x. scTCB x \<noteq> Some idle_thread_ptr) scPtr s` is
    needed because sometimes sym_refs doesn't hold in its entirety here. *)
@@ -5443,7 +5445,8 @@ lemma tcbReleaseRemove_corres:
     apply clarsimp
     apply wpsimp
    apply simp
-  apply (fastforce simp: state_relation_def tcb_at_cross)
+   apply (fastforce simp: state_relation_def tcb_at_cross)
+  apply fastforce
   done
 
 lemma threadSet_valid_queues_no_state:
@@ -5473,10 +5476,9 @@ lemma threadSet_valid_queues'_no_state:
      apply (wp setObject_ko_wp_at | simp add: objBits_simps')+
     apply (wp getObject_tcb_wp updateObject_default_inv
                | simp split del: if_split)+
-  apply (clarsimp simp: obj_at'_def ko_wp_at'_def projectKOs
-                        objBits_simps addToQs_def
+  apply (clarsimp simp: obj_at'_def ko_wp_at'_def objBits_simps addToQs_def
              split del: if_split cong: if_cong)
-  apply (fastforce simp: projectKOs inQ_def split: if_split_asm)
+  apply (fastforce simp: inQ_def split: if_split_asm)
   done
 
 lemma setQueue_valid_tcbs'[wp]:
@@ -5541,7 +5543,7 @@ lemma schedContextDonate_corres:
                   apply (rule threadset_corresT)
                     apply (clarsimp simp: tcb_relation_def)
                    apply (clarsimp simp: tcb_cap_cases_def)
-                  apply (clarsimp simp: tcb_cte_cases_def)
+                  apply (fastforce simp: tcb_cte_cases_def objBits_simps')
                  apply (clarsimp simp: sc_relation_def)
                 apply (wpsimp wp: hoare_drop_imps)
                apply (wpsimp wp: hoare_drop_imps
@@ -5567,8 +5569,8 @@ lemma schedContextDonate_corres:
                           update_sc_no_reply_stack_update_ko_at'_corres
                             [where f'="scTCB_update (\<lambda>_. Some thread)"]])
                    apply (clarsimp simp: tcb_relation_def)
-                  apply (clarsimp simp: tcb_cap_cases_def)
-                 apply (clarsimp simp: tcb_cte_cases_def)
+                  apply (fastforce simp: tcb_cap_cases_def objBits_simps')
+                 apply (fastforce simp: tcb_cte_cases_def objBits_simps')
                 apply (clarsimp simp: sc_relation_def)
                apply clarsimp
               apply (clarsimp simp: objBits_def objBitsKO_def)
@@ -5583,8 +5585,8 @@ lemma schedContextDonate_corres:
    apply clarsimp
    apply (frule valid_objs'_valid_tcbs')
    apply (rule valid_objsE', assumption)
-    apply (fastforce simp: obj_at'_def projectKO_eq projectKO_sc)
-   apply (clarsimp simp: valid_obj'_def valid_sched_context'_def obj_at'_def projectKOs)
+    apply (fastforce simp: obj_at'_def)
+   apply (clarsimp simp: valid_obj'_def valid_sched_context'_def obj_at'_def)
    apply (frule valid_objs'_valid_tcbs')
    apply (fastforce simp: valid_obj'_def valid_tcb'_def)
   done
