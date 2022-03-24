@@ -702,9 +702,7 @@ lemma tcbSchedDequeue_tcbPriority[wp]:
   done
 
 lemma tcbSchedDequeue_invs'[wp]:
-  "\<lbrace>invs' and tcb_at' t\<rbrace>
-     tcbSchedDequeue t
-   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  "tcbSchedDequeue t \<lbrace>invs'\<rbrace>"
   unfolding invs'_def
   apply (rule hoare_pre)
    apply (wp tcbSchedDequeue_ct_not_inQ sch_act_wf_lift valid_irq_node_lift irqs_masked_lift
@@ -5186,7 +5184,8 @@ lemma schedule_corres:
        apply (rule threadGet_corres)
        apply (clarsimp simp: tcb_relation_def)
       apply clarsimp
-     apply (clarsimp simp: cur_tcb'_def)
+      apply (fastforce simp: cur_tcb'_def)
+     apply simp
 
     apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
     apply (wpsimp wp: thread_get_wp)
@@ -5195,8 +5194,8 @@ lemma schedule_corres:
 
    apply (find_goal \<open>match conclusion in "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>" for P f Q  \<Rightarrow> -\<close>)
    apply (wpsimp wp: threadGet_wp)
-   apply (clarsimp simp: cur_tcb'_def obj_at_simps sch_act_wf_cases
-                  split: scheduler_action.splits)
+   apply (fastforce simp: cur_tcb'_def obj_at_simps sch_act_wf_cases
+                   split: scheduler_action.splits)
 
   apply (rule corres_split'[rotated 2, OF schedule_switch_thread_fastfail_inv
                                           scheduleSwitchThreadFastfail_inv])
@@ -5275,7 +5274,7 @@ lemma schedContextDonate_valid_queues[wp]:
     apply (wpsimp wp: tcbReleaseRemove_valid_queues)
    apply (rule hoare_seq_ext_skip)
     apply (wpsimp wp: threadSet_valid_queues_new threadSet_valid_objs')
-    apply (clarsimp simp: obj_at'_def inQ_def valid_tcb'_def tcb_cte_cases_def)
+    apply (clarsimp simp: obj_at'_def inQ_def valid_tcb'_def tcb_cte_cases_def cteSizeBits_def)
    apply (wpsimp wp: rescheduleRequired_valid_queues)
    apply fastforce
   apply (wpsimp wp: threadSet_valid_queues_new hoare_vcg_all_lift hoare_vcg_imp_lift')
@@ -5303,7 +5302,7 @@ crunches schedContextDonate
 
 crunches schedContextDonate
   for ex_nonz_cap_to'[wp]: "ex_nonz_cap_to' ptr"
-  (wp: threadSet_cap_to simp: tcb_cte_cases_def)
+  (wp: threadSet_cap_to simp: tcb_cte_cases_def cteSizeBits_def)
 
 crunches schedContextDonate
   for valid_irq_handlers'[wp]: "\<lambda>s. valid_irq_handlers' s"
