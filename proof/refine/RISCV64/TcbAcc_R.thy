@@ -4055,9 +4055,10 @@ lemma thread_get_registers:
   done
 
 lemma getMRs_corres:
+  assumes mirel: "mi' = message_info_map mi" shows
   "corres (=) (tcb_at t and pspace_aligned and pspace_distinct)
               (case_option \<top> valid_ipc_buffer_ptr' buf)
-              (get_mrs t buf mi) (getMRs t buf (message_info_map mi))"
+              (get_mrs t buf mi) (getMRs t buf mi')"
   proof -
   have S: "get = gets id"
     by (simp add: gets_def)
@@ -4072,7 +4073,7 @@ lemma getMRs_corres:
     apply (simp add: S RISCV64_H.msgRegisters_def msg_registers_def)
     done
   show ?thesis
-  apply (case_tac mi, simp add: get_mrs_def getMRs_def split del: if_split)
+  apply (case_tac mi, simp add: get_mrs_def getMRs_def mirel split del: if_split)
   apply (case_tac buf)
    apply (rule corres_guard_imp)
      apply (rule corres_split_deprecated [where R = "\<lambda>_. \<top>" and R' =  "\<lambda>_. \<top>", OF _ T])
