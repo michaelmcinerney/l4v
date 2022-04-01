@@ -63,18 +63,9 @@ definition zeroed_main_abstract_state ::
     arch_state = zeroed_arch_abstract_state
   \<rparr>"
 
-definition zeroed_extended_state ::
-  det_ext
-  where
+definition zeroed_extended_state :: det_ext where
   "zeroed_extended_state \<equiv> \<lparr>
     work_units_completed_internal = 0,
-    scheduler_action_internal = resume_cur_thread,
-    ekheap_internal = Map.empty,
-    domain_list_internal = [],
-    domain_index_internal = 0,
-    cur_domain_internal = 0,
-    domain_time_internal = 0,
-    ready_queues_internal = (\<lambda>_ _. []),
     cdt_list_internal = K []
   \<rparr>"
 
