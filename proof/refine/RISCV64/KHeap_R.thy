@@ -1339,7 +1339,6 @@ lemma setObject_other_corres:
 lemmas obj_at_simps = obj_at_def obj_at'_def map_to_ctes_upd_other
                       is_other_obj_relation_type_def
                       a_type_def objBits_simps other_obj_relation_def pageBits_def
-                      archObjSize_def
 
 lemma setEndpoint_corres:
   "ep_relation e e' \<Longrightarrow>

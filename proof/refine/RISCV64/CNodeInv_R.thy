@@ -518,9 +518,6 @@ text \<open>Various proofs about the two recursive deletion operations.
 
 text \<open>Proving the termination of rec_del\<close>
 
-crunch typ_at[wp]: cancel_ipc "\<lambda>s. P (typ_at T p s)"
-  (wp: crunch_wps hoare_vcg_if_splitE simp: crunch_simps)
-
 declare if_split [split]
 
 text \<open>Proving desired properties about rec_del/cap_delete\<close>
@@ -604,7 +601,7 @@ lemma suspend_ctes_of_thread:
 
 lemma schedContextUnbindTCB_ctes_of[wp]:
   "\<lbrace>\<lambda>s. P (ctes_of s)\<rbrace>
-     schedContextUnbindTCB t
+   schedContextUnbindTCB t
    \<lbrace>\<lambda>_ s. P (ctes_of s)\<rbrace>"
   apply (wpsimp simp: schedContextUnbindTCB_def wp: threadSet_ctes_ofT)
      apply (clarsimp simp: ran_def tcb_cte_cases_def cteSizeBits_def split: if_splits)
@@ -698,8 +695,7 @@ lemma case_Zombie_assert_fold:
 
 lemma preemptionPoint_ctes_of:
   "preemptionPoint \<lbrace>\<lambda>s. P (ctes_of s)\<rbrace>"
-  apply (wpsimp wp: preemptionPoint_inv)
-  done
+  by (wpsimp wp: preemptionPoint_inv)
 
 termination finaliseSlot'
   apply (rule finaliseSlot'.termination,
@@ -1108,9 +1104,9 @@ lemma setCTE_cte_wp_at_other:
   done
 
 lemma updateMDB_cte_wp_at_other:
- "\<lbrace>cte_wp_at' P p and (\<lambda>s. m \<noteq> p)\<rbrace>
-  updateMDB m f
-  \<lbrace>\<lambda>uu. cte_wp_at' P p\<rbrace>"
+  "\<lbrace>cte_wp_at' P p and (\<lambda>s. m \<noteq> p)\<rbrace>
+   updateMDB m f
+   \<lbrace>\<lambda>_. cte_wp_at' P p\<rbrace>"
   unfolding updateMDB_def
   apply simp
   apply safe
@@ -5567,7 +5563,7 @@ lemma make_zombie_invs':
                                 \<and> bound_tcb_at' ((=) None) p' s
                                 \<and> bound_sc_tcb_at' (\<lambda>sco. sco = None \<or> sco = Some idle_sc_ptr) p' s
                                 \<and> bound_yt_tcb_at' ((=) None) p' s")
-     apply (clarsimp simp: pred_tcb_at'_def obj_at'_def ko_wp_at'_def projectKOs)
+     apply (clarsimp simp: pred_tcb_at'_def obj_at'_def ko_wp_at'_def)
     subgoal by (auto dest!: isCapDs)
 
    apply (simp only: fold_list_refs_of_replies')
@@ -6304,10 +6300,8 @@ proof (induct arbitrary: P p rule: finalise_spec_induct2)
         apply clarsimp
        apply (clarsimp simp: cte_wp_at_ctes_of capRemovable_def)
        apply (subgoal_tac "final_matters' (cteCap rv) \<and> \<not> isUntypedCap (cteCap rv)")
-        apply (intro conjI impI
-               ; clarsimp?
-               ; erule_tac x=p in ballE
-               ; clarsimp simp: pred_tcb_at'_def obj_at'_def)
+        apply (intro conjI impI; clarsimp?; erule_tac x=p in ballE;
+               clarsimp simp: pred_tcb_at'_def obj_at'_def)
        apply (case_tac "cteCap rv",
               simp_all add: isCap_simps final_matters'_def)[1]
       apply (wp isFinalCapability_inv static_imp_wp | simp | wp (once) isFinal[where x=sl])+
@@ -7112,9 +7106,9 @@ next
                                  reduceZombie_invs | strengthen invs_valid_objs')+)[1]
               apply simp
               apply ((wp replace_cap_invs final_cap_same_objrefs
-                        set_cap_cte_wp_at set_cap_cte_cap_wp_to
-                        hoare_vcg_const_Ball_lift static_imp_wp
-                         | simp add: conj_comms)+)[1]
+                         set_cap_cte_wp_at set_cap_cte_cap_wp_to
+                         hoare_vcg_const_Ball_lift static_imp_wp
+                      | simp add: conj_comms)+)[1]
                  apply (simp(no_asm_use))
              apply (wp make_zombie_invs' updateCap_cap_to'
                         updateCap_cte_wp_at_cases

@@ -530,7 +530,8 @@ proof -
            apply simp
            apply (rule conjI, clarsimp simp add: word_gt_0  shiftl_t2n')
            apply (fastforce simp: Arch_objBits_simps' shiftl_t2n' dest!: n_less_2p_pageBitsForSize )
-apply simp
+
+          apply simp
 
           apply (erule relatedE, ko, ako)
           apply (rename_tac vmpage_size n)
@@ -549,11 +550,11 @@ apply simp
                                             [OF pspace_aligned pspace_distinct])
            apply simp
            apply (rule conjI, clarsimp simp add: word_gt_0)
-  apply (metis is_aligned_0' is_aligned_add shiftl_t2n')
-           apply (simp add: is_aligned_mask)
+            apply (fastforce simp: shiftl_t2n')
            apply (clarsimp simp add: pageBits_def mask_def)
-  apply (metis Arch_objBits_simps'(2) n_less_2p_pageBitsForSize shiftl_t2n')
-apply simp
+           apply (simp only: shiftl_t2n')
+           apply (fastforce intro: n_less_2p_pageBitsForSize[simplified Arch_objBits_simps'])
+          apply simp
 
         apply (erule relatedE, ko, ako)
         apply (clarsimp simp: TcbMap_def tcb_relation_def valid_obj_def)

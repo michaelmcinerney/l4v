@@ -1207,10 +1207,6 @@ crunch aligned'[wp]: transferCaps pspace_aligned'
 crunch distinct'[wp]: transferCaps pspace_distinct'
   (wp: crunch_wps simp: zipWithM_x_mapM)
 
-crunch aligned'[wp]: setMRs pspace_aligned'
-  (wp: crunch_wps simp: crunch_simps)
-crunch distinct'[wp]: setMRs pspace_distinct'
-  (wp: crunch_wps simp: crunch_simps)
 crunch aligned'[wp]: copyMRs pspace_aligned'
   (wp: crunch_wps simp: crunch_simps)
 crunch pspace_canonical'[wp]: copyMRs pspace_canonical'
@@ -1219,13 +1215,6 @@ crunch pspace_in_kernel_mappings'[wp]: copyMRs pspace_in_kernel_mappings'
   (wp: crunch_wps simp: crunch_simps)
 crunch distinct'[wp]: copyMRs pspace_distinct'
   (wp: crunch_wps simp: crunch_simps)
-crunch aligned'[wp]: setMessageInfo pspace_aligned'
-  (wp: crunch_wps simp: crunch_simps)
-crunch distinct'[wp]: setMessageInfo pspace_distinct'
-  (wp: crunch_wps simp: crunch_simps)
-
-crunch valid_objs'[wp]: storeWordUser valid_objs'
-crunch valid_pspace'[wp]: storeWordUser valid_pspace'
 
 lemma set_mrs_valid_objs' [wp]:
   "\<lbrace>valid_objs'\<rbrace> setMRs t a msgs \<lbrace>\<lambda>rv. valid_objs'\<rbrace>"
@@ -1586,9 +1575,8 @@ lemma makeFaultMessage_corres:
        apply (rule_tac P="\<lambda>s. (bound (tcb_sched_context tcb) \<longrightarrow> sc_at (the (tcb_sched_context tcb)) s)
                               \<and> pspace_aligned s \<and> pspace_distinct s"
                     in corres_inst)
-       apply (case_tac "tcb_sched_context tcb"
-              ; case_tac "tcbSchedContext tcb'"
-              ; clarsimp simp: tcb_relation_def)
+       apply (case_tac "tcb_sched_context tcb"; case_tac "tcbSchedContext tcb'";
+              clarsimp simp: tcb_relation_def)
        apply (rule corres_split')
           apply (rule_tac Q="sc_at' (the (tcbSchedContext tcb'))" and P'=\<top> in corres_cross_add_guard)
            apply (fastforce dest!: state_relationD intro!: sc_at_cross simp: obj_at'_def)[1]
@@ -1680,12 +1668,11 @@ crunches makeFaultMessage
 crunches makeFaultMessage
   for invs'[wp]: invs'
 
-lemma doFaultTransfer_invs[wp]:
+lemma doFaultTransfer_invs'[wp]:
   "\<lbrace>invs' and tcb_at' receiver and tcb_at' sender\<rbrace>
    doFaultTransfer badge sender receiver recv_buf
    \<lbrace>\<lambda>_. invs'\<rbrace>"
-  apply (wpsimp simp: doFaultTransfer_def split_def split: option.split)
-  done
+  by (wpsimp simp: doFaultTransfer_def split_def split: option.split)
 
 lemma doIPCTransfer_corres:
   "corres dc
@@ -2017,8 +2004,8 @@ lemma bind_sc_reply_invs[wp]:
          \<and> reply_sc_reply_at (\<lambda>sc_ptr'. sc_ptr' = None) reply_ptr s
          \<and> reply_ptr \<in> fst ` replies_blocked s
          \<and> reply_ptr \<notin> fst ` replies_with_sc s \<rbrace>
-    bind_sc_reply sc_ptr reply_ptr
-   \<lbrace> \<lambda>rv. invs \<rbrace>"
+   bind_sc_reply sc_ptr reply_ptr
+   \<lbrace> \<lambda>_. invs \<rbrace>"
   unfolding bind_sc_reply_def
   supply if_weak_cong[cong del] if_split[split del]
   apply (rule hoare_seq_ext[OF _ gscrpls_sp])
@@ -2164,9 +2151,9 @@ lemma replyPush_corres:
               fastforce intro!: not_BlockedOnReply_not_in_replies_blocked
                          elim!: st_tcb_weakenE)
       subgoal for s s' tcb
-        by (erule delta_sym_refs; clarsimp split: if_splits
-            ; fastforce dest: reply_tcb_reply_at_ReplyTCB_in_state_refs_of
-                              st_tcb_at_TCBReply_in_state_refs_of)
+        by (erule delta_sym_refs; clarsimp split: if_splits;
+            fastforce dest: reply_tcb_reply_at_ReplyTCB_in_state_refs_of
+                            st_tcb_at_TCBReply_in_state_refs_of)
      apply (clarsimp simp: valid_obj_def valid_tcb_def)
     apply (clarsimp simp: valid_idle_def pred_tcb_at_def obj_at_def)
     apply (clarsimp simp: obj_at_def is_tcb is_reply)
@@ -2896,7 +2883,7 @@ lemma tcbReleaseEnqueue_corres:
                  apply wp
                 apply wp
                apply (rule corres_when, simp)
-               apply (rule reprogram_timer_corres)
+               apply (rule setReprogramTimer_corres)
               apply wpsimp
              apply (rule hoare_strengthen_post[OF hoare_post_taut], simp)
             apply (rule_tac r'="(=)" and S="(=)" in corres_mapM_list_all2; clarsimp)
@@ -2915,7 +2902,7 @@ lemma tcbReleaseEnqueue_corres:
            apply (wpsimp wp: mapM_wp_inv)
           apply (wpsimp wp: mapM_wp_lift threadGet_wp
                       simp: getScTime_def getTCBSc_def obj_at'_def)
-         apply (rule release_queue_corres)
+         apply (rule getReleaseQueue_corres)
         apply wp
        apply wpsimp
       apply (rule getScTime_corres)
@@ -2938,7 +2925,7 @@ lemma postpone_corres:
        apply (rule corres_assert_opt_assume_l)
        apply (rule corres_split_deprecated)
           apply (rule corres_split_deprecated)
-             apply (rule reprogram_timer_corres)
+             apply (rule setReprogramTimer_corres)
             apply (clarsimp simp: sc_relation_def)
             apply (rule tcbReleaseEnqueue_corres)
            apply wp
@@ -3077,7 +3064,7 @@ lemma schedContextResume_corres:
      apply (erule (1) valid_sched_context_size_objsI, simp)
    apply (clarsimp simp: sc_relation_def projection_rewrites obj_at_simps opt_map_red)
   apply (frule_tac x=y in pspace_relation_absD[OF _ state_relation_pspace_relation]; simp)
-  apply (clarsimp simp: obj_at'_def projectKOs isSchedulable_bool_def projection_rewrites
+  apply (clarsimp simp: obj_at'_def isSchedulable_bool_def projection_rewrites
                         other_obj_relation_def tcb_relation_def)
   apply (drule sym[where s="Some ptr"])
   apply (clarsimp simp: projection_rewrites isScActive_def opt_map_red)
@@ -3099,7 +3086,7 @@ lemma updateRefillHd_valid_objs':
   apply wpsimp
   apply (frule (1) sc_ko_at_valid_objs_valid_sc')
   apply (clarsimp simp: valid_sched_context'_def active_sc_at'_def obj_at'_real_def ko_wp_at'_def
-                        valid_sched_context_size'_def objBits_def objBitsKO_def projectKO_sc)
+                        valid_sched_context_size'_def objBits_def objBitsKO_def)
   done
 
 lemma getCTE_cap_to_refs[wp]:
@@ -3397,13 +3384,13 @@ lemma thread_state_tcb_in_WaitingNtfn'_q:
   apply (clarsimp simp: sym_refs_def)
   apply (erule_tac x = ntfnPtr in allE)
   apply (drule_tac x = "(t, NTFNSignal)" in bspec)
-   apply (clarsimp simp: state_refs_of'_def obj_at'_def refs_of'_def projectKOs)
+   apply (clarsimp simp: state_refs_of'_def obj_at'_def refs_of'_def)
   apply (subgoal_tac "tcb_at' t s")
    apply (clarsimp simp: state_refs_of'_def refs_of'_def obj_at'_real_def ko_wp_at'_def
-                         projectKO_tcb tcb_st_refs_of'_def tcb_bound_refs'_def get_refs_def)
+                         tcb_st_refs_of'_def tcb_bound_refs'_def get_refs_def)
    apply (erule disjE)
     apply (case_tac "tcbState obj"; clarsimp split: if_splits)
-    apply (clarsimp simp: pred_tcb_at'_def obj_at'_real_def ko_wp_at'_def projectKO_tcb)
+    apply (clarsimp simp: pred_tcb_at'_def obj_at'_real_def ko_wp_at'_def)
    apply (clarsimp split: option.splits)
   apply (drule (1) ntfn_ko_at_valid_objs_valid_ntfn')
   apply (clarsimp simp: valid_ntfn'_def)
@@ -3535,7 +3522,7 @@ lemma sendSignal_corres:
      apply (clarsimp simp: valid_idle'_def invs'_def idle_tcb'_def obj_at'_def
                            pred_tcb_at'_def receiveBlocked_def)
     apply (rule if_live_then_nonz_capE', clarsimp)
-    apply (clarsimp simp: pred_tcb_at'_def obj_at'_real_def ko_wp_at'_def projectKO_tcb)
+    apply (clarsimp simp: pred_tcb_at'_def obj_at'_real_def ko_wp_at'_def)
     apply (clarsimp simp: receiveBlocked_equiv is_BlockedOnReceive_def)
    \<comment> \<open>WaitingNtfn\<close>
    apply (clarsimp simp: ntfn_relation_def Let_def update_waiting_ntfn_def)
@@ -3788,9 +3775,9 @@ lemma tcbEPFindIndex_wp:
    tcbEPFindIndex tptr queue sz \<lbrace>Q\<rbrace>"
   apply (induct sz; subst tcbEPFindIndex.simps)
    apply (wpsimp wp: threadGet_wp)
-   apply (clarsimp simp: obj_at'_def projectKO_eq projectKO_tcb)
+   apply (clarsimp simp: obj_at'_def)
   apply (wpsimp wp: threadGet_wp | assumption)+
-  apply (clarsimp simp: obj_at'_def projectKO_eq projectKO_tcb)
+  apply (clarsimp simp: obj_at'_def)
   done
 
 crunches tcbEPAppend, tcbEPDequeue
@@ -3947,7 +3934,7 @@ lemma tcbReleaseEnqueue_invs'[wp]:
      apply (wpsimp wp: mapM_wp_lift getScTime_wp threadGet_wp)+
   apply (clarsimp simp: invs'_def comp_def obj_at'_def inQ_def cteCaps_of_def)
   apply (intro conjI)
-      apply (clarsimp simp: valid_release_queue_def obj_at'_def projectKOs objBitsKO_def)+
+      apply (clarsimp simp: valid_release_queue_def obj_at'_def objBitsKO_def)+
    apply (intro conjI impI; clarsimp)
        apply (auto split: if_splits elim: ps_clear_domE)[3]
     apply (drule_tac x=a in spec, drule mp)
@@ -3963,7 +3950,7 @@ lemma tcbReleaseEnqueue_invs'[wp]:
   apply (clarsimp simp: valid_release_queue'_def)
   apply (erule_tac x=t in allE)
   apply (drule mp)
-   apply (fastforce simp: obj_at'_def projectKO_eq projectKO_tcb objBitsKO_def inQ_def
+   apply (fastforce simp: obj_at'_def objBitsKO_def inQ_def
                     elim: ps_clear_domE split: if_splits)
   apply (clarsimp simp: image_def in_set_conv_decomp zip_append1)
   apply (rule_tac x="hd (drop (length ys) rvs)" in exI)
@@ -3978,12 +3965,12 @@ lemma maybeDonateSc_invs':
   "\<lbrace>invs' and ex_nonz_cap_to' tptr\<rbrace> maybeDonateSc tptr nptr \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (simp only: maybeDonateSc_def)
   apply (wpsimp wp: schedContextDonate_invs' getNotification_wp threadGet_wp)
-  apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs sym_refs_asrt_def)
+  apply (clarsimp simp: pred_tcb_at'_def obj_at'_def sym_refs_asrt_def)
   apply (rename_tac tcb)
   apply (rule_tac x=tcb in exI, clarsimp)
   apply (erule if_live_then_nonz_capE'[OF invs_iflive'])
   apply (drule_tac ko="ntfn :: notification" for ntfn in sym_refs_ko_atD'[rotated])
-   apply (fastforce simp: obj_at'_def projectKOs)
+   apply (fastforce simp: obj_at'_def)
   apply (auto simp: refs_of_rev' ko_wp_at'_def live_sc'_def)
   done
 
@@ -4038,12 +4025,12 @@ lemma sai_invs'[wp]:
   \<comment> \<open>resolve added preconditions\<close>
   apply (clarsimp simp: sym_refs_asrt_def)
   apply (erule_tac x=ntfnptr in valid_objsE'[OF invs_valid_objs'])
-   apply (fastforce simp: obj_at'_def projectKOs)
+   apply (fastforce simp: obj_at'_def)
   apply (fastforce simp: valid_obj'_def valid_ntfn'_def)
   done
 
 lemma replyFromKernel_corres:
-  "corres dc (tcb_at t and invs) (tcb_at' t and invs')
+  "corres dc (tcb_at t and invs) invs'
              (reply_from_kernel t r) (replyFromKernel t r)"
   apply (case_tac r)
   apply (clarsimp simp: replyFromKernel_def reply_from_kernel_def
@@ -4151,7 +4138,7 @@ lemma completeSignal_corres:
                        apply clarsimp
                        apply (erule valid_objs'_valid_refills', clarsimp simp: obj_at'_def)
                        apply (clarsimp dest!: valid_objs'_valid_refills'
-                                        simp: opt_map_red is_active_sc'_def obj_at'_def projectKOs)
+                                        simp: opt_map_red is_active_sc'_def obj_at'_def)
                       apply wpsimp
                      apply wpsimp
                     apply (clarsimp simp: pred_tcb_at_def obj_at_def valid_obj_def valid_tcb_def
@@ -4159,9 +4146,9 @@ lemma completeSignal_corres:
                     apply (erule (1) valid_objsE[where x=tcb])
                     apply (clarsimp simp: obj_at_def valid_obj_def valid_tcb_def is_sc_obj opt_map_red)
                    apply clarsimp
-                   apply (clarsimp simp: obj_at'_def projectKOs pred_tcb_at'_def dest!: sym[of "Some _"])
+                   apply (clarsimp simp: obj_at'_def pred_tcb_at'_def dest!: sym[of "Some _"])
                    apply (erule (1) valid_objsE'[where x=tcb])
-                   apply (clarsimp simp: obj_at'_def projectKOs valid_obj'_def valid_tcb'_def)
+                   apply (clarsimp simp: obj_at'_def valid_obj'_def valid_tcb'_def)
                   apply (clarsimp simp: tcb_relation_def)
                  apply (wpsimp wp: get_tcb_obj_ref_wp threadGet_wp)
                 apply (wpsimp wp: get_tcb_obj_ref_wp threadGet_wp)
@@ -4277,7 +4264,7 @@ lemma maybeReturnSc_corres:
      apply (clarsimp simp: obj_at'_def valid_release_queue'_def)
     apply (subgoal_tac "valid_tcb' tcb s'")
      apply (clarsimp simp: valid_tcb'_def valid_bound_obj'_def split: option.splits)
-    apply (clarsimp simp: valid_tcbs'_def obj_at'_real_def ko_wp_at'_def projectKO_tcb)
+    apply (clarsimp simp: valid_tcbs'_def obj_at'_real_def ko_wp_at'_def)
    apply (clarsimp simp: obj_at'_def)
   apply (clarsimp simp: sym_refs_asrt_def)
   done
@@ -4307,13 +4294,13 @@ lemma maybeReturnSc_valid_objs'[wp]:
   apply (wpsimp wp: threadSet_valid_objs' threadGet_wp getNotification_wp
                     hoare_vcg_all_lift hoare_vcg_imp_lift')
   apply (clarsimp dest!: ntfn_ko_at_valid_objs_valid_ntfn'
-                   simp: obj_at'_def projectKOs)
+                   simp: obj_at'_def)
   apply (rename_tac tcb)
   apply (rule_tac x=tcb in exI)
   apply clarsimp
   apply (rename_tac sc sc_ptr)
   apply (prop_tac "ko_at' sc (the (tcbSchedContext tcb)) s")
-   apply (clarsimp simp: obj_at'_def projectKOs)
+   apply (clarsimp simp: obj_at'_def)
   apply (fastforce dest!: sc_ko_at_valid_objs_valid_sc'
                     simp: valid_sched_context'_def valid_sched_context_size'_def objBits_simps)
   done
@@ -4323,7 +4310,7 @@ lemma maybeReturnSc_valid_tcbs'[wp]:
   apply (clarsimp simp: maybeReturnSc_def)
   apply (wpsimp wp: threadSet_valid_tcbs' threadGet_wp getNotification_wp
                     hoare_vcg_all_lift hoare_vcg_imp_lift')
-  apply (fastforce simp: obj_at'_def projectKOs)
+  apply (fastforce simp: obj_at'_def)
   done
 
 lemma maybeReturnSc_valid_queues:
@@ -4384,24 +4371,24 @@ lemma maybeReturnSc_invs'_and_valid_idle':
                 threadSet_valid_release_queue' threadGet_wp getNotification_wp
                 hoare_vcg_imp_lift' hoare_vcg_all_lift valid_dom_schedule'_lift
              | clarsimp simp: tcb_cte_cases_def cteSizeBits_def cteCaps_of_def)+
-  apply (clarsimp simp: obj_at'_def projectKOs)
+  apply (clarsimp simp: obj_at'_def)
   apply (rename_tac ntfn tcb)
   apply (rule_tac x=tcb in exI)
   apply (clarsimp simp: invs'_def inQ_def comp_def eq_commute[where a="Some _"])
   apply (intro conjI impI allI; clarsimp?)
-        apply (fastforce simp: valid_release_queue'_def obj_at'_def projectKOs)
-       apply (fastforce simp: valid_release_queue'_def obj_at'_def projectKOs)
+        apply (fastforce simp: valid_release_queue'_def obj_at'_def)
+       apply (fastforce simp: valid_release_queue'_def obj_at'_def)
       apply (clarsimp simp: untyped_ranges_zero_inv_def cteCaps_of_def comp_def)
-     apply (clarsimp simp: valid_idle'_def obj_at'_def projectKOs sym_refs_asrt_def)
+     apply (clarsimp simp: valid_idle'_def obj_at'_def sym_refs_asrt_def)
      apply (drule_tac ko="tcb" and p=tptr in sym_refs_ko_atD'[rotated])
-      apply (fastforce simp: obj_at'_def projectKOs)
+      apply (fastforce simp: obj_at'_def)
      apply (clarsimp simp: ko_wp_at'_def refs_of_rev')
      apply (fastforce elim: if_live_then_nonz_capE' simp: ko_wp_at'_def live_sc'_def)
     apply (fastforce simp: valid_pspace'_def valid_obj'_def valid_sched_context'_def)
    apply (fastforce simp: valid_obj'_def valid_sched_context_size'_def objBits_def objBitsKO_def)
-  apply (clarsimp simp: valid_idle'_def obj_at'_def projectKOs sym_refs_asrt_def)
+  apply (clarsimp simp: valid_idle'_def obj_at'_def sym_refs_asrt_def)
   apply (drule_tac ko="tcb" and p=tptr in sym_refs_ko_atD'[rotated])
-   apply (fastforce simp: obj_at'_def projectKOs)
+   apply (fastforce simp: obj_at'_def)
   apply (clarsimp simp: ko_wp_at'_def refs_of_rev')
   done
 
@@ -4421,8 +4408,6 @@ crunches doIPCTransfer
   for pspace_aligned'[wp]: pspace_aligned'
   and pspace_distinct'[wp]: pspace_distinct'
   and no_0_obj'[wp]: no_0_obj'
-  and vrq[wp]: valid_release_queue
-  and vrq'[wp]: valid_release_queue'
   (wp: crunch_wps simp: zipWithM_x_mapM_x)
 
 definition receiveIPC_preamble where
@@ -4449,11 +4434,6 @@ crunches cancel_ipc
   and ex_nonz_cap_to[wp]: "ex_nonz_cap_to t"
   (simp: crunch_simps thread_set_cap_to_fault_helper
      wp: crunch_wps thread_set_cap_to)
-
-crunches doIPCTransfer
-  for replySCs_of[wp]: "\<lambda>s. P (replySCs_of s)"
-  and replyTCBs_of[wp]: "\<lambda>s. P (replyTCBs_of s)"
-  (wp: crunch_wps simp: zipWithM_x_mapM_x)
 
 crunches receive_ipc_preamble
   for ep_at[wp]: "ep_at epptr"
@@ -4808,7 +4788,7 @@ lemma receiveIPC_corres:
                                                          cur_tcb' s \<and>
                                                          sch_act_wf (ksSchedulerAction s) s)"
                       in hoare_strengthen_post[rotated])
-                       apply (clarsimp simp: sch_act_wf_weak obj_at'_def projectKOs split: option.split)
+                       apply (clarsimp simp: sch_act_wf_weak obj_at'_def split: option.split)
                       apply (wpsimp wp: valid_replies'_sc_asrt_lift valid_bound_obj'_lift)
                      apply (wpsimp wp: gts_st_tcb_at)
                     apply wpsimp
@@ -4978,7 +4958,7 @@ lemma receiveSignal_corres:
      apply (fastforce simp: valid_cap_def obj_at_def valid_obj_def
                       dest: invs_valid_objs)
     apply (wpsimp wp: getNotification_wp)
-    apply (fastforce simp: obj_at'_def projectKOs valid_obj'_def
+    apply (fastforce simp: obj_at'_def valid_obj'_def
                      dest: invs_valid_objs')
    apply (clarsimp simp: sym_refs_asrt_def)
   apply (case_tac "ntfn_obj rv"; clarsimp simp: ntfn_relation_def)
@@ -5048,7 +5028,7 @@ lemma receiveSignal_corres:
                            split: option.splits)
           apply (wpsimp wp: abs_typ_at_lifts)
          apply (rule_tac Q="\<lambda>_. tcb_at' thread and valid_objs'" in hoare_strengthen_post[rotated])
-          apply (clarsimp simp: obj_at'_def projectKOs split: option.split)
+          apply (clarsimp simp: obj_at'_def split: option.split)
          apply wpsimp
         apply (clarsimp simp: ntfn_relation_def)
        apply (wpsimp wp: set_ntfn_minor_invs)
@@ -5064,7 +5044,7 @@ lemma receiveSignal_corres:
    apply (drule sym[of "state_refs_of _ _"])
    apply simp
   apply (fastforce intro!: if_live_then_nonz_capE'
-                     simp: valid_ntfn'_def obj_at'_def projectKOs live_ntfn'_def ko_wp_at'_def)
+                     simp: valid_ntfn'_def obj_at'_def live_ntfn'_def ko_wp_at'_def)
   done
 
 declare lookup_cap_valid' [wp]
@@ -5227,7 +5207,7 @@ lemma completeSignal_invs':
    apply (fastforce dest: ntfn_ko_at_valid_objs_valid_ntfn'
                     simp: valid_ntfn'_def)
   apply (fastforce intro: if_live_then_nonz_capE'
-                    simp: ko_wp_at'_def obj_at'_def projectKOs live_ntfn'_def)
+                    simp: ko_wp_at'_def obj_at'_def live_ntfn'_def)
   done
 
 lemma maybeReturnSc_ex_nonz_cap_to'[wp]:
@@ -5271,12 +5251,12 @@ lemma rai_invs'[wp]:
     apply (clarsimp simp: pred_tcb_at' cong: conj_cong)
     apply (fastforce simp: valid_idle'_def idle_tcb'_def valid_tcb_state'_def  valid_ntfn'_def
                            valid_bound_obj'_def valid_obj'_def valid_cap'_def isCap_simps
-                           pred_tcb_at'_def obj_at'_def projectKOs
+                           pred_tcb_at'_def obj_at'_def
                      dest: invs_valid_objs' split: option.splits)
    \<comment> \<open>ActiveNtfn\<close>
    apply (wpsimp wp: maybeDonateSc_invs' setNotification_invs' hoare_vcg_imp_lift')
    apply (fastforce simp: valid_obj'_def valid_ntfn'_def isCap_simps
-                          pred_tcb_at'_def obj_at'_def projectKOs
+                          pred_tcb_at'_def obj_at'_def
                     dest: invs_valid_objs')
   \<comment> \<open>WaitingNtfn\<close>
   apply (wpsimp wp: setNotification_invs' maybeReturnSc_invs')
@@ -5286,20 +5266,20 @@ lemma rai_invs'[wp]:
                          hoare_vcg_ball_lift hoare_drop_imps)+
   apply (frule invs_valid_objs')
   apply (erule valid_objsE')
-   apply (fastforce simp: obj_at'_def projectKOs)
+   apply (fastforce simp: obj_at'_def)
   apply (clarsimp simp: valid_obj'_def valid_ntfn'_def valid_tcb_state'_def valid_cap'_def
-                        isCap_simps sym_refs_asrt_def pred_tcb_at'_def obj_at'_def projectKOs)
+                        isCap_simps sym_refs_asrt_def pred_tcb_at'_def obj_at'_def)
   apply (rule conjI, clarsimp)
   apply (rule conjI, clarsimp)
   apply (rule conjI, clarsimp)
   apply (rule context_conjI)
    apply (drule_tac ko=ep in sym_refs_ko_atD'[rotated])
-    apply (fastforce simp: obj_at'_def projectKOs)
+    apply (fastforce simp: obj_at'_def)
    apply (fastforce simp: tcb_bound_refs'_def refs_of_rev' get_refs_def ko_wp_at'_def
                    split: option.splits)
   apply (intro conjI)
    apply (drule_tac ko=ep in sym_refs_ko_atD'[rotated])
-    apply (fastforce simp: obj_at'_def projectKOs)
+    apply (fastforce simp: obj_at'_def)
    apply (fastforce simp: tcb_bound_refs'_def refs_of_rev' get_refs_def ko_wp_at'_def
                    split: option.splits)
   apply (clarsimp simp: valid_idle'_def idle_tcb'_def)
@@ -5346,10 +5326,6 @@ lemma schedContextUpdateConsumed_sc_tcbs_of[wp]:
 
 crunches schedContextUpdateConsumed
   for tcbSCs_of[wp]: "\<lambda>s. P (tcbSCs_of s)"
-
-crunches doIPCTransfer
-  for replySCs_of[wp]: "\<lambda>s. P (replySCs_of s)"
-  (wp: crunch_wps simp: crunch_simps)
 
 lemma schedContextUpdateConsumed_misc_heaps[wp]:
   "schedContextUpdateConsumed scPtr
@@ -5427,7 +5403,7 @@ lemma replyPush_if_live_then_nonz_cap':
   apply (subgoal_tac "sc_at' scp s \<and> (scTCBs_of s) scp = Some callerPtr \<and> callerPtr \<noteq> idle_thread_ptr")
    apply (intro conjI)
     apply (erule if_live_then_nonz_capE')
-    apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKO_sc pred_map_def pred_map_eq_def live_sc'_def)
+    apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def pred_map_def pred_map_eq_def live_sc'_def)
     apply (clarsimp simp: sym_heap_def)
   apply (intro conjI)
     apply (frule obj_at_ko_at'[where p=callerPtr], clarsimp)
@@ -5435,7 +5411,7 @@ lemma replyPush_if_live_then_nonz_cap':
     apply (clarsimp simp: valid_tcb'_def)
    apply (subgoal_tac "(tcbSCs_of s) callerPtr = Some scp")
     apply (clarsimp simp: sym_heap_def)
-   apply (clarsimp simp: opt_map_def obj_at'_real_def ko_wp_at'_def projectKOs)
+   apply (clarsimp simp: opt_map_def obj_at'_real_def ko_wp_at'_def)
   apply (clarsimp simp: valid_idle'_def)
   done
 
@@ -5537,9 +5513,9 @@ lemma cancelIPC_replyTCBs_of_None:
          \<comment> \<open>BlockedOnReceive\<close>
          apply (wpsimp wp: getEndpoint_wp
                            hoare_vcg_all_lift hoare_vcg_imp_lift')
-         apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+         apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
          apply (drule_tac ko="ko :: reply" for ko in sym_refs_ko_atD'[rotated])
-          apply (fastforce simp: obj_at'_def projectKOs)
+          apply (fastforce simp: obj_at'_def)
          apply (clarsimp simp: tcb_st_refs_of'_def tcb_bound_refs'_def
                                refs_of_rev' get_refs_def ko_wp_at'_def opt_map_def
                         split: option.splits if_splits)
@@ -5548,18 +5524,18 @@ lemma cancelIPC_replyTCBs_of_None:
                   hoare_vcg_all_lift hoare_vcg_const_imp_lift hoare_vcg_imp_lift'
                | rule threadSet_pred_tcb_no_state
                | simp add: replyRemoveTCB_def cleanReply_def if_fun_split)+
-        apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+        apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
         apply (drule_tac p=rptr and ko="ko :: reply" for ko in sym_refs_ko_atD'[rotated])
-         apply (fastforce simp: obj_at'_def projectKOs)
+         apply (fastforce simp: obj_at'_def)
         apply (clarsimp simp: tcb_st_refs_of'_def tcb_bound_refs'_def
                               refs_of_rev' get_refs_def ko_wp_at'_def opt_map_def
                        split: option.splits)
        \<comment> \<open>Other thread states\<close>
        apply (all \<open>wpsimp simp: cancelSignal_def sym_refs_asrt_def wp: hoare_drop_imps\<close>)
-       apply (all \<open>clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs\<close>)
+       apply (all \<open>clarsimp simp: pred_tcb_at'_def obj_at'_def\<close>)
        apply (all \<open>drule_tac p=rptr and ko="ko :: reply" for ko in sym_refs_ko_atD'[rotated]\<close>)
              apply (fastforce simp: tcb_bound_refs'_def tcb_st_refs_of'_def refs_of_rev'
-                                    get_refs_def ko_wp_at'_def obj_at'_def projectKOs
+                                    get_refs_def ko_wp_at'_def obj_at'_def
                              split: option.splits
                              elim!: opt_mapE)+
   done
@@ -5574,7 +5550,7 @@ lemma blockedCancelIPC_notin_epQueue:
    \<lbrace>\<lambda>rv. obj_at' (\<lambda>ep. ep \<noteq> IdleEP \<longrightarrow> t \<notin> set (epQueue ep)) eptr\<rbrace>"
   unfolding blockedCancelIPC_def getBlockingObject_def
   apply (wpsimp wp: set_ep'.obj_at' getEndpoint_wp)
-  apply (fastforce simp: valid_obj'_def valid_ep'_def obj_at'_def projectKOs
+  apply (fastforce simp: valid_obj'_def valid_ep'_def obj_at'_def
                   intro: set_remove1[where y=tptr] split: endpoint.splits list.splits)
   done
 
@@ -5593,7 +5569,6 @@ lemma maybeReturnSc_sym_heap_tcbSCs[wp]:
   "\<lbrace>sym_heap_tcbSCs and valid_objs'\<rbrace>
    maybeReturnSc y t
    \<lbrace>\<lambda>_. sym_heap_tcbSCs\<rbrace>"
-  supply opt_mapE [rule del]
   unfolding maybeReturnSc_def
   apply (simp add: liftM_def)
   apply (rule hoare_seq_ext[OF _ stateAssert_sp])
@@ -5605,7 +5580,7 @@ lemma maybeReturnSc_sym_heap_tcbSCs[wp]:
   apply (subgoal_tac "(tcbSCs_of s) t = Some (the (tcbSchedContext tcb))")
    apply (clarsimp simp: sym_heap_def)
    apply (subst (asm) sym_heap_symmetric[simplified sym_heap_def], simp)
-  apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def projectKOs)
+  apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
   done
 
 lemma maybeReturnSc_sym_heap_scReplies[wp]:
@@ -5620,8 +5595,7 @@ lemma maybeReturnSc_sym_heap_scReplies[wp]:
   apply (drule sym, simp)
   apply (erule back_subst)
   apply (rule arg_cong2[where f=sym_heap, OF _ refl], rule ext)
-  apply (clarsimp simp: pred_map_eq_def pred_map_def obj_at'_real_def ko_wp_at'_def opt_map_def
-                        projectKOs)
+  apply (clarsimp simp: pred_map_eq_def pred_map_def obj_at'_real_def ko_wp_at'_def opt_map_def)
   done
 
 crunches cleanReply
@@ -5700,7 +5674,7 @@ lemma replyRemoveTCB_sym_heap_scReplies [wp]:
           apply (subgoal_tac "replyPrevs_of s r = Some ya")
            apply (rule replyNexts_Some_replySCs_None)
            apply (simp add: sym_refs_replyNext_replyPrev_sym[symmetric])
-          apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+          apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
          apply (intro conjI; intro allI impI)
           apply clarsimp
           apply (drule ko_at'_inj, assumption, simp)
@@ -5708,29 +5682,29 @@ lemma replyRemoveTCB_sym_heap_scReplies [wp]:
           apply (subgoal_tac "replyPrevs_of s r = Some rPtr")
            apply (insert replyNexts_Some_replySCs_None)
            apply (simp add: sym_refs_replyNext_replyPrev_sym[symmetric])
-           apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
-          apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+           apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
+          apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
          apply clarsimp
          apply (subgoal_tac "replyPrevs_of s r = Some ya")
           apply (rule replyNexts_Some_replySCs_None)
           apply (simp add: sym_refs_replyNext_replyPrev_sym[symmetric])
-         apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+         apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
         apply (clarsimp simp: isHead_to_head)
         apply (erule sym_heap_remove_only)
-        apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def pred_map_eq)
+        apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def pred_map_eq)
        apply (clarsimp simp: isHead_to_head)
        apply (erule rsubst2[where P=sym_heap, OF _ refl])
        apply (rule ext, clarsimp split: if_split)
-       apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+       apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
       apply (intro conjI, intro allI impI)
        apply clarsimp
        apply (subgoal_tac "replyPrevs_of s r = Some y")
         apply (rule replyNexts_Some_replySCs_None)
         apply (simp add: sym_refs_replyNext_replyPrev_sym[symmetric])
-       apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+       apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
       apply (erule rsubst2[where P=sym_heap, OF _ refl])
       apply (rule ext, clarsimp split: if_split)
-      apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs opt_map_def)
+      apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def opt_map_def)
      apply (wpsimp wp: hoare_drop_imp)+
   done
 
@@ -5759,40 +5733,38 @@ lemma refillUnblockCheck_sym_heap_tcbSCs[wp]:
   "\<lbrace>sym_heap_tcbSCs and valid_objs'\<rbrace>
    refillUnblockCheck scp
    \<lbrace>\<lambda>_. sym_heap_tcbSCs\<rbrace>"
-  supply opt_mapE [rule del]
   unfolding refillUnblockCheck_def refillHeadOverlappingLoop_def mergeRefills_def updateRefillHd_def
   apply (wpsimp wp: whileLoop_wp' updateSchedContext_wp wp_del: use_corresK
               simp: refillPopHead_def)
-        apply (clarsimp simp: sym_heap_def obj_at'_def projectKOs ps_clear_upd opt_map_red projectKO_opt_tcb)
+        apply (clarsimp simp: sym_heap_def obj_at'_def ps_clear_upd opt_map_red projectKO_opt_tcb)
        apply (wpsimp wp: updateSchedContext_wp getCurTime_wp refillReady_wp isRoundRobin_wp
                    simp: setReprogramTimer_def)+
-  apply (clarsimp simp: sym_heap_def obj_at'_def projectKOs ps_clear_upd projectKO_opt_tcb)
+  apply (clarsimp simp: sym_heap_def obj_at'_def ps_clear_upd)
   apply (rule conjI)
    apply (clarsimp simp: opt_map_red)
    apply (rule iffI; clarsimp?)
     apply (clarsimp simp: opt_map_def split: option.split_asm if_split_asm)
    apply (prop_tac "tcb_at' p s")
     apply (fastforce simp: valid_obj'_def valid_sched_context'_def)
-   apply (clarsimp simp: obj_at'_def projectKOs opt_map_def)
+   apply (clarsimp simp: obj_at'_def opt_map_def)
   apply (drule_tac x=p and y=p' in spec2)
   apply (drule sym[of "_ = _"])
-  apply (clarsimp simp: opt_map_def projectKOs split: option.splits)
+  apply (clarsimp simp: opt_map_def split: option.splits)
   done
 
 lemma refillUnblockCheck_sym_heap_scReplies[wp]:
   "\<lbrace>sym_heap_scReplies and valid_objs'\<rbrace>
    refillUnblockCheck scp
    \<lbrace>\<lambda>_. sym_heap_scReplies\<rbrace>"
-  supply opt_mapE [rule del]
   unfolding refillUnblockCheck_def refillHeadOverlappingLoop_def mergeRefills_def updateRefillHd_def
   apply (wpsimp wp: whileLoop_wp' updateSchedContext_wp wp_del: use_corresK
               simp: refillPopHead_def)
-        apply (clarsimp simp: sym_heap_def obj_at'_def projectKOs ps_clear_upd opt_map_red projectKO_opt_reply)
+        apply (clarsimp simp: sym_heap_def obj_at'_def ps_clear_upd opt_map_red projectKO_opt_reply)
         apply (drule_tac x=scp and y=p' in spec2)
         apply (clarsimp simp: opt_map_red)
        apply (wpsimp wp: updateSchedContext_wp getCurTime_wp refillReady_wp isRoundRobin_wp
                    simp: setReprogramTimer_def)+
-  apply (clarsimp simp: sym_heap_def obj_at'_def projectKOs ps_clear_upd projectKO_opt_reply)
+  apply (clarsimp simp: sym_heap_def obj_at'_def ps_clear_upd projectKO_opt_reply)
   apply (rule conjI; clarsimp)
    apply (drule_tac x=scp and y=p' in spec2)
    apply (clarsimp simp: opt_map_def projectKO_opt_reply)
@@ -5846,7 +5818,7 @@ lemma ri_invs' [wp]:
               | wp (once) hoare_false_imp)+
        apply (clarsimp simp: pred_tcb_at')
        apply (erule valid_objsE'[OF invs_valid_objs'])
-        apply (fastforce simp: obj_at'_def projectKOs)
+        apply (fastforce simp: obj_at'_def)
        apply (fastforce simp: valid_obj'_def valid_ep'_def pred_tcb_at'_def obj_at'_def)
       \<comment> \<open>IdleEP\<close>
       apply (wpsimp wp: completeSignal_invs' setEndpoint_invs' setThreadState_BlockedOnReceive_invs'
@@ -5854,7 +5826,7 @@ lemma ri_invs' [wp]:
                         hoare_vcg_all_lift hoare_vcg_const_imp_lift
                   simp: if_fun_split
              | wp (once) hoare_false_imp)+
-      apply (fastforce simp: valid_obj'_def valid_ep'_def pred_tcb_at'_def obj_at'_def projectKOs)
+      apply (fastforce simp: valid_obj'_def valid_ep'_def pred_tcb_at'_def obj_at'_def)
      \<comment> \<open>SendEP\<close>
      apply (wpsimp wp: replyPush_invs' completeSignal_invs' sts_invs' setThreadState_st_tcb
                        threadGet_wp)
@@ -5915,21 +5887,21 @@ lemma ri_invs' [wp]:
   apply (frule (3) sym_refs_tcbSCs)
   apply (frule (3) sym_refs_scReplies)
   apply (prop_tac "\<forall>ep. ko_at' ep (capEPPtr cap) s \<longrightarrow> ep \<noteq> IdleEP \<longrightarrow> t \<notin> set (epQueue ep)")
-   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
    apply (drule_tac ko="ko :: endpoint" for ko in sym_refs_ko_atD'[rotated])
-    apply (fastforce simp: obj_at'_def projectKOs)
+    apply (fastforce simp: obj_at'_def)
    apply (fastforce simp: ep_q_refs_of'_def refs_of_rev' ko_wp_at'_def split: endpoint.splits)
   apply (prop_tac "\<forall>r g. replyCap = ReplyCap r g \<longrightarrow> \<not>obj_at' (\<lambda>a. replyTCB a = Some t) r s")
-   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
    apply (drule_tac ko="ko :: reply" for ko in sym_refs_ko_atD'[rotated])
-    apply (fastforce simp: obj_at'_def projectKOs)
+    apply (fastforce simp: obj_at'_def)
    apply (fastforce simp: refs_of_rev' ko_wp_at'_def tcb_bound_refs'_def get_refs_def
                    split: option.splits)
   apply (prop_tac "ex_nonz_cap_to' (capEPPtr cap) s \<and> st_tcb_at' simple' t s \<and>
                       t \<noteq> ksIdleThread s \<and> (ep_at' (capEPPtr cap) s \<longrightarrow>
                       obj_at' (\<lambda>ep. ep \<noteq> Structures_H.endpoint.IdleEP \<longrightarrow> t \<notin> set (epQueue ep))
                       (capEPPtr cap) s)")
-   apply (fastforce simp: valid_idle'_def idle_tcb'_def pred_tcb_at'_def obj_at'_def projectKOs
+   apply (fastforce simp: valid_idle'_def idle_tcb'_def pred_tcb_at'_def obj_at'_def
                           isCap_simps isSend_def)
   apply (clarsimp split: if_splits)
   apply (prop_tac "(\<exists>y. replyTCB ko = Some y) \<and> ko_at' ko x s \<longrightarrow> sch_act_not (the (replyTCB ko)) s")
@@ -5938,7 +5910,7 @@ lemma ri_invs' [wp]:
      apply blast
     apply fastforce
    apply (fastforce simp: st_tcb_at'_def obj_at_simps sch_act_wf_def split: thread_state.splits)
-  apply (fastforce simp: opt_map_def obj_at'_def projectKOs valid_cap'_def
+  apply (fastforce simp: opt_map_def obj_at'_def valid_cap'_def
                  intro!: replyTCB_is_not_ksIdleThread
                   split: if_split)
   done
@@ -6020,7 +5992,7 @@ lemma replyUnlink_obj_at_tcb_none:
    \<lbrace>\<lambda>_. obj_at' (\<lambda>reply. replyTCB reply = None) rptr'\<rbrace>"
   apply (simp add: replyUnlink_def)
   apply (wpsimp wp: updateReply_wp_all gts_wp')
-  by (auto simp: obj_at'_def projectKOs objBitsKO_def)
+  by (auto simp: obj_at'_def objBitsKO_def)
 
 lemma si_invs'[wp]:
   "\<lbrace>invs' and st_tcb_at' active' t
@@ -6053,8 +6025,7 @@ lemma si_invs'[wp]:
                                                    ex_nonz_cap_to' scptr s)) \<and>
                                   t \<noteq> a"
                 in hoare_strengthen_post[rotated])
-          apply (fastforce simp: obj_at'_def projectKO_eq projectKO_tcb
-                                 pred_tcb_at'_def invs'_def
+          apply (fastforce simp: obj_at'_def pred_tcb_at'_def invs'_def
                           dest!: global'_no_ex_cap)
          apply (wpsimp wp: replyUnlink_invs' replyUnlink_st_tcb_at' replyUnlink_obj_at_tcb_none
                            hoare_vcg_ex_lift hoare_vcg_imp_lift')
@@ -6068,50 +6039,47 @@ lemma si_invs'[wp]:
                                          \<not> is_reply_linked x s)) \<and>
                                  (cd \<longrightarrow> (\<exists>scptr. bound_sc_tcb_at' (\<lambda>scp. scp = Some scptr) t s \<and> ex_nonz_cap_to' scptr s))"
                in hoare_strengthen_post[rotated])
-         apply (auto simp: obj_at'_def projectKO_eq projectKO_tcb
-                           pred_tcb_at'_def invs'_def
+         apply (auto simp: obj_at'_def pred_tcb_at'_def invs'_def
                            is_BlockedOnReceive_def is_BlockedOnReply_def
                     dest!: global'_no_ex_cap)[1]
         apply (wpsimp simp: invs'_def valid_dom_schedule'_def valid_pspace'_def
                             comp_def sym_refs_asrt_def
                         wp: hoare_vcg_all_lift hoare_vcg_ex_lift hoare_vcg_imp_lift' gts_wp')+
     apply (intro conjI; clarsimp?)
-           apply (force simp: obj_at'_def projectKO_eq projectKO_ep valid_obj'_def valid_ep'_def
+           apply (force simp: obj_at'_def valid_obj'_def valid_ep'_def
                         elim: valid_objsE' split: list.splits)
           apply (fastforce simp: pred_tcb_at'_eq_commute pred_tcb_at'_def obj_at'_def
                                  is_BlockedOnReceive_def isReceive_def
                           split: thread_state.splits)
-         apply (fastforce simp: pred_tcb_at'_def ko_wp_at'_def obj_at'_def
-                                projectKO_eq projectKO_tcb isReceive_def
+         apply (fastforce simp: pred_tcb_at'_def ko_wp_at'_def obj_at'_def isReceive_def
                           elim: if_live_then_nonz_capE' split: thread_state.splits)
-        apply (fastforce simp: pred_tcb_at'_def ko_wp_at'_def obj_at'_def
-                               projectKO_eq projectKO_tcb isReceive_def
+        apply (fastforce simp: pred_tcb_at'_def ko_wp_at'_def obj_at'_def isReceive_def
                         split: thread_state.splits)
        apply (erule (3) sym_refs_tcbSCs)
       apply (erule (3) sym_refs_scReplies)
      apply (simp flip: conj_assoc, rule conjI)
       apply (subgoal_tac "ko_wp_at' live' xb s \<and> reply_at' xb s", clarsimp)
        apply (erule (1) if_live_then_nonz_capE')
-      apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKO_eq projectKO_tcb)
+      apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
       apply (drule_tac p=a and ko="obja" in sym_refs_ko_atD'[rotated])
-       apply (clarsimp simp: obj_at'_def projectKO_eq projectKO_tcb)
+       apply (clarsimp simp: obj_at'_def)
       apply (clarsimp simp: isReceive_def refs_of_rev' ko_wp_at'_def live_reply'_def
                      split: thread_state.splits)
      apply (rule impI)
      apply (drule (1) valid_replies'_other_state; clarsimp simp: isReceive_def)
-    apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKO_eq projectKO_tcb)
+    apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
     apply (erule if_live_then_nonz_capE')
     apply (drule_tac ko=obj and p=t in sym_refs_ko_atD'[rotated])
-     apply (clarsimp simp: obj_at'_def projectKO_eq projectKO_tcb)
-    apply (clarsimp simp: ko_wp_at'_def obj_at'_def projectKO_eq  projectKO_tcb
-                          refs_of_rev' live_sc'_def valid_idle'_def idle_tcb'_def)
+     apply (clarsimp simp: obj_at'_def)
+    apply (clarsimp simp: ko_wp_at'_def obj_at'_def refs_of_rev' live_sc'_def valid_idle'_def
+                          idle_tcb'_def)
    apply (clarsimp simp: pred_tcb_at'_def obj_at'_def isReceive_def is_BlockedOnReply_def)
   \<comment> \<open>epa = IdleEP\<close>
    apply (cases bl)
     apply (wpsimp wp: sts_sch_act' sts_valid_queues setThreadState_ct_not_inQ
                 simp: invs'_def valid_dom_schedule'_def valid_ep'_def)
     apply (fastforce simp: valid_tcb_state'_def valid_idle'_def pred_tcb_at'_def obj_at'_def
-                           projectKO_eq projectKO_tcb idle_tcb'_def comp_def)
+                           idle_tcb'_def comp_def)
    apply wpsimp
   \<comment> \<open>ep' = SendEP\<close>
   apply (cases bl)
@@ -6119,12 +6087,12 @@ lemma si_invs'[wp]:
                      sts'_valid_replies'
                simp: invs'_def valid_dom_schedule'_def valid_pspace'_def
                      valid_ep'_def sym_refs_asrt_def)
-   apply (erule valid_objsE'[where x=ep], fastforce simp: obj_at'_def projectKO_eq projectKO_ep)
+   apply (erule valid_objsE'[where x=ep], fastforce simp: obj_at'_def)
    apply (drule_tac ko="SendEP xa" in sym_refs_ko_atD'[rotated])
-    apply (fastforce simp: obj_at'_def projectKO_eq projectKO_ep)
+    apply (fastforce simp: obj_at'_def)
    apply (clarsimp simp: comp_def obj_at'_def pred_tcb_at'_def valid_idle'_def
                          valid_tcb_state'_def valid_obj'_def valid_ep'_def
-                         idle_tcb'_def projectKO_eq projectKO_tcb)
+                         idle_tcb'_def)
    apply (fastforce simp: ko_wp_at'_def refs_of_rev')
   apply wpsimp
   done
@@ -6195,9 +6163,9 @@ lemma handleFault_corres:
    apply (rule_tac x=3 in exI)
    apply (fastforce simp: caps_of_state_tcb_index_trans get_tcb_def tcb_cnode_map_def)
   apply (clarsimp simp: valid_tcb_def ran_tcb_cap_cases)
-  apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+  apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
   apply (drule_tac p=t and k="ko :: tcb" for ko in ko_at_valid_objs'[rotated, OF invs_valid_objs'])
-    apply (fastforce simp: obj_at'_def projectKOs)+
+    apply (fastforce simp: obj_at'_def)+
   apply (rule conjI)
    apply (clarsimp simp: valid_obj'_def valid_tcb'_def tcb_cte_cases_def cteSizeBits_def)
   apply (rule_tac x="3 << cteSizeBits" in bexI)
@@ -6236,13 +6204,13 @@ lemma handleTimeout_corres:
                          dest: invs_valid_objs)
        apply assumption
       apply (wpsimp wp: getTCB_wp simp: isValidTimeoutHandler_def)
-      apply (fastforce simp: isCap_simps pred_tcb_at'_def obj_at'_def projectKOs
+      apply (fastforce simp: isCap_simps pred_tcb_at'_def obj_at'_def
                              valid_obj'_def valid_tcb'_def tcb_cte_cases_def cteSizeBits_def
                        dest: invs_valid_objs')
      apply (wpsimp wp: hoare_drop_imps simp: isValidTimeoutHandler_def)+
   apply (frule cross_relF[OF _ tcb_at'_cross_rel[where t=t]], fastforce)
   apply (clarsimp simp: pred_tcb_at_def pred_tcb_at'_def obj_at_def obj_at'_def
-                        is_tcb_def projectKOs state_relation_def pspace_relation_def)
+                        is_tcb_def state_relation_def pspace_relation_def)
   apply (erule_tac x=t in ballE)
    apply (auto simp: other_obj_relation_def tcb_relation_def cap_relation_def
                      cte_wp_at_caps_of_state caps_of_state_def tcb_cnode_map_def
@@ -6251,9 +6219,7 @@ lemma handleTimeout_corres:
   done
 
 lemma hf_invs' [wp]:
-  "\<lbrace>invs'
-          and st_tcb_at' active' t
-          and ex_nonz_cap_to' t\<rbrace>
+  "\<lbrace>invs' and st_tcb_at' active' t and ex_nonz_cap_to' t\<rbrace>
    handleFault t f
    \<lbrace>\<lambda>r. invs'\<rbrace>"
   apply (simp add: handleFault_def handleNoFaultHandler_def sendFaultIPC_def valid_idle'_asrt_def)
@@ -6268,7 +6234,6 @@ lemma hf_invs' [wp]:
    apply (intro conjI impI allI; clarsimp?)
     apply (clarsimp simp: valid_release_queue'_def obj_at'_def)
    apply (clarsimp simp: ex_nonz_cap_to'_def return_def fail_def oassert_opt_def
-                         projectKO_def projectKO_tcb
                   split: option.splits)
    apply (rule_tac x="t+(3 << cteSizeBits)" in exI)
    apply (fastforce elim: cte_wp_at_tcbI' simp: objBitsKO_def tcb_cte_cases_def cteSizeBits_def)
@@ -6437,7 +6402,7 @@ lemma doReplyTransfer_corres:
                                             apply (clarsimp simp: tcb_cnode_map_def obj_at_def TCB_cte_wp_at_obj_at)
                                            apply (clarsimp simp: obj_at_def)
                                            apply (frule (1) pspace_relation_absD[OF _ state_relation_pspace_relation])
-                                           apply (clarsimp simp: other_obj_relation_def obj_at'_def projectKOs tcb_relation_def)
+                                           apply (clarsimp simp: other_obj_relation_def obj_at'_def tcb_relation_def)
                                            apply (case_tac "cteCap (tcbTimeoutHandler ko)";
                                                   case_tac "tcb_timeout_handler tcb"; simp)
                                           apply (wpsimp simp: tcb_at_def)
@@ -6460,20 +6425,20 @@ lemma doReplyTransfer_corres:
                                   apply (frule (1) valid_objs_ko_at, clarsimp simp: valid_obj_def)
                                   apply (clarsimp simp: obj_at_def)
                                   apply (frule (1) pspace_relation_absD[OF _ state_relation_pspace_relation])
-                                  apply (clarsimp simp: other_obj_relation_def obj_at'_def projectKOs sc_relation_def)
+                                  apply (clarsimp simp: other_obj_relation_def obj_at'_def sc_relation_def)
                                  apply (clarsimp simp: invs_def valid_state_def valid_pspace_def invs'_def valid_pspace'_def)
                                  apply (frule (1) valid_objs_ko_at, clarsimp simp: valid_obj_def)
                                  apply (prop_tac "sc_relation sc n ko")
                                   apply (clarsimp simp: obj_at_def)
                                   apply (frule (1) pspace_relation_absD[OF _ state_relation_pspace_relation])
-                                  apply (clarsimp simp: other_obj_relation_def obj_at'_def projectKOs )
+                                  apply (clarsimp simp: other_obj_relation_def obj_at'_def )
                                  apply (frule (1) sc_ko_at_valid_objs_valid_sc', clarsimp)
                                  apply (subgoal_tac "0 < scRefillMax ko")
                                   apply (subgoal_tac "sc_valid_refills sc")
                                    apply (prop_tac "koa=ko", erule (1) ko_at'_inj, simp only:)
                                    apply (subgoal_tac "sc_valid_refills' ko")
                                     apply (simp add: sc_refill_ready_relation sc_refill_sufficient_relation state_relation_def active_sc_at_equiv)
-                                   apply (metis valid_sched_context'_def sc_valid_refills_scRefillCount)
+                                   apply (metis valid_sched_context'_def)
                                   apply (subst (asm) active_sc_at_equiv)
                                   apply (frule (1) active_sc_valid_refillsE)
                                   apply (clarsimp simp: valid_refills_def2 obj_at_def)
@@ -6546,13 +6511,13 @@ lemma doReplyTransfer_corres:
                   apply (rule_tac Q="\<lambda>_. invs' and ex_nonz_cap_to' recvr and tcb_at' recvr
                                          and (st_tcb_at' (\<lambda>st. st = Inactive) recvr) and cur_tcb'"
                          in hoare_strengthen_post[rotated])
-                   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+                   apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
                   apply wpsimp
                  apply (wpsimp wp: sts_invs')
                      apply (rule_tac Q="\<lambda>_. invs' and sch_act_not recvr and ex_nonz_cap_to' recvr and tcb_at' recvr
                                             and (st_tcb_at' (\<lambda>st. st = Inactive) recvr) and cur_tcb'"
                             in hoare_strengthen_post[rotated])
-                      apply (clarsimp simp: pred_tcb_at'_def obj_at'_def projectKOs)
+                      apply (clarsimp simp: pred_tcb_at'_def obj_at'_def)
                       apply (fastforce dest: global'_no_ex_cap simp: invs'_def split: if_split)
                      apply (wpsimp wp: threadSet_fault_invs' threadSet_pred_tcb_no_state threadSet_cur)
                     apply wpsimp+

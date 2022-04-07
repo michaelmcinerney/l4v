@@ -410,8 +410,7 @@ lemma valid_sched_init[simp]:
 lemma valid_domain_list_init[simp]:
   "valid_domain_list init_A_st"
   apply (insert domain_time_pos)
-  apply (simp add: init_A_st_def ext_init_def valid_domain_list_def)
-  done
+  by (simp add: init_A_st_def ext_init_def valid_domain_list_def)
 
 lemma cur_sc_active_init[simp]:
   "cur_sc_active init_A_st"
@@ -420,30 +419,25 @@ lemma cur_sc_active_init[simp]:
 
 lemma ct_not_in_release_q_init[simp]:
   "ct_not_in_release_q init_A_st"
-  apply (clarsimp simp: init_A_st_def init_kheap_def not_in_release_q_def in_queue_2_def)
-  done
+  by (clarsimp simp: init_A_st_def init_kheap_def not_in_release_q_def in_queue_2_def)
 
 lemma valid_machine_time_init[simp]:
   "valid_machine_time init_A_st"
-  apply (clarsimp simp: init_A_st_def valid_machine_time_def init_machine_state_def)
-  done
+  by (clarsimp simp: init_A_st_def valid_machine_time_def init_machine_state_def)
 
 lemma current_time_bounded_init[simp]:
   "current_time_bounded init_A_st"
   apply (insert getCurrentTime_buffer_no_overflow)
-  apply (clarsimp simp: current_time_bounded_def init_A_st_def)
-  done
+  by (clarsimp simp: current_time_bounded_def init_A_st_def)
 
 lemma consumed_time_bounded_init[simp]:
   "consumed_time_bounded init_A_st"
-  apply (clarsimp simp: init_kheap_def init_A_st_def)
-  done
+  by (clarsimp simp: init_kheap_def init_A_st_def)
 
 lemma cur_sc_offset_ready_and_sufficient[simp]:
   "cur_sc_offset_ready (consumed_time init_A_st) init_A_st
    \<and> cur_sc_offset_sufficient (consumed_time init_A_st) init_A_st"
-  apply (clarsimp simp: init_A_st_def)
-  done
+  by (clarsimp simp: init_A_st_def)
 
 lemma check_active_irq_invs:
   "check_active_irq \<lbrace>\<lambda>s. mcs_invs s \<and> (ct_running s \<or> ct_idle s)\<rbrace>"
@@ -812,9 +806,10 @@ lemma kernel_corres':
   apply (rule_tac Q="\<lambda>s'. pred_map (\<lambda>tcb. \<not> tcbInReleaseQueue tcb) (tcbs_of' s') (ksCurThread s')"
          in corres_cross_add_guard)
    apply (clarsimp, frule tcb_at_invs)
-   apply (fastforce simp: not_in_release_q_def release_queue_relation_def pred_map_def opt_map_red obj_at'_def
-                          invs'_def valid_pspace'_def projectKOs valid_release_queue'_def cur_tcb'_def
-                   dest!: state_relationD)
+   subgoal by (fastforce simp: not_in_release_q_def release_queue_relation_def pred_map_def
+                               opt_map_red obj_at'_def invs'_def valid_pspace'_def
+                               valid_release_queue'_def cur_tcb'_def
+                        dest!: state_relationD)
   apply (rule_tac Q="\<lambda>s'. pred_map (\<lambda>scPtr. isScActive scPtr s') (tcbSCs_of s') (ksCurThread s')"
          in corres_cross_add_guard)
    apply clarsimp

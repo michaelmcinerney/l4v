@@ -149,7 +149,8 @@ lemma is_irq_active_corres:
             split: irqstate.split_asm irq_state.split_asm)
   done
 
-crunches isIRQActive for inv: "P"
+crunches isIRQActive
+  for inv: "P"
 
 lemma isIRQActive_wp:
   "\<lbrace>\<lambda>s. \<forall>rv. (irq_issued' irq s \<longrightarrow> rv) \<longrightarrow> Q rv s\<rbrace> isIRQActive irq \<lbrace>Q\<rbrace>"
@@ -443,7 +444,7 @@ lemma invoke_arch_irq_handler_invs'[wp]:
 lemma invoke_irq_handler_invs'[wp]:
   "\<lbrace>invs' and sch_act_simple and irq_handler_inv_valid' i\<rbrace>
    InterruptDecls_H.invokeIRQHandler i
-   \<lbrace>\<lambda>rv. invs'\<rbrace>"
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (cases i; simp add: Interrupt_H.invokeIRQHandler_def)
     apply wpsimp
    apply (wp cteInsert_invs)+
@@ -655,10 +656,12 @@ lemma handleInterrupt_corres:
                                where R="\<lambda>rv. ?Q"
                                  and R'="\<lambda>rv. invs' and (\<lambda>s. rv \<noteq> IRQInactive)"])
        defer
-       apply (wp getIRQState_prop getIRQState_inv do_machine_op_bind doMachineOp_bind | simp add: do_machine_op_bind doMachineOp_bind )+
+       apply (wp getIRQState_prop getIRQState_inv do_machine_op_bind doMachineOp_bind
+              | simp add: do_machine_op_bind doMachineOp_bind )+
    apply (rule corres_guard_imp)
      apply (rule corres_split_deprecated)
-        apply (rule corres_machine_op, rule corres_eq_trivial ; (simp add: dc_def no_fail_maskInterrupt no_fail_bind no_fail_ackInterrupt)+)+
+        apply (rule corres_machine_op, rule corres_eq_trivial;
+               (simp add: dc_def no_fail_maskInterrupt no_fail_bind no_fail_ackInterrupt)+)+
       apply ((wp | simp)+)[4]
   apply (rule corres_gen_asm2)
   apply (case_tac st, simp_all add: irq_state_relation_def split: irqstate.split_asm)
@@ -680,7 +683,7 @@ lemma handleInterrupt_corres:
           apply ((wp | simp)+)
     apply clarsimp
    apply fastforce
-  apply (corressimp corres: corres_machine_op reprogram_timer_corres
+  apply (corressimp corres: corres_machine_op setReprogramTimer_corres
                       simp: ackDeadlineIRQ_def ackInterrupt_def)
   by fastforce
 
