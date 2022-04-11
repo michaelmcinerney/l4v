@@ -912,7 +912,7 @@ crunches schedContextCompleteYieldTo
 
 lemma contextYieldToUpdateQueues_invs':
   "\<lbrace>invs' and (\<lambda>s. obj_at' (\<lambda>a. \<exists>y. scTCB a = Some y) scPtr s) and ct_active'
-    and ex_nonz_cap_to' scPtr and (\<lambda>s. tcb_at' (ksCurThread s) s)\<rbrace>
+    and ex_nonz_cap_to' scPtr and cur_tcb'\<rbrace>
    contextYieldToUpdateQueues scPtr
    \<lbrace>\<lambda>_. invs'\<rbrace>"
   apply (clarsimp simp: contextYieldToUpdateQueues_def)
@@ -937,7 +937,7 @@ lemma contextYieldToUpdateQueues_invs':
        apply (rule hoare_weaken_pre)
         apply (rule contextYieldToUpdateQueues_invs'_helper)
        apply (fastforce dest: sc_ko_at_valid_objs_valid_sc'
-                        simp: valid_sched_context'_def valid_sched_context_size'_def)
+                        simp: valid_sched_context'_def valid_sched_context_size'_def cur_tcb'_def)
       apply (wpsimp wp: threadSet_ct_in_state' setSchedContext_ct_in_state')
      apply (wpsimp wp: threadSet_st_tcb_at2)
      apply (erule isSchedulable_bool_runnableE)
@@ -945,7 +945,7 @@ lemma contextYieldToUpdateQueues_invs':
       apply fastforce
      apply (frule sc_ko_at_valid_objs_valid_sc')
       apply fastforce
-     apply (clarsimp simp: valid_sched_context'_def scBits_simps obj_at_simps)
+     apply (clarsimp simp: valid_sched_context'_def obj_at_simps)
     apply (wpsimp | wps)+
   apply (clarsimp simp: ct_in_state'_def st_tcb_at'_def obj_at_simps runnable_eq_active')
   done
@@ -971,7 +971,7 @@ lemma schedContextYiedTo_invs':
   apply (wpsimp wp: contextYieldToUpdateQueues_invs' setConsumed_invs'
               simp: ct_in_state'_def
          | wps)+
-  done
+  by (fastforce simp: cur_tcb'_def)
 
 lemma invokeSchedContext_invs':
   "\<lbrace>invs' and  ct_active' and valid_sc_inv' iv\<rbrace>
@@ -1007,10 +1007,160 @@ lemma setDomain_invs':
      apply (wpsimp wp: threadSet_tcbDomain_update_invs')
     by (wpsimp wp: tcbSchedDequeue_nonq hoare_vcg_all_lift)+
 
+crunches refillNew, refillUpdate, commitTime
+  for pred_tcb_at''[wp]: "\<lambda>s. Q (pred_tcb_at' proj P tcbPtr s)"
+  and ksCurThread[wp]: "\<lambda>s. P (ksCurThread s)"
+  and ex_nonz_cap_to'[wp]: "ex_nonz_cap_to' ptr"
+  (simp: crunch_simps wp: crunch_wps)
+
 lemma invokeSchedControlConfigureFlags_invs':
   "\<lbrace>invs' and valid_sc_ctrl_inv' iv\<rbrace>
    invokeSchedControlConfigureFlags iv
    \<lbrace>\<lambda>_. invs'\<rbrace>"
+  supply if_split[split del]
+  unfolding invokeSchedControlConfigureFlags_def
+apply_tra   ce wpsimp
+apply_trace (wpsimp wp: hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs' tcbReleaseRemove_invs')
+apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+apply (wpsimp wp: hoare_vcg_imp_lift' hoare_vcg_if_lift2)
+apply wpsimp
+apply wpsimp
+apply (wpsimp wp: refillNew_invs' hoare_vcg_if_lift hoare_vcg_imp_lift' refillUpdate_invs')
+apply (rule_tac Q="\<lambda>_. invs' and valid_sc_ctrl_inv' iv and (\<lambda>s. scTCB sc \<noteq> Nothing \<longrightarrow> st_tcb_at' runnable' (fromJust $ scTCB sc) s)"
+in hoare_post_imp)
+apply clarsimp
+
+   apply (clarsimp simp: valid_refills_number'_def ko_wp_at'_def split: if_splits)
+apply (wpsimp wp: refillNew_invs' hoare_vcg_if_lift hoare_vcg_imp_lift' refillUpdate_invs' hoare_vcg_ex_lift)
+apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+  apply fastforce
+apply (wpsimp wp: refillNew_invs' hoare_vcg_if_lift hoare_vcg_imp_lift' refillUpdate_invs' hoare_vcg_ex_lift)
+apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+  apply fastforce
+apply wpsimp
+apply (wpsimp wp: refillNew_invs' hoare_vcg_if_lift hoare_vcg_imp_lift' refillUpdate_invs' hoare_vcg_ex_lift)
+
+apply (rule_tac Q="\<lambda>_. invs' and valid_sc_ctrl_inv' iv and (\<lambda>s. scTCB sc \<noteq> Nothing \<longrightarrow> st_tcb_at' runnable' (fromJust $ scTCB sc) s)"
+in hoare_post_imp)
+apply clarsimp
+
+   apply (clarsimp simp: valid_refills_number'_def ko_wp_at'_def split: if_splits)
+apply (wpsimp wp: commitTime_invs' hoare_vcg_ex_lift)
+apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+  apply fastforce
+apply wpsimp
+
+apply (rule_tac Q="\<lambda>_. invs' and valid_sc_ctrl_inv' iv and (\<lambda>s. scTCB sc \<noteq> Nothing \<longrightarrow> st_tcb_at' runnable' (fromJust $ scTCB sc) s)"
+in hoare_post_imp)
+apply clarsimp
+
+   apply (clarsimp simp: valid_refills_number'_def ko_wp_at'_def split: if_splits)
+apply (wpsimp wp: hoare_vcg_ex_lift)
+apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+  apply fastforce
+apply (wpsimp wp: tcbReleaseRemove_invs' hoare_vcg_ex_lift)
+apply wpsimp
+
+
+ apply (prop_tac "y = the (scTCB sc)")
+  apply fastforce
+apply (thin_tac "scTCB sc = _")
+apply clarsimp
+  apply fastforce
+apply wpsimp
+apply clarsimp
+apply (rule hoare_vcg_conj_lift)
+
+apply (rule hoare_vcg_ex_lift)
+apply wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+apply (rule hoare_vcg_conj_lift)
+apply_trace wpsimp
+
+apply_trace (wpsimp wp: hoare_vcg_ex_lift)
+  apply simp
+apply (rule_tac Q="\<lambda>_. invs' and valid_sc_ctrl_inv' iv and (\<lambda>s. scTCB sc \<noteq> Nothing \<longrightarrow> st_tcb_at' runnable' (fromJust $ scTCB sc) s)"
+in hoare_post_imp)
+apply clarsimp
+
+   apply (clarsimp simp: valid_refills_number'_def ko_wp_at'_def split: if_splits)
+apply wpsimp
+apply clarsimp
+apply (prop_tac "y = the (scTCB sc)")
+  apply argo
+
+apply clarsimp
+apply (wpsimp wp: hoare_vcg_ex_lift)
+apply simp
+apply (wpsimp wp: tcbReleaseRemove_invs' hoare_vcg_ex_lift)
+apply wpsimp
+apply (rule hoare_vcg_all_lift)
+apply (rule hoare_drop_imps)
+apply (wpsimp wp: updateSchedContext_invs' hoare_vcg_all_lift hoare_vcg_imp_lift' hoare_vcg_if_lift2 hoare_vcg_ex_lift)
+
+apply (wpsimp wp: updateSchedContext_invs' hoare_vcg_all_lift hoare_drop_imps hoare_vcg_if_lift2 hoare_vcg_ex_lift)
+apply clarsimp
+apply (wpsimp wp: hoare_drop_imps commitTime_invs' hoare_vcg_ex_lift hoare_vcg_if_lift2 tcbReleaseRemove_invs')
+apply wpsimp
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs')
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs')
+apply (clarsimp cong: conj_cong)
+apply (wpsimp wp: hoare_drop_imps)
+  apply simp
+find_theorems schedContextResume invs'
+
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift)
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift)
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift tcbReleaseRemove_invs')
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift)
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift)
+
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs')
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs')
+apply (wpsimp wp: hoare_drop_imps hoare_vcg_if_lift2 refillNew_invs' refillUpdate_invs' commitTime_invs'
+hoare_vcg_ex_lift hoare_vcg_all_lift updateSchedContext_invs')
+apply (clarsimp cong: conj_cong)
+find_theorems refillNew pred_tcb_at'
+apply wpsimp
+apply (wpsimp wp: hoare_vcg_if_lift hoare_drop_imps)
+
+
   apply (clarsimp simp: invokeSchedControlConfigureFlags_def)
   apply (cases iv; clarsimp)
   apply (rename_tac sc_ptr budget period mrefills badge flag)
