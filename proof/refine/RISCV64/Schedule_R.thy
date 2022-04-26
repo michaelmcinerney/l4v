@@ -4194,7 +4194,7 @@ lemma nonOverLappingMergeRefills_valid_refills'[wp]:
 definition head_insufficient_loop_measure where
   "head_insufficient_loop_measure sc_ptr
      \<equiv> measure (\<lambda>(_, s). case kheap s sc_ptr of Some (Structures_A.SchedContext sc _)
-                                             \<Rightarrow> (length (sc_refills sc)))"
+                                             \<Rightarrow> length (sc_refills sc))"
 
 lemma non_overlapping_merge_refills_terminates:
   "\<lbrakk>pred_map (\<lambda>cfg. refills_unat_sum (scrc_refills cfg) \<le> unat max_time)

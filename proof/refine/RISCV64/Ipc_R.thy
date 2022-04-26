@@ -4393,8 +4393,7 @@ lemma maybeReturnSc_invs'_and_valid_idle':
   done
 
 lemma
-  shows
-  maybeReturnSc_invs':
+  shows maybeReturnSc_invs':
   "\<lbrace>invs' and valid_idle' and (\<lambda>s. tptr \<noteq> ksIdleThread s)\<rbrace>
    maybeReturnSc nptr tptr
    \<lbrace>\<lambda>_. invs'\<rbrace>"

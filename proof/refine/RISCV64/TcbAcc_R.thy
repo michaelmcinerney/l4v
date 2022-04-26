@@ -1666,7 +1666,7 @@ lemma asUser_sch_act_wf[wp]:
 lemma asUser_idle'[wp]:
   "\<lbrace>valid_idle'\<rbrace> asUser t m \<lbrace>\<lambda>rv. valid_idle'\<rbrace>"
   apply (simp add: asUser_def split_def)
-  apply_trace (wpsimp wp: threadSet_idle' select_f_inv)
+  apply (wpsimp wp: threadSet_idle' select_f_inv)
   done
 
 lemma no_fail_asUser [wp]:

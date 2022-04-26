@@ -742,8 +742,8 @@ lemma threadSetPriority_onRunning_invs':
   done
 
 lemma runnable'_case_thread_state_If:
-  "(case rv of Structures_H.thread_state.Running \<Rightarrow> threadSetPriority_onRunning t x
-             | Structures_H.thread_state.Restart \<Rightarrow> threadSetPriority_onRunning t x
+  "(case rv of Running \<Rightarrow> threadSetPriority_onRunning t x
+             | Restart \<Rightarrow> threadSetPriority_onRunning t x
              | _ \<Rightarrow> P) =
    (if runnable' rv then threadSetPriority_onRunning t x else P)"
   by (cases rv; clarsimp)
@@ -1220,46 +1220,6 @@ lemma checkCapAt_cteInsert_corres:
      apply (erule disjE)
       apply (erule(1) checked_insert_is_derived)
       apply (fastforce simp: is_derived_def is_cap_simps same_object_as_def cte_wp_at_caps_of_state)+
-\<comment> \<open>
-  apply (rule corres_guard_imp)
-  apply (rule_tac P="cte_wp_at (\<lambda>c. c = cap.NullCap) (target, ref) and
-                           cte_at slot and
-                           cte_wp_at (\<lambda>c. obj_refs c = obj_refs new_cap
-                                   \<longrightarrow> table_cap_ref c = table_cap_ref new_cap \<and> vspace_asid c = vspace_asid new_cap) src_slot
-                           and einvs and K (is_cnode_or_valid_arch new_cap
-                                            \<and> (is_pt_cap new_cap \<longrightarrow> cap_asid new_cap \<noteq> None))"
-                        and
-                        P'="cte_wp_at' (\<lambda>c. cteCap c = NullCap) (cte_map (target, ref))
-                            and invs' and valid_cap' newCap"
-                       in checkCapAt_corres, assumption)
-      apply (rule checkCapAt_weak_corres, simp)
-      apply (unfold assertDerived_def)[1]
-      apply (rule corres_stateAssert_implied [where P'=\<top>])
-       apply simp
-       apply (erule cteInsert_corres [OF _ refl refl])
-      apply clarsimp
-      apply (drule cte_wp_at_norm [where p=src_slot])
-      apply (case_tac src_slot)
-      apply (clarsimp simp: state_relation_def)
-      apply (drule (1) pspace_relation_cte_wp_at)
-        apply fastforce
-       apply fastforce
-      apply (clarsimp simp: cte_wp_at_ctes_of)
-      apply (erule (2) is_derived_eq [THEN iffD1])
-       apply (erule cte_wp_at_weakenE, rule TrueI)
-      apply assumption
-     apply clarsimp
-     apply (rule conjI, fastforce)+
-     apply (cases src_slot)
-     apply (clarsimp simp: cte_wp_at_caps_of_state)
-     apply (rule conjI)
-      apply (frule same_object_as_cap_master)
-      apply (clarsimp simp: cap_master_cap_simps is_cnode_or_valid_arch_def
-                            is_cap_simps is_valid_vtable_root_def
-                     dest!: cap_master_cap_eqDs)
-      apply (erule(1) checked_insert_is_derived)
-      apply (fastforce simp: is_derived_def is_cap_simps same_object_as_def cte_wp_at_caps_of_state
-                             is_cnode_or_valid_arch_def)+\<close>
   done
 
 definition

@@ -13,6 +13,9 @@ begin
 
 context begin interpretation Arch . (*FIXME: arch_split*)
 
+(* FIXME RT: remove *)
+declare if_weak_cong [cong]
+
 crunch aligned'[wp]: cancelAllIPC pspace_aligned'
   (wp: crunch_wps mapM_x_wp' simp: unless_def crunch_simps)
 crunch distinct'[wp]: cancelAllIPC pspace_distinct'
@@ -146,7 +149,6 @@ end
 sublocale delete_one_conc_pre < delete_one: typ_at_all_props' "cteDeleteOne slot"
   by typ_at_props'
 
-declare if_weak_cong [cong]
 declare delete_remove1 [simp]
 declare delete.simps [simp del]
 
@@ -3246,41 +3248,41 @@ lemma not_in_epQueue:
           nidle:  "r \<noteq> IdleEP" and
           st_act: "st_tcb_at' simple' t s"
   shows   "t \<notin> set (epQueue r)"
-  proof
-    assume t_epQ: "t \<in> set (epQueue r)"
+proof
+  assume t_epQ: "t \<in> set (epQueue r)"
 
-    with ko_at nidle
-    have "(t, EPRecv) \<in> state_refs_of' s ep_ptr
-          \<or> (t, EPSend) \<in> state_refs_of' s ep_ptr"
-      by - (drule ko_at_state_refs_ofD', case_tac r, (clarsimp)+)
+  with ko_at nidle
+  have "(t, EPRecv) \<in> state_refs_of' s ep_ptr
+        \<or> (t, EPSend) \<in> state_refs_of' s ep_ptr"
+    by - (drule ko_at_state_refs_ofD', case_tac r, (clarsimp)+)
 
-    with ko_at srefs
-    have "(ep_ptr, TCBBlockedRecv) \<in> state_refs_of' s t
-           \<or> (ep_ptr, TCBBlockedSend) \<in> state_refs_of' s t"
-      apply -
-      apply (frule(1) sym_refs_ko_atD')
-      apply (drule ko_at_state_refs_ofD')
-      apply (case_tac r)
-        apply (clarsimp simp: st_tcb_at_refs_of_rev'
-               | drule(1) bspec | drule st_tcb_at_state_refs_ofD')+
-      done
+  with ko_at srefs
+  have "(ep_ptr, TCBBlockedRecv) \<in> state_refs_of' s t
+         \<or> (ep_ptr, TCBBlockedSend) \<in> state_refs_of' s t"
+    apply -
+    apply (frule(1) sym_refs_ko_atD')
+    apply (drule ko_at_state_refs_ofD')
+    apply (case_tac r)
+      apply (clarsimp simp: st_tcb_at_refs_of_rev'
+             | drule(1) bspec | drule st_tcb_at_state_refs_ofD')+
+    done
 
-    with ko_at have "st_tcb_at' (Not \<circ> simple') t s"
-      apply -
-      apply (erule disjE)
-       apply (drule state_refs_of'_elemD)
-       apply (simp add: st_tcb_at_refs_of_rev')
-       apply (erule pred_tcb'_weakenE)
-       apply (clarsimp simp: isBlockedOnReply_def)
-      apply (drule state_refs_of'_elemD)
-      apply (simp add: st_tcb_at_refs_of_rev')
-      apply (erule pred_tcb'_weakenE)
-      apply (clarsimp simp: isBlockedOnReply_def)
-      done
+  with ko_at have "st_tcb_at' (Not \<circ> simple') t s"
+    apply -
+    apply (erule disjE)
+     apply (drule state_refs_of'_elemD)
+     apply (simp add: st_tcb_at_refs_of_rev')
+     apply (erule pred_tcb'_weakenE)
+     apply (clarsimp simp: isBlockedOnReply_def)
+    apply (drule state_refs_of'_elemD)
+    apply (simp add: st_tcb_at_refs_of_rev')
+    apply (erule pred_tcb'_weakenE)
+    apply (clarsimp simp: isBlockedOnReply_def)
+    done
 
-    with st_act show False
-      by (rule pred_tcb'_neq_contra) simp
-  qed
+  with st_act show False
+    by (rule pred_tcb'_neq_contra) simp
+qed
 
 lemma ct_not_in_epQueue:
   assumes "ko_at' r ep_ptr s" and
@@ -3297,36 +3299,36 @@ lemma not_in_ntfnQueue:
           nidle:  "ntfnObj r \<noteq> IdleNtfn \<and> (\<forall>b m. ntfnObj r \<noteq> ActiveNtfn b)" and
           st_act: "st_tcb_at' simple' t s"
   shows   "t \<notin> set (ntfnQueue (ntfnObj r))"
-  proof
-    assume t_epQ: "t \<in> set (ntfnQueue (ntfnObj r))"
+proof
+  assume t_epQ: "t \<in> set (ntfnQueue (ntfnObj r))"
 
-    with ko_at nidle
-    have "(t, NTFNSignal) \<in> state_refs_of' s ntfn_ptr"
-      by - (drule ko_at_state_refs_ofD', case_tac "ntfnObj r", (clarsimp)+)
-    with ko_at srefs
-    have "(ntfn_ptr, TCBSignal) \<in> state_refs_of' s t"
-      apply -
-      apply (frule(1) sym_refs_ko_atD')
-      apply (drule ko_at_state_refs_ofD')
-      apply (case_tac "ntfnObj r")
-        apply (clarsimp simp: st_tcb_at_refs_of_rev' ntfn_bound_refs'_def
-               | drule st_tcb_at_state_refs_ofD')+
-        apply (drule_tac x="(t, NTFNSignal)" in bspec, clarsimp)
-        apply (clarsimp simp: st_tcb_at_refs_of_rev' sym_refs_def dest!: st_tcb_at_state_refs_ofD')
-       apply (fastforce simp: st_tcb_at_refs_of_rev' sym_refs_def dest!: st_tcb_at_state_refs_ofD')
-      by (metis sym_refs_simp symreftype.simps(7))
+  with ko_at nidle
+  have "(t, NTFNSignal) \<in> state_refs_of' s ntfn_ptr"
+    by - (drule ko_at_state_refs_ofD', case_tac "ntfnObj r", (clarsimp)+)
+  with ko_at srefs
+  have "(ntfn_ptr, TCBSignal) \<in> state_refs_of' s t"
+    apply -
+    apply (frule(1) sym_refs_ko_atD')
+    apply (drule ko_at_state_refs_ofD')
+    apply (case_tac "ntfnObj r")
+      apply (clarsimp simp: st_tcb_at_refs_of_rev' ntfn_bound_refs'_def
+             | drule st_tcb_at_state_refs_ofD')+
+      apply (drule_tac x="(t, NTFNSignal)" in bspec, clarsimp)
+      apply (clarsimp simp: st_tcb_at_refs_of_rev' sym_refs_def dest!: st_tcb_at_state_refs_ofD')
+     apply (fastforce simp: st_tcb_at_refs_of_rev' sym_refs_def dest!: st_tcb_at_state_refs_ofD')
+    by (metis sym_refs_simp symreftype.simps(7))
 
-    with ko_at have "st_tcb_at' (Not \<circ> simple') t s"
-      apply -
-      apply (drule state_refs_of'_elemD)
-      apply (simp add: st_tcb_at_refs_of_rev')
-      apply (erule pred_tcb'_weakenE)
-      apply (clarsimp simp: isBlockedOnReply_def)
-      done
+  with ko_at have "st_tcb_at' (Not \<circ> simple') t s"
+    apply -
+    apply (drule state_refs_of'_elemD)
+    apply (simp add: st_tcb_at_refs_of_rev')
+    apply (erule pred_tcb'_weakenE)
+    apply (clarsimp simp: isBlockedOnReply_def)
+    done
 
-    with st_act show False
-      by (rule pred_tcb'_neq_contra) simp
-  qed
+  with st_act show False
+    by (rule pred_tcb'_neq_contra) simp
+qed
 
 lemma ct_not_in_ntfnQueue:
   assumes ko_at:  "ko_at' r ntfn_ptr s" and

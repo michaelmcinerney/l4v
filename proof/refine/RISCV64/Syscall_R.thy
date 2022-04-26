@@ -1119,12 +1119,6 @@ lemma lcs_eq [wp]:
   "\<lbrace>\<top>\<rbrace> lookupCapAndSlot t cptr \<lbrace>\<lambda>rv. cte_wp_at' ((=) (fst rv) o cteCap) (snd rv)\<rbrace>,-"
   by (wpsimp simp: lookupCapAndSlot_def)
 
-\<comment> \<open>lemma lec_eq[wp]:
-  "\<lbrace>\<top>\<rbrace>
-     lookupExtraCaps t buffer info
-   \<lbrace>\<lambda>rv s. (\<forall>x\<in>set rv. cte_wp_at' ((=) (fst x) o cteCap) (snd x) s)\<rbrace>,-"
-  by (wpsimp wp: mapME_set simp: lookupExtraCaps_def)\<close>
-
 lemma lec_dimished'[wp]:
   "\<lbrace>\<top>\<rbrace> lookupExtraCaps t buffer info
    \<lbrace>\<lambda>rv s. (\<forall>x\<in>set rv. cte_wp_at' ((=) (fst x) \<circ> cteCap) (snd x) s)\<rbrace>,-"

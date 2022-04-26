@@ -4325,7 +4325,7 @@ lemma resetUntypedCap_corres:
                apply (simp add: Kernel_Config.resetChunkBits_def minUntypedSizeBits_def)
               apply (subst unat_mult_simple)
                apply (rule order_less_trans[rotated],
-                      rule_tac n=sz in power_strict_increasing, (simp add: word_bits_def)+)
+                      rule_tac n=sz in power_strict_increasing; simp add: word_bits_def)
                apply (rule nat_less_power_trans2, simp_all)[1]
                apply (simp add: unat_of_nat)
               apply simp
