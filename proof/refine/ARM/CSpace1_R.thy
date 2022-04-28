@@ -6504,20 +6504,19 @@ lemma cteSwap_corres:
   apply (simp cong: option.case_cong)
   apply (drule updateCap_stuff, elim conjE, erule(1) impE)
   apply (drule (2) updateMDB_the_lot')
-     apply (erule (1) impE, assumption)
-    apply (fastforce simp only: no_0_modify_map)
-   apply assumption
+    apply (erule (1) impE, assumption)
+   apply (fastforce simp only: no_0_modify_map)
   apply (elim conjE TrueE, simp only:)
-  apply (drule (2) updateMDB_the_lot', fastforce, simp only: no_0_modify_map, assumption)
-  apply (drule in_getCTE, elim conjE, simp only:)
-  apply (drule (2) updateMDB_the_lot', fastforce, simp only: no_0_modify_map, assumption)
+  apply (drule (2) updateMDB_the_lot', assumption, fastforce simp only: no_0_modify_map)
+  apply (drule in_getCTE, clarsimp)
+  apply (drule (2) updateMDB_the_lot', assumption, fastforce simp only: no_0_modify_map)
   apply (elim conjE TrueE, simp only:)
-  apply (drule (2) updateMDB_the_lot', fastforce, simp only: no_0_modify_map, assumption)
+  apply (drule (2) updateMDB_the_lot', assumption, fastforce simp only: no_0_modify_map)
   apply (elim conjE TrueE, simp only:)
-  apply (drule (2) updateMDB_the_lot', fastforce, simp only: no_0_modify_map, assumption)
+  apply (drule (2) updateMDB_the_lot', assumption, fastforce simp only: no_0_modify_map)
   apply (elim conjE TrueE, simp only:)
-  apply (drule (2) updateMDB_the_lot', fastforce, simp only: no_0_modify_map, assumption)
-  apply (simp only: pspace_relations_def refl)
+  apply (drule (2) updateMDB_the_lot', assumption, fastforce simp only: no_0_modify_map)
+  apply (simp only: refl)
   apply (rule conjI, rule TrueI)+
   apply (thin_tac "ksMachineState t = p" for t p)+
   apply (thin_tac "ksCurThread t = p" for t p)+
@@ -6551,35 +6550,9 @@ lemma cteSwap_corres:
      apply (erule weak_derived_sym')
     apply (erule weak_derived_sym')
    apply assumption
+
   apply (rule conjI)
    subgoal by (simp only: simp_thms ghost_relation_typ_at set_cap_a_type_inv ARM.data_at_def)
-  apply (thin_tac "ksMachineState t = p" for t p)+
-  apply (thin_tac "ksCurThread t = p" for t p)+
-  apply (thin_tac "ksReadyQueues t = p" for t p)+
-  apply (thin_tac "ksSchedulerAction t = p" for t p)+
-  apply (thin_tac "ready_queues t = p" for t p)+
-  apply (thin_tac "cur_domain t = p" for t p)+
-  apply (thin_tac "ksDomScheduleIdx t = p" for t p)+
-  apply (thin_tac "ksDomSchedule t = p" for t p)+
-  apply (thin_tac "ksCurDomain t = p" for t p)+
-  apply (thin_tac "ksDomainTime t = p" for t p)+
-  apply (thin_tac "idle_thread t = p" for t p)+
-  apply (thin_tac "work_units_completed t = p" for t p)+
-  apply (thin_tac "domain_index t = p" for t p)+
-  apply (thin_tac "domain_list t = p" for t p)+
-  apply (thin_tac "domain_time t = p" for t p)+
-  apply (thin_tac "ekheap t = p" for t p)+
-  apply (thin_tac "scheduler_action t = p" for t p)+
-  apply (thin_tac "ksArchState t = p" for t p)+
-  apply (thin_tac "gsCNodes t = p" for t p)+
-  apply (thin_tac "ksWorkUnitsCompleted t = p" for t p)+
-  apply (thin_tac "ksInterruptState t = p" for t p)+
-  apply (thin_tac "ksIdleThread t = p" for t p)+
-  apply (thin_tac "gsUserPages t = p" for t p)+
-  apply (thin_tac "pspace_relation s s'" for s s')+
-  apply (thin_tac "ekheap_relation e p" for e p)+
-  apply (thin_tac "interrupt_state_relation n s s'" for n s s')+
-  apply (thin_tac "(s,s') \<in> arch_state_relation" for s s')+
   apply(subst conj_assoc[symmetric])
   apply (rule conjI)
    prefer 2
@@ -6832,22 +6805,12 @@ lemma cteSwap_corres:
      apply(clarsimp)
     apply(simp (no_asm_simp) add: valid_mdb'_def)
    apply(clarsimp)
-<<<<<<< HEAD
    apply(drule cte_map_inj_eq; (simp (no_asm_simp))?)
      apply(rule cte_at_next_slot'; simp (no_asm_simp))
     apply(erule cte_wp_at_weakenE)
     apply (simp (no_asm_simp))
    apply simp
-  apply(rule cte_at_next_slot; simp (no_asm_simp))
-  done
-=======
-   apply(drule cte_map_inj_eq)
-         apply(rule cte_at_next_slot')
-           apply(simp_all)[9]
-    apply(erule cte_wp_at_weakenE, simp)
   by (rule cte_at_next_slot; simp)
->>>>>>> verification/master
-
 
 lemma capSwapForDelete_corres:
   assumes "src' = cte_map src" "dest' = cte_map dest"
