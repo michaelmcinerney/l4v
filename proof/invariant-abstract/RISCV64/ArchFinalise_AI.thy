@@ -265,7 +265,7 @@ lemma (* empty_slot_invs *) [Finalise_AI_asms]:
   by fastforce
 
 lemma dom_tcb_cap_cases_lt_ARCH [Finalise_AI_asms]:
-  "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 5}"
+  "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 6}"
   apply (rule set_eqI, rule iffI)
    apply clarsimp
    apply (simp add: tcb_cap_cases_def tcb_cnode_index_def to_bl_1 split: if_split_asm)
