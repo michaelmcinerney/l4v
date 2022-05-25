@@ -84,7 +84,6 @@ end
 
 record itcb' =
   itcbState             :: thread_state
-  itcbFaultHandler      :: cptr
   itcbIPCBuffer         :: vptr
   itcbBoundNotification :: "machine_word option"
   itcbPriority          :: priority
@@ -94,7 +93,6 @@ record itcb' =
 
 definition tcb_to_itcb' :: "tcb \<Rightarrow> itcb'" where
   "tcb_to_itcb' tcb \<equiv> \<lparr> itcbState             = tcbState tcb,
-                        itcbFaultHandler      = tcbFaultHandler tcb,
                         itcbIPCBuffer         = tcbIPCBuffer tcb,
                         itcbBoundNotification = tcbBoundNotification tcb,
                         itcbPriority          = tcbPriority tcb,
@@ -104,7 +102,6 @@ definition tcb_to_itcb' :: "tcb \<Rightarrow> itcb'" where
 
 lemma itcb_simps[simp]:
   "itcbState (tcb_to_itcb' tcb) = tcbState tcb"
-  "itcbFaultHandler (tcb_to_itcb' tcb) = tcbFaultHandler tcb"
   "itcbIPCBuffer (tcb_to_itcb' tcb) = tcbIPCBuffer tcb"
   "itcbBoundNotification (tcb_to_itcb' tcb) = tcbBoundNotification tcb"
   "itcbPriority (tcb_to_itcb' tcb) = tcbPriority tcb"
@@ -142,7 +139,8 @@ definition tcb_cte_cases :: "machine_word \<rightharpoonup> ((tcb \<Rightarrow> 
                     1 << cteSizeBits \<mapsto> (tcbVTable, tcbVTable_update),
                     2 << cteSizeBits \<mapsto> (tcbReply, tcbReply_update),
                     3 << cteSizeBits \<mapsto> (tcbCaller, tcbCaller_update),
-                    4 << cteSizeBits \<mapsto> (tcbIPCBufferFrame, tcbIPCBufferFrame_update) ]"
+                    4 << cteSizeBits \<mapsto> (tcbIPCBufferFrame, tcbIPCBufferFrame_update),
+                    5 << cteSizeBits \<mapsto> (tcbFaultHandler, tcbFaultHandler_update) ]"
 
 definition max_ipc_words :: machine_word where
   "max_ipc_words \<equiv> capTransferDataSize + msgMaxLength + msgMaxExtraCaps + 2"
@@ -275,7 +273,7 @@ definition valid_untyped' :: "bool \<Rightarrow> obj_ref \<Rightarrow> nat \<Rig
                                   usableUntypedRange (UntypedCap d ptr bits idx) \<noteq> {}) ptr' s"
 
 primrec zombieCTEs :: "zombie_type \<Rightarrow> nat" where
-  "zombieCTEs ZombieTCB = 5"
+  "zombieCTEs ZombieTCB = 6"
 | "zombieCTEs (ZombieCNode n) = 2 ^ n"
 
 context begin interpretation Arch .
@@ -1228,6 +1226,7 @@ lemma tcb_cte_cases_simps[simp]:
   "tcb_cte_cases 64 = Some (tcbReply, tcbReply_update)"
   "tcb_cte_cases 96 = Some (tcbCaller, tcbCaller_update)"
   "tcb_cte_cases 128 = Some (tcbIPCBufferFrame, tcbIPCBufferFrame_update)"
+  "tcb_cte_cases 160 = Some (tcbFaultHandler, tcbFaultHandler_update)"
   by (simp add: tcb_cte_cases_def cteSizeBits_def)+
 
 lemma refs_of'_simps[simp]:
@@ -1553,7 +1552,7 @@ lemma cte_wp_at'_pspaceI:
   apply (clarsimp simp: in_monad return_def alignError_def fail_def assert_opt_def
                         alignCheck_def bind_def when_def
                         objBits_cte_conv tcbCTableSlot_def tcbVTableSlot_def
-                        tcbReplySlot_def objBits_defs
+                        tcbReplySlot_def objBits_defs tcbFaultHandlerSlot_def
                  split: if_split_asm cong: image_cong
                  dest!: singleton_in_magnitude_check)
   done
@@ -1901,16 +1900,16 @@ lemma cte_wp_at_cases':
                          is_aligned_mask[symmetric] alignCheck_def
                          tcbVTableSlot_def field_simps tcbCTableSlot_def
                          tcbReplySlot_def tcbCallerSlot_def
-                         tcbIPCBufferSlot_def
+                         tcbIPCBufferSlot_def tcbFaultHandlerSlot_def
                          lookupAround2_char1
                          cte_level_bits_def Ball_def
                          unless_def when_def bind_def
                   split: kernel_object.splits if_split_asm option.splits
                     del: disjCI)
-        apply (subst(asm) in_magnitude_check3, simp+,
-               simp split: if_split_asm, (rule disjI2)?, intro exI, rule conjI,
-               erule rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v],
-               fastforce simp add: field_simps, simp)+
+         apply (subst(asm) in_magnitude_check3, simp+,
+                simp split: if_split_asm, (rule disjI2)?, intro exI, rule conjI,
+                erule rsubst[where P="\<lambda>x. ksPSpace s x = v" for s v],
+                fastforce simp add: field_simps, simp)+
    apply (subst(asm) in_magnitude_check3, simp+)
    apply (simp split: if_split_asm
                 add: )
@@ -1923,8 +1922,8 @@ lemma cte_wp_at_cases':
      apply simp
     apply (simp add: field_simps)
     apply (erule is_aligned_no_wrap')
-     apply (simp add: cte_level_bits_def word_bits_conv)
-    apply (simp add: cte_level_bits_def)
+    apply (simp add: cte_level_bits_def word_bits_conv)
+   apply (simp add: cte_level_bits_def)
    apply (simp add: loadObject_cte unless_def alignCheck_def
                     is_aligned_mask[symmetric] objBits_simps'
                     cte_level_bits_def magnitudeCheck_def
@@ -1938,7 +1937,7 @@ lemma cte_wp_at_cases':
                      is_aligned_mask[symmetric] objBits_simps'
                      cte_level_bits_def magnitudeCheck_def
                      return_def fail_def tcbCTableSlot_def tcbVTableSlot_def
-                     tcbIPCBufferSlot_def tcbReplySlot_def tcbCallerSlot_def
+                     tcbIPCBufferSlot_def tcbReplySlot_def tcbCallerSlot_def tcbFaultHandlerSlot_def
               split: option.split_asm)
      apply (clarsimp simp: bind_def tcb_cte_cases_def cteSizeBits_def split: if_split_asm)
     apply (clarsimp simp: bind_def tcb_cte_cases_def iffD2[OF linorder_not_less]

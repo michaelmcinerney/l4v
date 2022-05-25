@@ -786,6 +786,7 @@ lemma setObject_cte_obj_at_tcb':
              "\<And>tcb f. P (tcbReply_update f tcb) = P tcb"
              "\<And>tcb f. P (tcbCaller_update f tcb) = P tcb"
              "\<And>tcb f. P (tcbIPCBufferFrame_update f tcb) = P tcb"
+             "\<And>tcb f. P (tcbFaultHandler_update f tcb) = P tcb"
   shows
   "\<lbrace>\<lambda>s. P' (obj_at' (P :: tcb \<Rightarrow> bool) p s)\<rbrace>
   setObject c (cte::cte)

@@ -1788,7 +1788,8 @@ definition "cte_check \<equiv> \<lambda>b src a next. (case b of
         \<or> src - a = tcbCTableSlot << cteSizeBits
         \<or> src - a = tcbReplySlot << cteSizeBits
         \<or> src - a = tcbCallerSlot << cteSizeBits
-        \<or> src - a = tcbIPCBufferSlot << cteSizeBits )
+        \<or> src - a = tcbIPCBufferSlot << cteSizeBits
+        \<or> src - a = tcbFaultHandlerSlot << cteSizeBits )
      | KOCTE v1 \<Rightarrow> ( src = a \<and> (is_aligned a (objBits (makeObject::cte)))
         \<and> (case next of None \<Rightarrow> True | Some z \<Rightarrow> 2^(objBits (makeObject::cte)) \<le> z - a))
      | _ \<Rightarrow> False)"
@@ -1809,6 +1810,7 @@ definition cte_update where
         else if (src - a = tcbReplySlot << cteSizeBits) then KOTCB (tcbReply_update (\<lambda>_. cte) tcb)
         else if (src - a = tcbCallerSlot << cteSizeBits) then KOTCB (tcbCaller_update (\<lambda>_. cte) tcb)
         else if (src - a = tcbIPCBufferSlot << cteSizeBits) then KOTCB (tcbIPCBufferFrame_update (\<lambda>_. cte) tcb)
+        else if (src - a = tcbFaultHandlerSlot << cteSizeBits) then KOTCB (tcbFaultHandler_update (\<lambda>_. cte) tcb)
         else KOTCB tcb
      | KOCTE v1 \<Rightarrow> KOCTE cte
      | x \<Rightarrow> x)"
@@ -1821,14 +1823,14 @@ lemma simpler_updateObject_def:
   apply (clarsimp simp:ObjectInstances_H.updateObject_cte objBits_simps)
   apply (case_tac b)
    apply (simp_all add:cte_check_def typeError_def fail_def
-          tcbIPCBufferSlot_def
+          tcbIPCBufferSlot_def tcbFaultHandlerSlot_def
           tcbCallerSlot_def tcbReplySlot_def
           tcbCTableSlot_def tcbVTableSlot_def)
    by (intro conjI impI;
         clarsimp simp:alignCheck_def unless_def when_def not_less[symmetric]
          alignError_def is_aligned_mask magnitudeCheck_def
          cte_update_def return_def tcbIPCBufferSlot_def
-         tcbCallerSlot_def tcbReplySlot_def
+         tcbCallerSlot_def tcbReplySlot_def tcbFaultHandlerSlot_def
          tcbCTableSlot_def tcbVTableSlot_def objBits_simps
          cteSizeBits_def split:option.splits;
           fastforce simp:return_def fail_def bind_def)+
@@ -1889,7 +1891,7 @@ lemma cte_wp_at_top:
                       split: Structures_H.kernel_object.splits)+)[5]
     apply (simp add: loadObject_cte cte_check_def tcbIPCBufferSlot_def tcbCallerSlot_def
                      tcbReplySlot_def tcbCTableSlot_def tcbVTableSlot_def objBits_simps
-                     cteSizeBits_def)
+                     cteSizeBits_def tcbFaultHandlerSlot_def)
     apply (simp add: alignCheck_def bind_def alignError_def fail_def return_def objBits_simps
                      magnitudeCheck_def in_monad is_aligned_mask when_def
                 split: option.splits)
@@ -1946,7 +1948,7 @@ proof -
                          add.commute[where b=a]
                          word_plus_mono_right is_aligned_no_wrap'
                          tcbVTableSlot_def tcbCTableSlot_def tcbReplySlot_def
-                         tcbCallerSlot_def tcbIPCBufferSlot_def )
+                         tcbCallerSlot_def tcbIPCBufferSlot_def tcbFaultHandlerSlot_def)
   qed
 
   note blah[simp del] = usableUntypedRange.simps atLeastAtMost_iff

@@ -274,7 +274,7 @@ crunch (empty_fail) empty_fail[wp, simp]: setMRs, setMessageInfo
 (wp: empty_fail_catch simp: const_def Let_def)
 
 crunch (empty_fail) empty_fail: callKernel
-  (wp: empty_fail_catch)
+  (wp: empty_fail_catch empty_fail_getObject)
 
 theorem call_kernel_serial:
   "\<lbrakk> (einvs and (\<lambda>s. event \<noteq> Interrupt \<longrightarrow> ct_running s) and (ct_running or ct_idle) and
