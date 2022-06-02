@@ -37,6 +37,7 @@ lemma ps_clear_is_aligned_ctes_None:
   shows "ksPSpace s (p + 2*2^cteSizeBits) = None"
     and "ksPSpace s (p + 3*2^cteSizeBits) = None"
     and "ksPSpace s (p + 4*2^cteSizeBits) = None"
+    and "ksPSpace s (p + 5*2^cteSizeBits) = None"
   by (auto intro: assms ps_clear_is_aligned_ksPSpace_None
             simp: objBits_defs mask_def)+
 
@@ -311,8 +312,8 @@ crunches switchToIdleThread, switchToThread
   for valid_pspace'[wp]: valid_pspace'
   (simp: whenE_def crunch_simps wp: hoare_drop_imps)
 
-lemma getMessageInfo_less_4:
-  "\<lbrace>\<top>\<rbrace> getMessageInfo t \<lbrace>\<lambda>rv s. msgExtraCaps rv < 4\<rbrace>"
+lemma getMessageInfo_less_8:
+  "\<lbrace>\<top>\<rbrace> getMessageInfo t \<lbrace>\<lambda>rv s. msgExtraCaps rv < 8\<rbrace>"
   including no_pre
   apply (simp add: getMessageInfo_def)
   apply wp
@@ -325,7 +326,7 @@ lemma getMessageInfo_less_4:
   done
 
 lemma getMessageInfo_msgLength':
-  "\<lbrace>\<top>\<rbrace> getMessageInfo t \<lbrace>\<lambda>rv s. msgLength rv \<le> 0x78\<rbrace>"
+  "\<lbrace>\<top>\<rbrace> getMessageInfo t \<lbrace>\<lambda>rv s. msgLength rv \<le> 0x74\<rbrace>"
   including no_pre
   apply (simp add: getMessageInfo_def)
   apply wp

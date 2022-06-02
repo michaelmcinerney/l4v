@@ -1,0 +1,81 @@
+--- Retype_C.thy
++++ Retype_C.thy
+@@ -2522,7 +2522,7 @@ proof (rule ext)
+ qed
+ 
+ lemma dom_tcb_cte_cases_iff:
+-  "(x \<in> dom tcb_cte_cases) = (\<exists>y < 5. unat x = y * 16)"
++  "(x \<in> dom tcb_cte_cases) = (\<exists>y < 6. unat x = y * 16)"
+   unfolding tcb_cte_cases_def
+   by (auto simp: unat_arith_simps)
+ 
+@@ -2645,7 +2645,7 @@ qed
+ 
+ 
+ lemma tcb_ptr_orth_cte_ptrs':
+-  "ptr_span (tcb_Ptr (regionBase + 0x100)) \<inter> ptr_span (Ptr regionBase :: (cte_C[5]) ptr) = {}"
++  "ptr_span (tcb_Ptr (regionBase + 0x100)) \<inter> ptr_span (Ptr regionBase :: (cte_C[6]) ptr) = {}"
+   apply (rule disjointI)
+   apply (clarsimp simp: ctcb_ptr_to_tcb_ptr_def size_td_array
+                         intvl_def field_simps size_of_def ctcb_offset_def)
+@@ -2683,7 +2683,7 @@ lemma cnc_tcb_helper:
+                      :: user_context_C ptr)\<rightarrow>[''registers_C''])) :: (word32[20]) ptr)
+                   (Arrays.update (h_val (hrs_mem a) ((Ptr &((Ptr &((Ptr &(p\<rightarrow>[''tcbArch_C'']) :: arch_tcb_C ptr)\<rightarrow>[''tcbContext_C''])
+                        :: user_context_C ptr)\<rightarrow>[''registers_C''])) :: (word32[20]) ptr)) (unat Kernel_C.CPSR) (0x150 :: word32)))
+-                   (hrs_htd_update (\<lambda>xa. ptr_retyps_gen 1 (Ptr (ctcb_ptr_to_tcb_ptr p) :: (cte_C[5]) ptr) False
++                   (hrs_htd_update (\<lambda>xa. ptr_retyps_gen 1 (Ptr (ctcb_ptr_to_tcb_ptr p) :: (cte_C[6]) ptr) False
+                        (ptr_retyps_gen 1 p False xa)) a)))) x)
+              \<in> rf_sr"
+   (is "(\<sigma>\<lparr>ksPSpace := ?ks\<rparr>, globals_update ?gs' x) \<in> rf_sr")
+@@ -2880,13 +2880,13 @@ proof -
+ 
+   \<comment> \<open>Ugh\<close>
+   moreover have
+-    "\<And>y. y \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 5}
++    "\<And>y. y \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 6}
+       = (y && ~~ mask tcbBlockSizeBits = ctcb_ptr_to_tcb_ptr p \<and> y && mask tcbBlockSizeBits \<in> dom tcb_cte_cases)"
+     (is "\<And>y. ?LHS y = ?RHS y")
+   proof -
+     fix y
+ 
+-    have al_rl: "\<And>k. k < 5 \<Longrightarrow>
++    have al_rl: "\<And>k. k < 6 \<Longrightarrow>
+       ctcb_ptr_to_tcb_ptr p + of_nat k * of_nat (size_of TYPE(cte_C)) && mask tcbBlockSizeBits = of_nat k * of_nat (size_of TYPE(cte_C))
+       \<and> ctcb_ptr_to_tcb_ptr p + of_nat k * of_nat (size_of TYPE(cte_C)) && ~~ mask tcbBlockSizeBits = ctcb_ptr_to_tcb_ptr p" using al
+       apply -
+@@ -2898,7 +2898,7 @@ proof -
+        apply (simp add: size_of_def word_bits_conv objBits_defs)+
+       done
+ 
+-    have al_rl2: "\<And>k. k < 5 \<Longrightarrow> unat (of_nat k * of_nat (size_of TYPE(cte_C)) :: word32) = k * 2^cteSizeBits"
++    have al_rl2: "\<And>k. k < 6 \<Longrightarrow> unat (of_nat k * of_nat (size_of TYPE(cte_C)) :: word32) = k * 2^cteSizeBits"
+        apply (subst Abs_fnat_hom_mult)
+        apply (subst unat_of_nat32)
+        apply (simp add: size_of_def word_bits_conv objBits_defs)+
+@@ -2918,7 +2918,7 @@ proof -
+   qed
+ 
+   ultimately have rl_cte: "(map_to_ctes (ks(ctcb_ptr_to_tcb_ptr p \<mapsto> KOTCB makeObject)) :: word32 \<Rightarrow> cte option)
+-    = (\<lambda>x. if x \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 5}
++    = (\<lambda>x. if x \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 6}
+          then Some (CTE NullCap nullMDBNode)
+          else map_to_ctes ks x)"
+     apply simp
+@@ -4056,7 +4056,7 @@ lemma ccorres_placeNewObject_tcb:
+     hs
+    (placeNewObject regionBase (makeObject :: tcb) 0)
+    (\<acute>tcb :== tcb_Ptr (regionBase + 0x100);;
+-        (global_htd_update (\<lambda>s. ptr_retyp (Ptr (ptr_val (tcb_' s) - ctcb_offset) :: (cte_C[5]) ptr)
++        (global_htd_update (\<lambda>s. ptr_retyp (Ptr (ptr_val (tcb_' s) - ctcb_offset) :: (cte_C[6]) ptr)
+             \<circ> ptr_retyp (tcb_' s)));;
+         (Guard C_Guard \<lbrace>hrs_htd \<acute>t_hrs \<Turnstile>\<^sub>t \<acute>tcb\<rbrace>
+            (call (\<lambda>s. s\<lparr>context_' := Ptr &((Ptr &(tcb_' s\<rightarrow>[''tcbArch_C'']) :: arch_tcb_C ptr)\<rightarrow>[''tcbContext_C''])\<rparr>) Arch_initContext_'proc (\<lambda>s t. s\<lparr>globals := globals t\<rparr>) (\<lambda>s' s''. Basic (\<lambda>s. s))));;
+@@ -4069,7 +4069,7 @@ lemma ccorres_placeNewObject_tcb:
+    apply vcg
+   apply (clarsimp simp: rf_sr_htd_safe ctcb_offset_defs)
+   apply (subgoal_tac "c_guard (tcb_Ptr (regionBase + 0x100))")
+-   apply (subgoal_tac "hrs_htd (hrs_htd_update (ptr_retyp (Ptr regionBase :: (cte_C[5]) ptr)
++   apply (subgoal_tac "hrs_htd (hrs_htd_update (ptr_retyp (Ptr regionBase :: (cte_C[6]) ptr)
+                                  \<circ> ptr_retyp (tcb_Ptr (regionBase + 0x100)))
+                   (t_hrs_' (globals x))) \<Turnstile>\<^sub>t tcb_Ptr (regionBase + 0x100)")
+     prefer 2

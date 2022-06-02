@@ -38,7 +38,7 @@ abbreviation
 abbreviation
   pt_Ptr :: "machine_word \<Rightarrow> (pte_C[512]) ptr" where "pt_Ptr == Ptr"
 
-type_synonym tcb_cnode_array = "cte_C[5]"
+type_synonym tcb_cnode_array = "cte_C[6]"
 type_synonym registers_count = 35
 type_synonym registers_array = "machine_word[registers_count]"
 

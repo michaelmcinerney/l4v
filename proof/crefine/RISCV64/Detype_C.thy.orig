@@ -1887,7 +1887,7 @@ proof -
 
     from sr have "cvariable_array_map_relation (gsCNodes s|\<^bsub>(- {ptr..+2 ^ bits})\<^esub>) ((^) 2) cte_Ptr
        (typ_region_bytes ptr bits (hrs_htd (t_hrs_' (globals s'))))"
-      "cvariable_array_map_relation (map_to_tcbs (ksPSpace s|\<^bsub>(- {ptr..+2 ^ bits})\<^esub>)) (\<lambda>x. 6) cte_Ptr
+      "cvariable_array_map_relation (map_to_tcbs (ksPSpace s|\<^bsub>(- {ptr..+2 ^ bits})\<^esub>)) (\<lambda>x. 5) cte_Ptr
        (typ_region_bytes ptr bits (hrs_htd (t_hrs_' (globals s'))))"
       apply (simp_all add: map_comp_restrict_map rf_sr_def cstate_relation_def Let_def)
        apply (rule cvariable_array_map_relation_detype, clarsimp+)
