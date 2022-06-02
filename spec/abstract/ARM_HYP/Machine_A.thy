@@ -105,7 +105,7 @@ definition
 
 definition
   msg_label_bits :: nat where
-  [simp]: "msg_label_bits \<equiv> 20"
+  [simp]: "msg_label_bits \<equiv> 15"
 
 type_synonym user_context = "register \<Rightarrow> data"
 
