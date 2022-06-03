@@ -1,0 +1,1044 @@
+can't find file to patch at input line 5
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/ARM_HYP/ArchTcb_AC.thy b/proof/access-control/ARM_HYP/ArchTcb_AC.thy
+|index dd78504af..721035916 100644
+|--- a/proof/access-control/ARM_HYP/ArchTcb_AC.thy
+|+++ b/proof/access-control/ARM_HYP/ArchTcb_AC.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 173
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/ARM_HYP/ExampleSystem.thy b/proof/access-control/ARM_HYP/ExampleSystem.thy
+|index 9c983d64d..1a1470da0 100644
+|--- a/proof/access-control/ARM_HYP/ExampleSystem.thy
+|+++ b/proof/access-control/ARM_HYP/ExampleSystem.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 213
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/Access_AC.thy b/proof/access-control/Access_AC.thy
+|index d0efd7c79..84601c20e 100644
+|--- a/proof/access-control/Access_AC.thy
+|+++ b/proof/access-control/Access_AC.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 225
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/CNode_AC.thy b/proof/access-control/CNode_AC.thy
+|index 429df9182..e70443fc5 100644
+|--- a/proof/access-control/CNode_AC.thy
+|+++ b/proof/access-control/CNode_AC.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 381
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/DomainSepInv.thy b/proof/access-control/DomainSepInv.thy
+|index fe540a54d..4ae904c43 100644
+|--- a/proof/access-control/DomainSepInv.thy
+|+++ b/proof/access-control/DomainSepInv.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 467
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/Ipc_AC.thy b/proof/access-control/Ipc_AC.thy
+|index 12cdfef12..af33ff62e 100644
+|--- a/proof/access-control/Ipc_AC.thy
+|+++ b/proof/access-control/Ipc_AC.thy
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 664
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/access-control/Tcb_AC.thy b/proof/access-control/Tcb_AC.thy
+|index bf72128de..cc5946a9d 100644
+|--- a/proof/access-control/Tcb_AC.thy
+|+++ b/proof/access-control/Tcb_AC.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 776
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/bisim/Separation.thy b/proof/bisim/Separation.thy
+|index 0562af96d..336f0d576 100644
+|--- a/proof/bisim/Separation.thy
+|+++ b/proof/bisim/Separation.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 799
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/bisim/Syscall_S.thy b/proof/bisim/Syscall_S.thy
+|index d7ee4fd47..c0f2257ef 100644
+|--- a/proof/bisim/Syscall_S.thy
+|+++ b/proof/bisim/Syscall_S.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 865
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/capDL-api/Kernel_DP.thy b/proof/capDL-api/Kernel_DP.thy
+|index f914bd1a1..bbcf1e47c 100644
+|--- a/proof/capDL-api/Kernel_DP.thy
+|+++ b/proof/capDL-api/Kernel_DP.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 895
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/capDL-api/TCB_DP.thy b/proof/capDL-api/TCB_DP.thy
+|index 49202dc48..9808f54c4 100644
+|--- a/proof/capDL-api/TCB_DP.thy
+|+++ b/proof/capDL-api/TCB_DP.thy
+--------------------------
+No file to patch.  Skipping patch.
+40 out of 40 hunks ignored
+can't find file to patch at input line 1740
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/ADT_C.thy b/proof/crefine/ARM_HYP/ADT_C.thy
+|index dd69714fb..fe8dcc06f 100644
+|--- a/proof/crefine/ARM_HYP/ADT_C.thy
+|+++ b/proof/crefine/ARM_HYP/ADT_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 1772
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/ArchMove_C.thy b/proof/crefine/ARM_HYP/ArchMove_C.thy
+|index 6dcd98e18..288b97d94 100644
+|--- a/proof/crefine/ARM_HYP/ArchMove_C.thy
+|+++ b/proof/crefine/ARM_HYP/ArchMove_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 1784
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Detype_C.thy b/proof/crefine/ARM_HYP/Detype_C.thy
+|index 4e3ffb564..380697aff 100644
+|--- a/proof/crefine/ARM_HYP/Detype_C.thy
+|+++ b/proof/crefine/ARM_HYP/Detype_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 1797
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Fastpath_C.thy b/proof/crefine/ARM_HYP/Fastpath_C.thy
+|index 4b2625c25..4f60fd544 100644
+|--- a/proof/crefine/ARM_HYP/Fastpath_C.thy
+|+++ b/proof/crefine/ARM_HYP/Fastpath_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 1810
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Ipc_C.thy b/proof/crefine/ARM_HYP/Ipc_C.thy
+|index b017fd0b4..d34ef45d4 100644
+|--- a/proof/crefine/ARM_HYP/Ipc_C.thy
+|+++ b/proof/crefine/ARM_HYP/Ipc_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+14 out of 14 hunks ignored
+can't find file to patch at input line 1984
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Retype_C.thy b/proof/crefine/ARM_HYP/Retype_C.thy
+|index 55d50220d..8ede14fb3 100644
+|--- a/proof/crefine/ARM_HYP/Retype_C.thy
+|+++ b/proof/crefine/ARM_HYP/Retype_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+15 out of 15 hunks ignored
+can't find file to patch at input line 2136
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/SR_lemmas_C.thy b/proof/crefine/ARM_HYP/SR_lemmas_C.thy
+|index 0abe85095..a30db36d8 100644
+|--- a/proof/crefine/ARM_HYP/SR_lemmas_C.thy
+|+++ b/proof/crefine/ARM_HYP/SR_lemmas_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 2152
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/StateRelation_C.thy b/proof/crefine/ARM_HYP/StateRelation_C.thy
+|index 1f68d18a5..18352ca0d 100644
+|--- a/proof/crefine/ARM_HYP/StateRelation_C.thy
+|+++ b/proof/crefine/ARM_HYP/StateRelation_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 2175
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/SyscallArgs_C.thy b/proof/crefine/ARM_HYP/SyscallArgs_C.thy
+|index 1e79117b7..8a36ae58f 100644
+|--- a/proof/crefine/ARM_HYP/SyscallArgs_C.thy
+|+++ b/proof/crefine/ARM_HYP/SyscallArgs_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 2197
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Syscall_C.thy b/proof/crefine/ARM_HYP/Syscall_C.thy
+|index 79bd843bb..5d5518f8a 100644
+|--- a/proof/crefine/ARM_HYP/Syscall_C.thy
+|+++ b/proof/crefine/ARM_HYP/Syscall_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 2570
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/TcbAcc_C.thy b/proof/crefine/ARM_HYP/TcbAcc_C.thy
+|index 4fd5f9ddd..d9ef2e710 100644
+|--- a/proof/crefine/ARM_HYP/TcbAcc_C.thy
+|+++ b/proof/crefine/ARM_HYP/TcbAcc_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 2611
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/Tcb_C.thy b/proof/crefine/ARM_HYP/Tcb_C.thy
+|index 0653a4d08..a742f166c 100644
+|--- a/proof/crefine/ARM_HYP/Tcb_C.thy
+|+++ b/proof/crefine/ARM_HYP/Tcb_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+29 out of 29 hunks ignored
+can't find file to patch at input line 4013
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/ARM_HYP/VSpace_C.thy b/proof/crefine/ARM_HYP/VSpace_C.thy
+|index 6059a527a..2857e35de 100644
+|--- a/proof/crefine/ARM_HYP/VSpace_C.thy
+|+++ b/proof/crefine/ARM_HYP/VSpace_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 4028
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/crefine/Move_C.thy b/proof/crefine/Move_C.thy
+|index b4c5d6f20..a79322f63 100644
+|--- a/proof/crefine/Move_C.thy
+|+++ b/proof/crefine/Move_C.thy
+--------------------------
+No file to patch.  Skipping patch.
+3 out of 3 hunks ignored
+can't find file to patch at input line 4072
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/dpolicy/Dpolicy.thy b/proof/dpolicy/Dpolicy.thy
+|index 2b0dfc97e..282f797c4 100644
+|--- a/proof/dpolicy/Dpolicy.thy
+|+++ b/proof/dpolicy/Dpolicy.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 4097
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Finalise_DR.thy b/proof/drefine/Finalise_DR.thy
+|index 3c88fcaf0..a07098840 100644
+|--- a/proof/drefine/Finalise_DR.thy
+|+++ b/proof/drefine/Finalise_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+6 out of 6 hunks ignored
+can't find file to patch at input line 4161
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Intent_DR.thy b/proof/drefine/Intent_DR.thy
+|index 219ad4cfd..a258e21a3 100644
+|--- a/proof/drefine/Intent_DR.thy
+|+++ b/proof/drefine/Intent_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+11 out of 11 hunks ignored
+can't find file to patch at input line 4297
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Ipc_DR.thy b/proof/drefine/Ipc_DR.thy
+|index 5ea803da2..371b7e8af 100644
+|--- a/proof/drefine/Ipc_DR.thy
+|+++ b/proof/drefine/Ipc_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+5 out of 5 hunks ignored
+can't find file to patch at input line 4453
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/KHeap_DR.thy b/proof/drefine/KHeap_DR.thy
+|index 6a6292e08..1a3ddb242 100644
+|--- a/proof/drefine/KHeap_DR.thy
+|+++ b/proof/drefine/KHeap_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 4548
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/StateTranslationProofs_DR.thy b/proof/drefine/StateTranslationProofs_DR.thy
+|index dfcd7e6a7..9230fdce1 100644
+|--- a/proof/drefine/StateTranslationProofs_DR.thy
+|+++ b/proof/drefine/StateTranslationProofs_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 4570
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/StateTranslation_D.thy b/proof/drefine/StateTranslation_D.thy
+|index 24e957f0e..3f374b903 100644
+|--- a/proof/drefine/StateTranslation_D.thy
+|+++ b/proof/drefine/StateTranslation_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+5 out of 5 hunks ignored
+can't find file to patch at input line 4640
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Syscall_DR.thy b/proof/drefine/Syscall_DR.thy
+|index 5c0f6287e..b468f58b5 100644
+|--- a/proof/drefine/Syscall_DR.thy
+|+++ b/proof/drefine/Syscall_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 4757
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Tcb_DR.thy b/proof/drefine/Tcb_DR.thy
+|index c969833d7..bcfea6c68 100644
+|--- a/proof/drefine/Tcb_DR.thy
+|+++ b/proof/drefine/Tcb_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+15 out of 15 hunks ignored
+can't find file to patch at input line 5716
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/drefine/Untyped_DR.thy b/proof/drefine/Untyped_DR.thy
+|index f46bc9773..65919848f 100644
+|--- a/proof/drefine/Untyped_DR.thy
+|+++ b/proof/drefine/Untyped_DR.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 5728
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/ARM_HYP/ArchADT_IF.thy b/proof/infoflow/ARM_HYP/ArchADT_IF.thy
+|index ecb76cbb5..12a598187 100644
+|--- a/proof/infoflow/ARM_HYP/ArchADT_IF.thy
+|+++ b/proof/infoflow/ARM_HYP/ArchADT_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 5748
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/ARM_HYP/ArchFinalCaps.thy b/proof/infoflow/ARM_HYP/ArchFinalCaps.thy
+|index 261ac95d0..6212a2527 100644
+|--- a/proof/infoflow/ARM_HYP/ArchFinalCaps.thy
+|+++ b/proof/infoflow/ARM_HYP/ArchFinalCaps.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 5840
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/ARM_HYP/ArchIRQMasks_IF.thy b/proof/infoflow/ARM_HYP/ArchIRQMasks_IF.thy
+|index d63a5b739..8a13e4898 100644
+|--- a/proof/infoflow/ARM_HYP/ArchIRQMasks_IF.thy
+|+++ b/proof/infoflow/ARM_HYP/ArchIRQMasks_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 5934
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/ARM_HYP/ArchTcb_IF.thy b/proof/infoflow/ARM_HYP/ArchTcb_IF.thy
+|index 2d068493a..9e2cbbdd2 100644
+|--- a/proof/infoflow/ARM_HYP/ArchTcb_IF.thy
+|+++ b/proof/infoflow/ARM_HYP/ArchTcb_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 6149
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/ARM_HYP/Example_Valid_State.thy b/proof/infoflow/ARM_HYP/Example_Valid_State.thy
+|index c30902852..2826e5052 100644
+|--- a/proof/infoflow/ARM_HYP/Example_Valid_State.thy
+|+++ b/proof/infoflow/ARM_HYP/Example_Valid_State.thy
+--------------------------
+No file to patch.  Skipping patch.
+3 out of 3 hunks ignored
+can't find file to patch at input line 6180
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/Decode_IF.thy b/proof/infoflow/Decode_IF.thy
+|index 40a3779db..b860c2f29 100644
+|--- a/proof/infoflow/Decode_IF.thy
+|+++ b/proof/infoflow/Decode_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 6193
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/FinalCaps.thy b/proof/infoflow/FinalCaps.thy
+|index 5acdb5aa8..157ebd0b7 100644
+|--- a/proof/infoflow/FinalCaps.thy
+|+++ b/proof/infoflow/FinalCaps.thy
+--------------------------
+No file to patch.  Skipping patch.
+9 out of 9 hunks ignored
+can't find file to patch at input line 6422
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/IRQMasks_IF.thy b/proof/infoflow/IRQMasks_IF.thy
+|index ad42ea82a..cde993ae3 100644
+|--- a/proof/infoflow/IRQMasks_IF.thy
+|+++ b/proof/infoflow/IRQMasks_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 6458
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/Ipc_IF.thy b/proof/infoflow/Ipc_IF.thy
+|index d6e6cc6da..99b0b80b9 100644
+|--- a/proof/infoflow/Ipc_IF.thy
+|+++ b/proof/infoflow/Ipc_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 6632
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/Syscall_IF.thy b/proof/infoflow/Syscall_IF.thy
+|index 1de1f707c..37fdd415f 100644
+|--- a/proof/infoflow/Syscall_IF.thy
+|+++ b/proof/infoflow/Syscall_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 6675
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/Tcb_IF.thy b/proof/infoflow/Tcb_IF.thy
+|index ca6872103..238ad5eb5 100644
+|--- a/proof/infoflow/Tcb_IF.thy
+|+++ b/proof/infoflow/Tcb_IF.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 6752
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/infoflow/refine/ARM_HYP/Example_Valid_StateH.thy b/proof/infoflow/refine/ARM_HYP/Example_Valid_StateH.thy
+|index d6061062d..a0df75577 100644
+|--- a/proof/infoflow/refine/ARM_HYP/Example_Valid_StateH.thy
+|+++ b/proof/infoflow/refine/ARM_HYP/Example_Valid_StateH.thy
+--------------------------
+No file to patch.  Skipping patch.
+15 out of 15 hunks ignored
+can't find file to patch at input line 6973
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/ARM_HYP/ArchBCorres2_AI.thy b/proof/invariant-abstract/ARM_HYP/ArchBCorres2_AI.thy
+|index cafc492f8..bd4a864c0 100644
+|--- a/proof/invariant-abstract/ARM_HYP/ArchBCorres2_AI.thy
+|+++ b/proof/invariant-abstract/ARM_HYP/ArchBCorres2_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 6988
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/ARM_HYP/ArchFinalise_AI.thy b/proof/invariant-abstract/ARM_HYP/ArchFinalise_AI.thy
+|index 86b085a63..6d7ad9813 100644
+|--- a/proof/invariant-abstract/ARM_HYP/ArchFinalise_AI.thy
+|+++ b/proof/invariant-abstract/ARM_HYP/ArchFinalise_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 7024
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/ARM_HYP/ArchTcbAcc_AI.thy b/proof/invariant-abstract/ARM_HYP/ArchTcbAcc_AI.thy
+|index 3a0cd7051..ae348dd43 100644
+|--- a/proof/invariant-abstract/ARM_HYP/ArchTcbAcc_AI.thy
+|+++ b/proof/invariant-abstract/ARM_HYP/ArchTcbAcc_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 7037
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/ARM_HYP/ArchTcb_AI.thy b/proof/invariant-abstract/ARM_HYP/ArchTcb_AI.thy
+|index 77e2c0c6f..463223a3a 100644
+|--- a/proof/invariant-abstract/ARM_HYP/ArchTcb_AI.thy
+|+++ b/proof/invariant-abstract/ARM_HYP/ArchTcb_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+5 out of 5 hunks ignored
+can't find file to patch at input line 7280
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/CSpaceInv_AI.thy b/proof/invariant-abstract/CSpaceInv_AI.thy
+|index b15a6e475..274e009fe 100644
+|--- a/proof/invariant-abstract/CSpaceInv_AI.thy
+|+++ b/proof/invariant-abstract/CSpaceInv_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+3 out of 3 hunks ignored
+can't find file to patch at input line 7327
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/CSpace_AI.thy b/proof/invariant-abstract/CSpace_AI.thy
+|index 904ca7a76..4094a9018 100644
+|--- a/proof/invariant-abstract/CSpace_AI.thy
+|+++ b/proof/invariant-abstract/CSpace_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 7346
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/DetSchedSchedule_AI.thy b/proof/invariant-abstract/DetSchedSchedule_AI.thy
+|index 076c14dee..7bfac54c9 100644
+|--- a/proof/invariant-abstract/DetSchedSchedule_AI.thy
+|+++ b/proof/invariant-abstract/DetSchedSchedule_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 7580
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/Finalise_AI.thy b/proof/invariant-abstract/Finalise_AI.thy
+|index bef35e561..76b327b28 100644
+|--- a/proof/invariant-abstract/Finalise_AI.thy
+|+++ b/proof/invariant-abstract/Finalise_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+6 out of 6 hunks ignored
+can't find file to patch at input line 7640
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/Invariants_AI.thy b/proof/invariant-abstract/Invariants_AI.thy
+|index d88fe6c45..5f493cec4 100644
+|--- a/proof/invariant-abstract/Invariants_AI.thy
+|+++ b/proof/invariant-abstract/Invariants_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+11 out of 11 hunks ignored
+can't find file to patch at input line 7743
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/Ipc_AI.thy b/proof/invariant-abstract/Ipc_AI.thy
+|index f5299fac1..da8aed0c0 100644
+|--- a/proof/invariant-abstract/Ipc_AI.thy
+|+++ b/proof/invariant-abstract/Ipc_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 7854
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/Syscall_AI.thy b/proof/invariant-abstract/Syscall_AI.thy
+|index 9e9f1fcee..f48424bd0 100644
+|--- a/proof/invariant-abstract/Syscall_AI.thy
+|+++ b/proof/invariant-abstract/Syscall_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 7891
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/TcbAcc_AI.thy b/proof/invariant-abstract/TcbAcc_AI.thy
+|index 5bf505502..08ef07139 100644
+|--- a/proof/invariant-abstract/TcbAcc_AI.thy
+|+++ b/proof/invariant-abstract/TcbAcc_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 7966
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/invariant-abstract/Tcb_AI.thy b/proof/invariant-abstract/Tcb_AI.thy
+|index d40c12b1a..825abd76f 100644
+|--- a/proof/invariant-abstract/Tcb_AI.thy
+|+++ b/proof/invariant-abstract/Tcb_AI.thy
+--------------------------
+No file to patch.  Skipping patch.
+12 out of 12 hunks ignored
+patching file ADT_H.thy
+Hunk #1 succeeded at 302 (offset -127 lines).
+patching file CSpace1_R.thy
+Hunk #1 succeeded at 771 (offset 5 lines).
+patching file CSpace_I.thy
+Hunk #1 succeeded at 1218 (offset 43 lines).
+patching file Detype_R.thy
+Hunk #1 succeeded at 1929 (offset 62 lines).
+Hunk #2 succeeded at 1951 (offset 62 lines).
+Hunk #3 succeeded at 1964 (offset 62 lines).
+Hunk #4 succeeded at 2102 (offset 63 lines).
+patching file Invariants_H.thy
+Hunk #1 succeeded at 99 (offset 3 lines).
+Hunk #2 succeeded at 107 (offset 3 lines).
+Hunk #3 succeeded at 117 (offset 3 lines).
+Hunk #4 succeeded at 163 (offset 3 lines).
+Hunk #5 succeeded at 486 (offset 92 lines).
+Hunk #6 succeeded at 1609 (offset 178 lines).
+Hunk #7 succeeded at 2022 (offset 260 lines).
+Hunk #8 succeeded at 2387 (offset 274 lines).
+Hunk #9 succeeded at 2408 (offset 274 lines).
+Hunk #10 FAILED at 2144.
+1 out of 10 hunks FAILED -- saving rejects to file Invariants_H.thy.rej
+patching file Ipc_R.thy
+Hunk #1 succeeded at 3446 (offset 139 lines).
+Hunk #2 succeeded at 3479 (offset 139 lines).
+Hunk #3 succeeded at 4228 (offset 169 lines).
+Hunk #4 succeeded at 4291 (offset 169 lines).
+Hunk #5 succeeded at 4306 (offset 169 lines).
+patching file KHeap_R.thy
+Hunk #1 FAILED at 158.
+1 out of 1 hunk FAILED -- saving rejects to file KHeap_R.thy.rej
+patching file PageTableDuplicates.thy
+Hunk #1 FAILED at 2014.
+1 out of 1 hunk FAILED -- saving rejects to file PageTableDuplicates.thy.rej
+patching file StateRelation.thy
+Hunk #1 succeeded at 199 (offset 20 lines).
+patching file Syscall_R.thy
+Hunk #1 succeeded at 494 (offset 10 lines).
+patching file TcbAcc_R.thy
+Hunk #1 succeeded at 321 (offset 14 lines).
+Hunk #2 succeeded at 3534 (offset 84 lines).
+patching file Tcb_R.thy
+Hunk #1 succeeded at 669 with fuzz 2 (offset 8 lines).
+Hunk #2 succeeded at 852 (offset 4 lines).
+Hunk #3 succeeded at 920 (offset 4 lines).
+Hunk #4 succeeded at 936 (offset 4 lines).
+Hunk #5 succeeded at 973 (offset 4 lines).
+Hunk #6 succeeded at 1003 (offset 4 lines).
+Hunk #7 succeeded at 1021 (offset 4 lines).
+Hunk #8 FAILED at 1270.
+Hunk #9 FAILED at 1674.
+Hunk #10 FAILED at 1685.
+Hunk #11 succeeded at 1738 (offset -21 lines).
+Hunk #12 succeeded at 1762 (offset -21 lines).
+Hunk #13 succeeded at 1797 (offset -21 lines).
+Hunk #17 succeeded at 2775 with fuzz 2 (offset 29 lines).
+3 out of 17 hunks FAILED -- saving rejects to file Tcb_R.thy.rej
+patching file orphanage/Orphanage.thy
+Hunk #1 FAILED at 1237.
+Hunk #2 FAILED at 1292.
+Hunk #3 FAILED at 1320.
+Hunk #4 FAILED at 1338.
+Hunk #5 FAILED at 2024.
+5 out of 5 hunks FAILED -- saving rejects to file orphanage/Orphanage.thy.rej
+can't find file to patch at input line 10114
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/sep-capDL/Frame_SD.thy b/proof/sep-capDL/Frame_SD.thy
+|index 861d47b6a..d01056e14 100644
+|--- a/proof/sep-capDL/Frame_SD.thy
+|+++ b/proof/sep-capDL/Frame_SD.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10138
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/proof/sep-capDL/Helpers_SD.thy b/proof/sep-capDL/Helpers_SD.thy
+|index dbc1289b1..f599d373c 100644
+|--- a/proof/sep-capDL/Helpers_SD.thy
+|+++ b/proof/sep-capDL/Helpers_SD.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10167
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/ARM_HYP/Init_A.thy b/spec/abstract/ARM_HYP/Init_A.thy
+|index 9229b349a..0eaa0bf6d 100644
+|--- a/spec/abstract/ARM_HYP/Init_A.thy
+|+++ b/spec/abstract/ARM_HYP/Init_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10180
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/ARM_HYP/Machine_A.thy b/spec/abstract/ARM_HYP/Machine_A.thy
+|index 89731a666..4aa2f7e8a 100644
+|--- a/spec/abstract/ARM_HYP/Machine_A.thy
+|+++ b/spec/abstract/ARM_HYP/Machine_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10193
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/CSpaceAcc_A.thy b/spec/abstract/CSpaceAcc_A.thy
+|index 58cd96464..2f3ee5365 100644
+|--- a/spec/abstract/CSpaceAcc_A.thy
+|+++ b/spec/abstract/CSpaceAcc_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10206
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/CSpace_A.thy b/spec/abstract/CSpace_A.thy
+|index 9f244968a..41290e76d 100644
+|--- a/spec/abstract/CSpace_A.thy
+|+++ b/spec/abstract/CSpace_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10219
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/Decode_A.thy b/spec/abstract/Decode_A.thy
+|index 2ffae8c68..c7073f2ed 100644
+|--- a/spec/abstract/Decode_A.thy
+|+++ b/spec/abstract/Decode_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+3 out of 3 hunks ignored
+can't find file to patch at input line 10294
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/Invocations_A.thy b/spec/abstract/Invocations_A.thy
+|index c9ee26ab1..c79fb323a 100644
+|--- a/spec/abstract/Invocations_A.thy
+|+++ b/spec/abstract/Invocations_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10307
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/Ipc_A.thy b/spec/abstract/Ipc_A.thy
+|index e41d50c73..d5d4fd338 100644
+|--- a/spec/abstract/Ipc_A.thy
+|+++ b/spec/abstract/Ipc_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10370
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/ARM_HYP/Init_A.thy b/spec/abstract/ARM_HYP/Init_A.thy
+|index 8ee8cc59b..b3b443045 100644
+|--- a/spec/abstract/ARM_HYP/Init_A.thy
+|+++ b/spec/abstract/ARM_HYP/Init_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10383
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/ARM_HYP/Machine_A.thy b/spec/abstract/ARM_HYP/Machine_A.thy
+|index c9e756459..9bb8648ee 100644
+|--- a/spec/abstract/ARM_HYP/Machine_A.thy
+|+++ b/spec/abstract/ARM_HYP/Machine_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10396
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/Structures_A.thy b/spec/abstract/Structures_A.thy
+|index 273cf00c5..bd6ed3b87 100644
+|--- a/spec/abstract/Structures_A.thy
+|+++ b/spec/abstract/Structures_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 10486
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/abstract/Tcb_A.thy b/spec/abstract/Tcb_A.thy
+|index 2d62bf9ed..91b5f2c40 100644
+|--- a/spec/abstract/Tcb_A.thy
+|+++ b/spec/abstract/Tcb_A.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 10574
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/CSpace_D.thy b/spec/capDL/CSpace_D.thy
+|index 636579f52..8132288a5 100644
+|--- a/spec/capDL/CSpace_D.thy
+|+++ b/spec/capDL/CSpace_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10589
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Decode_D.thy b/spec/capDL/Decode_D.thy
+|index f271eb024..3042a6d33 100644
+|--- a/spec/capDL/Decode_D.thy
+|+++ b/spec/capDL/Decode_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10602
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Endpoint_D.thy b/spec/capDL/Endpoint_D.thy
+|index 6efd70a91..a75b5391d 100644
+|--- a/spec/capDL/Endpoint_D.thy
+|+++ b/spec/capDL/Endpoint_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 10650
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Intents_D.thy b/spec/capDL/Intents_D.thy
+|index 54b9b7ce4..a43978ed2 100644
+|--- a/spec/capDL/Intents_D.thy
+|+++ b/spec/capDL/Intents_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 10676
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Invocations_D.thy b/spec/capDL/Invocations_D.thy
+|index 92768bf99..d3d732a0f 100644
+|--- a/spec/capDL/Invocations_D.thy
+|+++ b/spec/capDL/Invocations_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10689
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Tcb_D.thy b/spec/capDL/Tcb_D.thy
+|index 3f07258c3..e4579da7f 100644
+|--- a/spec/capDL/Tcb_D.thy
+|+++ b/spec/capDL/Tcb_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 10766
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/capDL/Types_D.thy b/spec/capDL/Types_D.thy
+|index 86d03959e..01afea423 100644
+|--- a/spec/capDL/Types_D.thy
+|+++ b/spec/capDL/Types_D.thy
+--------------------------
+No file to patch.  Skipping patch.
+4 out of 4 hunks ignored
+can't find file to patch at input line 10816
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/design/skel/TCB_H.thy b/spec/design/skel/TCB_H.thy
+|index a78eb5be3..3373fdc39 100644
+|--- a/spec/design/skel/TCB_H.thy
+|+++ b/spec/design/skel/TCB_H.thy
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10828
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/API/Invocation.lhs b/spec/haskell/src/SEL4/API/Invocation.lhs
+|index 699755477..734388a89 100644
+|--- a/spec/haskell/src/SEL4/API/Invocation.lhs
+|+++ b/spec/haskell/src/SEL4/API/Invocation.lhs
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 10846
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/API/Types.lhs b/spec/haskell/src/SEL4/API/Types.lhs
+|index b145f767c..a1ec1b86c 100644
+|--- a/spec/haskell/src/SEL4/API/Types.lhs
+|+++ b/spec/haskell/src/SEL4/API/Types.lhs
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 10874
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/Kernel/FaultHandler.lhs b/spec/haskell/src/SEL4/Kernel/FaultHandler.lhs
+|index c132e9ca3..9ea1ee60c 100644
+|--- a/spec/haskell/src/SEL4/Kernel/FaultHandler.lhs
+|+++ b/spec/haskell/src/SEL4/Kernel/FaultHandler.lhs
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 10976
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/Object/Instances.lhs b/spec/haskell/src/SEL4/Object/Instances.lhs
+|index 5720f93ea..e1144a5e8 100644
+|--- a/spec/haskell/src/SEL4/Object/Instances.lhs
+|+++ b/spec/haskell/src/SEL4/Object/Instances.lhs
+--------------------------
+No file to patch.  Skipping patch.
+3 out of 3 hunks ignored
+can't find file to patch at input line 11007
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/Object/ObjectType.lhs b/spec/haskell/src/SEL4/Object/ObjectType.lhs
+|index 3d5ac5791..6b2957d99 100644
+|--- a/spec/haskell/src/SEL4/Object/ObjectType.lhs
+|+++ b/spec/haskell/src/SEL4/Object/ObjectType.lhs
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored
+can't find file to patch at input line 11020
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/Object/Structures.lhs b/spec/haskell/src/SEL4/Object/Structures.lhs
+|index 1d0f8df2d..65ad355ba 100644
+|--- a/spec/haskell/src/SEL4/Object/Structures.lhs
+|+++ b/spec/haskell/src/SEL4/Object/Structures.lhs
+--------------------------
+No file to patch.  Skipping patch.
+2 out of 2 hunks ignored
+can't find file to patch at input line 11043
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/spec/haskell/src/SEL4/Object/TCB.lhs b/spec/haskell/src/SEL4/Object/TCB.lhs
+|index 0a2b2a3a2..10e6beb9d 100644
+|--- a/spec/haskell/src/SEL4/Object/TCB.lhs
+|+++ b/spec/haskell/src/SEL4/Object/TCB.lhs
+--------------------------
+No file to patch.  Skipping patch.
+7 out of 7 hunks ignored
+can't find file to patch at input line 11205
+Perhaps you used the wrong -p or --strip option?
+The text leading up to this was:
+--------------------------
+|diff --git a/tools/haskell-translator/caseconvs b/tools/haskell-translator/caseconvs
+|index 9047530f6..864f9d4c8 100644
+|--- a/tools/haskell-translator/caseconvs
+|+++ b/tools/haskell-translator/caseconvs
+--------------------------
+No file to patch.  Skipping patch.
+1 out of 1 hunk ignored

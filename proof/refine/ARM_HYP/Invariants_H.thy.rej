@@ -1,0 +1,49 @@
+--- Invariants_H.thy
++++ Invariants_H.thy
+@@ -2144,27 +2141,26 @@ lemma cte_wp_at_cases':
+                   split: option.splits)
+    apply simp
+   apply (erule(1) ps_clear_lookupAround2)
+-    prefer 3
+-    apply (simp add: loadObject_cte unless_def alignCheck_def
+-                    is_aligned_mask[symmetric] objBits_simps'
+-                    cte_level_bits_def magnitudeCheck_def
+-                    return_def fail_def tcbCTableSlot_def tcbVTableSlot_def
+-                    tcbIPCBufferSlot_def tcbReplySlot_def tcbCallerSlot_def
+-                split: option.split_asm)
+-     apply (clarsimp simp: bind_def tcb_cte_cases_def split: if_split_asm)
+-    apply (clarsimp simp: bind_def tcb_cte_cases_def iffD2[OF linorder_not_less]
+-                          return_def
+-                   split: if_split_asm)
+-   apply (subgoal_tac "p - n \<le> (p - n) + n", simp)
+-   apply (erule is_aligned_no_wrap')
++    apply (subgoal_tac "p - n \<le> (p - n) + n", simp)
++    apply (erule is_aligned_no_wrap')
+     apply (simp add: word_bits_conv)
+-   apply (simp add: tcb_cte_cases_def split: if_split_asm)
+-  apply (subgoal_tac "(p - n) + n \<le> (p - n) + 511")
+-   apply (simp add: field_simps)
+-  apply (rule word_plus_mono_right)
+-   apply (simp add: tcb_cte_cases_def split: if_split_asm)
+-  apply (erule is_aligned_no_wrap')
+-  apply simp
++    apply (simp add: tcb_cte_cases_def split: if_split_asm)
++   apply (subgoal_tac "(p - n) + n \<le> (p - n) + 511")
++    apply (simp add: field_simps)
++   apply (rule word_plus_mono_right)
++    apply (simp add: tcb_cte_cases_def split: if_split_asm)
++   apply (erule is_aligned_no_wrap')
++   apply simp
++  apply (simp add: loadObject_cte unless_def alignCheck_def
++                   is_aligned_mask[symmetric] objBits_simps'
++                   cte_level_bits_def magnitudeCheck_def fail_def
++                   return_def tcbCTableSlot_def tcbVTableSlot_def
++                   tcbIPCBufferSlot_def tcbReplySlot_def
++                   tcbCallerSlot_def tcbFaultHandlerSlot_def
++            split: option.split_asm)
++   apply (clarsimp simp: bind_def tcb_cte_cases_def return_def
++                         iffD2[OF linorder_not_less]
++                  split: if_split_asm)+
+   done
+ 
+ lemma tcb_at_cte_at':
