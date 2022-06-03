@@ -329,7 +329,7 @@ lemma (* empty_slot_invs *) [Finalise_AI_asms]:
   done
 
 lemma dom_tcb_cap_cases_lt_ARCH [Finalise_AI_asms]:
-  "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 6}"
+  "dom tcb_cap_cases = {xs. length xs = 3 \<and> unat (of_bl xs :: machine_word) < 5}"
   apply (rule set_eqI, rule iffI)
    apply clarsimp
    apply (simp add: tcb_cap_cases_def tcb_cnode_index_def to_bl_1 split: if_split_asm)
@@ -383,14 +383,14 @@ lemma (* finalise_cap_cases1 *)[Finalise_AI_asms]:
         \<and> fst_cte_ptrs (fst rv) = fst_cte_ptrs cap
         \<and> vs_cap_ref cap = None\<rbrace>"
   apply (cases cap, simp_all split del: if_split cong: if_cong)
-             apply ((wp suspend_final_cap[where sl=slot]
-                       deleting_irq_handler_final[where slot=slot]
-                       | simp add: o_def is_cap_simps fst_cte_ptrs_def
-                                   dom_tcb_cap_cases_lt_ARCH tcb_cnode_index_def
-                                   can_fast_finalise_def
-                                   appropriate_cte_cap_def gen_obj_refs_def
-                                   vs_cap_ref_def cap_cleanup_opt_def
-                       | intro impI TrueI ext conjI)+)[11]
+            apply ((wp suspend_final_cap[where sl=slot]
+                      deleting_irq_handler_final[where slot=slot]
+                      | simp add: o_def is_cap_simps fst_cte_ptrs_def
+                                  dom_tcb_cap_cases_lt_ARCH tcb_cnode_index_def
+                                  can_fast_finalise_def
+                                  appropriate_cte_cap_def gen_obj_refs_def
+                                  vs_cap_ref_def cap_cleanup_opt_def
+                      | intro impI TrueI ext conjI)+)[11]
   apply (simp add: arch_finalise_cap_def split del: if_split)
   apply (rule hoare_pre)
    apply (wpsimp simp: cap_cleanup_opt_def arch_cap_cleanup_opt_def)+

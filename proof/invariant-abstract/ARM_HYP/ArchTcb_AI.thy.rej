@@ -1,0 +1,107 @@
+--- ArchTcb_AI.thy
++++ ArchTcb_AI.thy
+@@ -324,52 +417,51 @@ lemma tc_invs[Tcb_AI_asms]:
+                           ((swp valid_ipc_buffer_cap (fst v)
+                              and is_arch_cap and is_cnode_or_valid_arch)
+                                 o fst) (snd v)) g)
+-       and K (case_option True (\<lambda>bl. length bl = word_bits) b)\<rbrace>
+-      invoke_tcb (ThreadControl a sl b mcp pr e f g)
++       and K (case_option True (valid_fault_handler \<circ> fst) fh)\<rbrace>
++      invoke_tcb (ThreadControl a sl fh mcp pr e f g)
+    \<lbrace>\<lambda>rv. invs\<rbrace>"
+   apply (rule hoare_gen_asm)+
+-  apply (simp add: split_def set_mcpriority_def cong: option.case_cong)
+-  apply (rule hoare_vcg_precond_imp)
+-   apply wp
+-      (* takes long: *)
+-      apply ((simp only: simp_thms
+-        | rule wp_split_const_if wp_split_const_if_R
+-                   hoare_vcg_all_lift_R
+-                   hoare_vcg_E_elim hoare_vcg_const_imp_lift_R
+-                   hoare_vcg_R_conj
+-        | (wp out_invs_trivial case_option_wpE cap_delete_deletes
+-             cap_delete_valid_cap cap_insert_valid_cap out_cte_at
+-             cap_insert_cte_at cap_delete_cte_at out_valid_cap
+-             hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R
+-             thread_set_tcb_ipc_buffer_cap_cleared_invs
+-             thread_set_invs_trivial[OF ball_tcb_cap_casesI]
+-             hoare_vcg_all_lift thread_set_valid_cap out_emptyable
+-             check_cap_inv [where P="valid_cap c" for c]
+-             check_cap_inv [where P="tcb_cap_valid c p" for c p]
+-             check_cap_inv[where P="cte_at p0" for p0]
+-             check_cap_inv[where P="tcb_at p0" for p0]
+-             thread_set_cte_at
+-             thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
+-             thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+-             checked_insert_no_cap_to
+-             out_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+-             thread_set_ipc_tcb_cap_valid
+-             static_imp_wp static_imp_conj_wp)[1]
+-        | simp add: ran_tcb_cap_cases dom_tcb_cap_cases[simplified]
+-                    emptyable_def
+-               del: hoare_True_E_R
+-        | wpc
+-        | strengthen use_no_cap_to_obj_asid_strg
+-                     tcb_cap_always_valid_strg[where p="tcb_cnode_index 0"]
+-                     tcb_cap_always_valid_strg[where p="tcb_cnode_index (Suc 0)"])+)
+-  apply (clarsimp simp: tcb_at_cte_at_0 tcb_at_cte_at_1[simplified] is_nondevice_page_cap_arch_def
+-                        is_cap_simps is_valid_vtable_root_def is_nondevice_page_cap_simps
+-                        is_cnode_or_valid_arch_def tcb_cap_valid_def
+-                        invs_valid_objs cap_asid_def vs_cap_ref_def
+-                 split: option.split_asm )+
+-      apply (simp add: case_bool_If valid_ipc_buffer_cap_def is_nondevice_page_cap_simps
+-                       is_nondevice_page_cap_arch_def
+-                split: arch_cap.splits if_splits)+
++  supply if_cong[cong]
++  apply (simp add: split_def cong: option.case_cong)
++  apply wpsimp
++       \<comment> \<open>install_tcb_frame_cap\<close>
++       apply (rule hoare_vcg_E_elim, wpsimp simp: install_tcb_frame_cap_def)
++       apply (case_tac pr; wpsimp wp: install_tcb_frame_cap_invs)
++      \<comment> \<open>install_tcb_cap slot 1\<close>
++      apply ((simp add: conj_comms del: hoare_True_E_R, simp add: emptyable_def cong: conj_cong))
++      apply (rule hoare_vcg_E_elim, wp install_tcb_cap_invs)
++      apply (wpsimp wp: hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R install_tcb_cap_invs)
++     \<comment> \<open>install_tcb_cap slot 0\<close>
++     apply ((simp add: conj_comms del: hoare_True_E_R, simp add: emptyable_def cong: conj_cong))
++     apply (rule hoare_vcg_E_elim, wp install_tcb_cap_invs)
++     apply ((wpsimp wp: hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R install_tcb_cap_invs
++            | strengthen tcb_cap_always_valid_strg
++            | wp install_tcb_cap_cte_wp_at_ep)+)[1]
++    \<comment> \<open>install_tcb_cap slot 5\<close>
++    apply ((simp add: conj_comms del: hoare_True_E_R, simp add: emptyable_def cong: conj_cong))
++    apply (rule hoare_vcg_E_elim, wp install_tcb_cap_invs)
++    apply ((wpsimp wp: hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R install_tcb_cap_invs
++           | strengthen tcb_cap_always_valid_strg
++           | wp install_tcb_cap_cte_wp_at_ep)+)[1]
++   \<comment> \<open>set_mcpriority\<close>
++   apply (clarsimp simp: emptyable_def split_def set_mcpriority_def cong: option.case_cong)
++   apply ((wpsimp wp: hoare_vcg_const_imp_lift_R hoare_vcg_all_lift_R hoare_vcg_all_lift
++                      static_imp_wp thread_set_valid_cap
++                      thread_set_invs_trivial[OF ball_tcb_cap_casesI]
++                      thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
++                      thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
++           | simp add: ran_tcb_cap_cases dom_tcb_cap_cases[simplified] emptyable_def
++                  del: hoare_True_E_R
++           | strengthen tcb_cap_always_valid_strg)+)[1]
++  \<comment> \<open>resolve generated preconditions\<close>
++  apply (strengthen tcb_cap_always_valid_strg )
++  apply (clarsimp cong: conj_cong)
++  apply (intro conjI impI;
++         clarsimp simp:  is_cnode_or_valid_arch_is_cap_simps tcb_ep_slot_cte_wp_at
++                  dest!: valid_vtable_root_is_arch_cap)
++         apply (auto simp: is_cap_simps obj_at_def emptyable_def cte_wp_at_caps_of_state
++                           typ_at_eq_kheap_obj is_tcb cap_table_at_typ valid_ipc_buffer_cap
++                           is_nondevice_page_cap_def is_nondevice_page_cap_arch_def)
+   done
+ 
+ 
+@@ -379,7 +471,7 @@ lemma check_valid_ipc_buffer_inv:
+              cong: cap.case_cong arch_cap.case_cong
+              split del: if_split)
+   apply (rule hoare_pre)
+-   apply (wp | simp add: whenE_def if_apply_def2 | wpcw)+
++   apply (wp | simp add: whenE_def if_apply_def2 | wpc)+
+   done
+ 
+ lemma check_valid_ipc_buffer_wp[Tcb_AI_asms]:

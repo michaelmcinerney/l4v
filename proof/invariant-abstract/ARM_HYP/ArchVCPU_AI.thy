@@ -304,7 +304,7 @@ crunches cancel_ipc, send_ipc, receive_ipc
   (wp: crunch_wps simp: crunch_simps)
 
 lemma send_fault_ipc_arch_tcb_at[wp]:
-  "send_fault_ipc tptr fault \<lbrace>arch_tcb_at P t\<rbrace>"
+  "send_fault_ipc tptr handler_cap fault \<lbrace>arch_tcb_at P t\<rbrace>"
   unfolding send_fault_ipc_def thread_set_def Let_def
   by (wpsimp wp: set_object_wp hoare_drop_imps hoare_vcg_all_lift_R
            simp: pred_tcb_at_def obj_at_def get_tcb_def)
@@ -560,6 +560,14 @@ crunches set_mcpriority, set_priority
   for state_hyp_refs_of[wp]: "\<lambda>s. P (state_hyp_refs_of s)"
   (wp: thread_set_hyp_refs_trivial simp: set_priority_def thread_set_priority_def)
 
+crunches install_tcb_cap, install_tcb_frame_cap
+  for valid_cur_vcpu[wp]: valid_cur_vcpu
+  (wp: check_cap_inv)
+
+crunches install_tcb_cap, install_tcb_frame_cap
+  for state_hyp_refs_of[wp]: "\<lambda>s. sym_refs (state_hyp_refs_of s)"
+  (wp: check_cap_inv thread_set_hyp_refs_trivial)
+
 lemma invoke_tcb_valid_cur_vcpu[wp]:
   "\<lbrace>\<lambda>s. valid_cur_vcpu s \<and> sym_refs (state_hyp_refs_of s)\<rbrace>
    invoke_tcb iv
@@ -570,7 +578,7 @@ lemma invoke_tcb_valid_cur_vcpu[wp]:
      by (case_tac ntfn_ptr_opt; wpsimp)
   \<comment> \<open>ThreadControl\<close>
   apply (forward_inv_step wp: check_cap_inv)+
-  by (wpsimp wp: check_cap_inv hoare_drop_imps thread_set_hyp_refs_trivial thread_set_valid_cur_vcpu)
+  by (wpsimp wp: check_cap_inv thread_set_hyp_refs_trivial thread_set_valid_cur_vcpu)
 
 crunches invoke_domain
   for arch_state[wp]: "\<lambda>s. P (arch_state s)"
