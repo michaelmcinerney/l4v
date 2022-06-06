@@ -1074,7 +1074,7 @@ lemma lookupExtraCaps_null:
               split: Types_H.message_info.split option.split)
 
 lemma fastpath_mi_check:
-  "((mi && mask 9) + 3) && ~~ mask 3 = 0
+  "((mi && mask 10) + 3) && ~~ mask 3 = 0
       = (msgExtraCaps (messageInfoFromWord mi) = 0
             \<and> msgLength (messageInfoFromWord mi) \<le> scast n_msgRegisters
             \<and> length_CL (seL4_MessageInfo_lift (seL4_MessageInfo_C (FCP (K mi))))
