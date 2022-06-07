@@ -86,7 +86,7 @@ definition
          tcb_caller = NullCap,
          tcb_ipcframe = NullCap,
          tcb_state = IdleThreadState,
-         tcb_fault_handler = replicate word_bits False,
+         tcb_fault_handler = NullCap,
          tcb_ipc_buffer = 0,
          tcb_fault = None,
          tcb_bound_notification = None,

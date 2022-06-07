@@ -107,7 +107,7 @@ definition
 
 definition
   msg_label_bits :: nat where
-  [simp]: "msg_label_bits \<equiv> 52"
+  [simp]: "msg_label_bits \<equiv> 47"
 
 definition
   new_context :: "user_context" where
