@@ -26,7 +26,8 @@ crunch (bcorres)bcorres[wp]: invoke_untyped truncate_state
 
 crunch (bcorres)bcorres[wp]: set_mcpriority truncate_state
 
-crunch (bcorres)bcorres[wp, BCorres2_AI_assms]: arch_get_sanitise_register_info, arch_post_modify_registers truncate_state
+crunch (bcorres)bcorres[wp, BCorres2_AI_assms]: install_tcb_frame_cap, install_tcb_cap,
+  arch_get_sanitise_register_info, arch_post_modify_registers truncate_state
 
 crunch (bcorres)bcorres[wp]: updateIRQState truncate_state
 
