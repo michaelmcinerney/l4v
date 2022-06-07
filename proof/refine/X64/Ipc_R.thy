@@ -3413,53 +3413,29 @@ lemma tg_sp':
 declare lookup_cap_valid' [wp]
 
 lemma sendFaultIPC_corres:
-  "valid_fault f \<Longrightarrow> fr f f' \<Longrightarrow>
-  corres (fr \<oplus> dc)
-         (einvs and st_tcb_at active thread and ex_nonz_cap_to thread)
-         (invs' and sch_act_not thread and tcb_at' thread)
-         (send_fault_ipc thread f) (sendFaultIPC thread f')"
-  apply (simp add: send_fault_ipc_def sendFaultIPC_def
-                   liftE_bindE Let_def)
-  apply (rule corres_guard_imp)
-    apply (rule corres_split_deprecated [where r'="\<lambda>fh fh'. fh = to_bl fh'"])
-       apply simp
-       apply (rule corres_splitEE)
-          prefer 2
-          apply (rule corres_cap_fault)
-          apply (rule lookup_cap_corres, rule refl)
-         apply (rule_tac P="einvs and st_tcb_at active thread
-                                 and valid_cap handler_cap and ex_nonz_cap_to thread"
-                     and P'="invs' and tcb_at' thread and sch_act_not thread
-                                   and valid_cap' handlerCap"
-                     in corres_inst)
-         apply (case_tac handler_cap,
-                simp_all add: isCap_defs lookup_failure_map_def
-                              case_bool_If If_rearrage
-                   split del: if_split cong: if_cong)[1]
-          apply (rule corres_guard_imp)
-            apply (rule corres_if2 [OF refl])
-             apply (simp add: dc_def[symmetric])
-             apply (rule corres_split_deprecated [OF sendIPC_corres threadset_corres], simp_all)[1]
-               apply (simp add: tcb_relation_def fault_rel_optionation_def exst_same_def)+
-              apply (wp thread_set_invs_trivial thread_set_no_change_tcb_state
-                        thread_set_typ_at ep_at_typ_at ex_nonz_cap_to_pres
-                        thread_set_cte_wp_at_trivial thread_set_not_state_valid_sched
-                   | simp add: tcb_cap_cases_def)+
-             apply ((wp threadSet_invs_trivial threadSet_tcb'
-                   | simp add: tcb_cte_cases_def
-                   | wp (once) sch_act_sane_lift)+)[1]
-            apply (rule corres_trivial, simp add: lookup_failure_map_def)
-           apply (clarsimp simp: st_tcb_at_tcb_at split: if_split)
-           apply (simp add: valid_cap_def)
-          apply (clarsimp simp: valid_cap'_def inQ_def)
-          apply auto[1]
-         apply (clarsimp simp: lookup_failure_map_def)
-        apply wp+
-      apply (rule threadGet_corres)
-      apply (simp add: tcb_relation_def)
-     apply wp+
-   apply (fastforce elim: st_tcb_at_tcb_at)
-  apply fastforce
+  "\<lbrakk> valid_fault f; fr f f'; tcb_relation tcb tcb' \<rbrakk> \<Longrightarrow>
+   corres (fr \<oplus> (=))
+          (valid_tcb thread tcb and einvs and st_tcb_at active thread and ex_nonz_cap_to thread)
+          (valid_tcb' tcb' and invs' and sch_act_not thread and tcb_at' thread)
+          (send_fault_ipc thread (tcb_fault_handler tcb) f)
+          (sendFaultIPC thread (cteCap (tcbFaultHandler tcb')) f')"
+  unfolding send_fault_ipc_def sendFaultIPC_def
+  apply (rule_tac Q ="valid_cap (tcb_fault_handler tcb) and einvs and st_tcb_at active thread and
+                      ex_nonz_cap_to thread and (\<lambda>_. valid_fault_handler (tcb_fault_handler tcb))"
+              and Q'="valid_cap' (cteCap (tcbFaultHandler tcb')) and invs' and tcb_at' thread and
+                     valid_tcb' tcb' and sch_act_not thread"
+              in corres_guard_imp)
+    apply (rule_tac F="valid_fault_handler (tcb_fault_handler tcb)" in corres_gen_asm)
+    apply (case_tac "tcb_fault_handler tcb"; clarsimp simp: valid_fault_handler_def tcb_relation_def)
+    apply (subst bind_assoc[symmetric])+
+    apply (rule corres_guard_imp[OF corres_split'])
+         apply (rule corres_split_deprecated[OF sendIPC_corres threadset_corres];
+                simp add: tcb_relation_def fault_rel_optionation_def exst_same_def)
+          apply (wp thread_set_invs_trivial thread_set_no_change_tcb_state
+                    thread_set_cte_wp_at_trivial thread_set_typ_at thread_set_not_state_valid_sched
+                    threadSet_invs_trivial threadSet_tcb' ep_at_typ_at ex_nonz_cap_to_pres
+                  | clarsimp simp: tcb_cap_cases_def tcb_cte_cases_def st_tcb_at_tcb_at inQ_def
+                                   valid_cap_def valid_cap'_def valid_tcb_def valid_tcb'_def)+
   done
 
 lemma gets_the_noop_corres:
@@ -3468,26 +3444,6 @@ lemma gets_the_noop_corres:
   apply (clarsimp simp: corres_underlying_def gets_the_def
                         return_def gets_def bind_def get_def)
   apply (clarsimp simp: assert_opt_def return_def dest!: P)
-  done
-
-lemma handleDoubleFault_corres:
-  "corres dc (tcb_at thread)
-             (tcb_at' thread and (\<lambda>s. weak_sch_act_wf (ksSchedulerAction s) s))
-             (handle_double_fault thread f ft)
-             (handleDoubleFault thread f' ft')"
-  apply (simp add: handle_double_fault_def handleDoubleFault_def)
-  apply (rule corres_guard_imp)
-    apply (subst bind_return [symmetric],
-           rule corres_split' [OF setThreadState_corres])
-       apply simp
-      apply (rule corres_noop2)
-         apply (simp add: exs_valid_def return_def)
-        apply (rule hoare_eq_P)
-        apply wp
-        apply (rule asUser_inv)
-        apply (rule getRestartPC_inv)
-       apply (wp no_fail_getRestartPC)+
-    apply (wp|simp)+
   done
 
 crunch tcb' [wp]: sendFaultIPC "tcb_at' t" (wp: crunch_wps)
@@ -4218,55 +4174,43 @@ lemma sfi_invs_plus':
   "\<lbrace>invs' and st_tcb_at' simple' t
           and sch_act_not t
           and (\<lambda>s. \<forall>p. t \<notin> set (ksReadyQueues s p))
-          and ex_nonz_cap_to' t\<rbrace>
-      sendFaultIPC t f
-   \<lbrace>\<lambda>rv. invs'\<rbrace>, \<lbrace>\<lambda>rv. invs' and st_tcb_at' simple' t
-                      and (\<lambda>s. \<forall>p. t \<notin> set (ksReadyQueues s p))
-                      and sch_act_not t and (\<lambda>s. ksIdleThread s \<noteq> t)\<rbrace>"
+          and ex_nonz_cap_to' t
+          and (\<lambda>s. isEndpointCap fh \<longrightarrow> (\<forall>r\<in>zobj_refs' fh. ex_nonz_cap_to' r s))\<rbrace>
+   sendFaultIPC t fh f
+   \<lbrace>\<lambda>rv. if rv then invs'
+               else invs' and st_tcb_at' simple' t
+                          and (\<lambda>s. \<forall>p. t \<notin> set (ksReadyQueues s p))
+                          and sch_act_not t and (\<lambda>s. ksIdleThread s \<noteq> t)\<rbrace>,
+   \<lbrace>\<lambda>rv. invs' and st_tcb_at' simple' t
+               and (\<lambda>s. \<forall>p. t \<notin> set (ksReadyQueues s p))
+               and sch_act_not t and (\<lambda>s. ksIdleThread s \<noteq> t)\<rbrace>"
   apply (simp add: sendFaultIPC_def)
   apply (wp threadSet_invs_trivial threadSet_pred_tcb_no_state
             threadSet_cap_to'
            | wpc | simp)+
-   apply (rule_tac Q'="\<lambda>rv s. invs' s \<and> sch_act_not t s
-                             \<and> st_tcb_at' simple' t s
-                             \<and> (\<forall>p. t \<notin> set (ksReadyQueues s p))
-                             \<and> ex_nonz_cap_to' t s
-                             \<and> t \<noteq> ksIdleThread s
-                             \<and> (\<forall>r\<in>zobj_refs' rv. ex_nonz_cap_to' r s)"
-                 in hoare_post_imp_R)
-    apply wp
-   apply (clarsimp simp: inQ_def pred_tcb_at')
-  apply (wp | simp)+
-  apply (clarsimp simp: eq_commute)
-  apply (subst(asm) global'_no_ex_cap, auto)
+  apply (clarsimp simp: invs'_def valid_state'_def)
+  apply (drule global'_no_ex_cap; fastforce simp: inQ_def isEndpointCap_def)
   done
 
 lemma handleFault_corres:
   "fr f f' \<Longrightarrow>
-   corres dc (einvs and  st_tcb_at active thread and ex_nonz_cap_to thread
-                   and (%_. valid_fault f))
+   corres dc (einvs and st_tcb_at active thread and ex_nonz_cap_to thread and (\<lambda>_. valid_fault f))
              (invs' and sch_act_not thread
                     and (\<lambda>s. \<forall>p. thread \<notin> set(ksReadyQueues s p))
                     and st_tcb_at' simple' thread and ex_nonz_cap_to' thread)
              (handle_fault thread f) (handleFault thread f')"
   apply (simp add: handle_fault_def handleFault_def)
-  apply (rule corres_guard_imp)
-    apply (subst return_bind [symmetric],
-               rule corres_split_deprecated [where P="tcb_at thread",
-                                  OF _ gets_the_noop_corres [where x="()"]])
-       apply (rule corres_split_catch)
-          apply (rule handleDoubleFault_corres)
-          apply (rule_tac F="valid_fault f" in corres_gen_asm)
-         apply (rule sendFaultIPC_corres, assumption)
-         apply simp
-        apply wp+
-       apply (rule hoare_post_impErr, rule sfi_invs_plus', simp_all)[1]
-       apply clarsimp
-      apply (simp add: tcb_at_def)
-     apply wp+
-   apply (clarsimp simp: st_tcb_at_tcb_at st_tcb_def2 invs_def
-                         valid_state_def valid_idle_def)
-  apply auto
+  apply (rule_tac r'="tcb_relation" in corres_split')
+     apply (rule corres_guard_imp[OF getObject_TCB_corres]; clarsimp simp: st_tcb_at_tcb_at)
+    apply (rule_tac F="valid_fault f" in corres_gen_asm)
+    apply (rule_tac Q ="\<lambda>_. tcb_at  thread"
+                and Q'="\<lambda>_. tcb_at' thread" in corres_split')
+       apply (rule corres_split_catch[OF _ sendFaultIPC_corres]; wpsimp wp: hoare_post_taut)
+      apply (clarsimp simp: handle_no_fault_handler_def handleNoFaultHandler_def unless_def when_def)
+      apply (rule setThreadState_corres, clarsimp)
+     apply (wpsimp wp: getObject_tcb_wp simp: st_tcb_at_tcb_at valid_tcb_objs invs_valid_objs )+
+  apply (drule obj_at_ko_at', clarsimp)
+  apply (frule ko_at_valid_objs'; fastforce simp: projectKOs valid_obj'_def)
   done
 
 lemma sts_invs_minor'':
@@ -4293,8 +4237,8 @@ lemma sts_invs_minor'':
    apply (drule obj_at_valid_objs')
     apply (clarsimp simp: valid_pspace'_def)
    apply (clarsimp simp: valid_obj'_def valid_tcb'_def projectKOs)
-   subgoal by (cases st, auto simp: valid_tcb_state'_def
-                        split: Structures_H.thread_state.splits)[1]
+  subgoal by (cases st, auto simp: valid_tcb_state'_def
+                       split: Structures_H.thread_state.splits)[1]
   apply (rule conjI)
    apply (clarsimp dest!: st_tcb_at_state_refs_ofD'
                    elim!: rsubst[where P=sym_refs]
@@ -4307,15 +4251,21 @@ lemma hf_invs' [wp]:
           and (\<lambda>s. \<forall>p. t \<notin> set(ksReadyQueues s p))
           and st_tcb_at' simple' t
           and ex_nonz_cap_to' t and (\<lambda>s. t \<noteq> ksIdleThread s)\<rbrace>
-   handleFault t f \<lbrace>\<lambda>r. invs'\<rbrace>"
-  apply (simp add: handleFault_def)
-  apply wp
-   apply (simp add: handleDoubleFault_def)
-   apply (wp sts_invs_minor'' dmo_invs')+
-  apply (rule hoare_post_impErr, rule sfi_invs_plus',
-         simp_all)
-  apply (strengthen no_refs_simple_strg')
-  apply clarsimp
+   handleFault t f
+   \<lbrace>\<lambda>_. invs'\<rbrace>"
+  apply (simp add: handleFault_def handleNoFaultHandler_def)
+   apply (wpsimp wp: sts_invs_minor'' dmo_invs')+
+     apply (rule hoare_post_impErr[OF sfi_invs_plus']; simp)
+      apply (strengthen no_refs_simple_strg')
+      apply (clarsimp split: if_splits)
+     apply (strengthen no_refs_simple_strg')
+     apply clarsimp
+    apply (wp getObject_tcb_wp)
+   apply (clarsimp simp: isEndpointCap_def obj_at'_def)
+   apply (clarsimp simp: projectKO_def fail_def projectKO_opt_tcb ex_nonz_cap_to'_def
+                  split: kernel_object.splits)
+  apply (rule_tac x="t + 0xA0" in exI)
+  apply (auto elim: cte_wp_at_tcbI' simp: objBitsKO_def return_def)
   done
 
 declare zipWithM_x_mapM [simp del]
@@ -4382,8 +4332,8 @@ lemma si_blk_makes_runnable':
 
 lemma sfi_makes_simple':
   "\<lbrace>st_tcb_at' simple' t and K (t \<noteq> t')\<rbrace>
-     sendFaultIPC t' ft
-   \<lbrace>\<lambda>rv. st_tcb_at' simple' t\<rbrace>"
+   sendFaultIPC t' handlerCap ft
+   \<lbrace>\<lambda>_. st_tcb_at' simple' t\<rbrace>"
   apply (rule hoare_gen_asm)
   apply (simp add: sendFaultIPC_def
              cong: if_cong capability.case_cong bool.case_cong)
@@ -4393,8 +4343,8 @@ lemma sfi_makes_simple':
 
 lemma sfi_makes_runnable':
   "\<lbrace>st_tcb_at' runnable' t and K (t \<noteq> t')\<rbrace>
-     sendFaultIPC t' ft
-   \<lbrace>\<lambda>rv. st_tcb_at' runnable' t\<rbrace>"
+   sendFaultIPC t' handlerCap ft
+   \<lbrace>\<lambda>_. st_tcb_at' runnable' t\<rbrace>"
   apply (rule hoare_gen_asm)
   apply (simp add: sendFaultIPC_def
              cong: if_cong capability.case_cong bool.case_cong)
@@ -4407,9 +4357,9 @@ lemma hf_makes_runnable_simple':
      handleFault t ft
    \<lbrace>\<lambda>rv. st_tcb_at' P t'\<rbrace>"
   apply (safe intro!: hoare_gen_asm)
-  apply (simp_all add: handleFault_def handleDoubleFault_def)
+  apply (simp_all add: handleFault_def)
    apply (wp sfi_makes_runnable' sfi_makes_simple' sts_st_tcb_at'_cases
-           | simp add: handleDoubleFault_def)+
+           | simp add: handleNoFaultHandler_def)+
   done
 
 crunches possibleSwitchTo, completeSignal

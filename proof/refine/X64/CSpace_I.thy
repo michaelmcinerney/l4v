@@ -1233,7 +1233,7 @@ lemma cte_refs_capRange:
     apply (simp add: objBits_defs)
     apply (erule order_less_le_trans)
     apply (simp add: word_le_nat_alt)
-    apply (subst le_unat_uoi[where z=5])
+    apply (subst le_unat_uoi[where z=6])
      apply simp
     apply simp
    apply (simp add: objBits_defs)
