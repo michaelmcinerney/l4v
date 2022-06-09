@@ -1455,15 +1455,6 @@ lemma wordFromMessageInfo_spec:
   apply (simp add: word_sless_def word_sle_def)
   done
 
-lemma seL4_MessageInfo_lift_def2:
-  "seL4_MessageInfo_lift message_info \<equiv>
-  \<lparr>label_CL = (index (seL4_MessageInfo_C.words_C message_info) 0 >> 12) && mask 52,
-   capsUnwrapped_CL = (index (seL4_MessageInfo_C.words_C message_info) 0 >> 9) && mask 3,
-   extraCaps_CL = (index (seL4_MessageInfo_C.words_C message_info) 0 >> 7) && mask 2,
-   length_CL = (index (seL4_MessageInfo_C.words_C message_info) 0 >> 0) && mask 7\<rparr>"
-  apply (simp add: seL4_MessageInfo_lift_def mask_def)
-  done
-
 lemma globals_update_id:
   "globals_update (t_hrs_'_update (hrs_htd_update id)) x = x"
    by (simp add:id_def hrs_htd_update_def)

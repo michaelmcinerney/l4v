@@ -454,15 +454,14 @@ definition idButNot :: "'a \<Rightarrow> 'a"
 where "idButNot x = x"
 
 lemma interpret_excaps_test_null2:
-  "n < 3 \<Longrightarrow>
+  "n < 7 \<Longrightarrow>
    (index (excaprefs_C excps) n = NULL)
       = (length (interpret_excaps excps) \<le> n
             \<and> index (idButNot excaprefs_C excps) n = NULL)"
   unfolding idButNot_def
   apply safe
   apply (rule ccontr, simp only: linorder_not_le)
-  apply (frule(1) interpret_excaps_test_null [OF order_less_imp_le])
-  apply simp
+  apply (frule interpret_excaps_test_null [OF order_less_imp_le]; simp)
   done
 
 lemma interpret_excaps_eq[unfolded array_to_list_def, simplified]:

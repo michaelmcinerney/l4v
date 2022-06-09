@@ -428,8 +428,7 @@ definition
   ctcb_relation :: "Structures_H.tcb \<Rightarrow> tcb_C \<Rightarrow> bool"
 where
   "ctcb_relation atcb ctcb \<equiv>
-       tcbFaultHandler atcb = tcbFaultHandler_C ctcb
-     \<and> cthread_state_relation (tcbState atcb) (tcbState_C ctcb, tcbFault_C ctcb)
+       cthread_state_relation (tcbState atcb) (tcbState_C ctcb, tcbFault_C ctcb)
      \<and> tcbIPCBuffer atcb    = tcbIPCBuffer_C ctcb
      \<and> carch_tcb_relation (tcbArch atcb) (tcbArch_C ctcb)
      \<and> tcbQueued atcb       = to_bool (tcbQueued_CL (thread_state_lift (tcbState_C ctcb)))
@@ -797,7 +796,7 @@ abbreviation
 abbreviation
   "tcb_cte_array_relation astate cstate
     \<equiv> cvariable_array_map_relation (map_to_tcbs (ksPSpace astate))
-        (\<lambda>x. 5) cte_Ptr (hrs_htd (t_hrs_' cstate))"
+        (\<lambda>x. 6) cte_Ptr (hrs_htd (t_hrs_' cstate))"
 
 fun
   irqstate_to_C :: "irqstate \<Rightarrow> machine_word"

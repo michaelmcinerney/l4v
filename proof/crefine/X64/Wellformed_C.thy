@@ -53,7 +53,7 @@ abbreviation
         = 2^16 (total number of ioports) / word_bits *)
 type_synonym ioport_table_C = "machine_word[1024]"
 
-type_synonym tcb_cnode_array = "cte_C[5]"
+type_synonym tcb_cnode_array = "cte_C[6]"
 type_synonym fpu_bytes_array = "word8[fpu_bytes]"
 type_synonym registers_array = "machine_word[24]"
 

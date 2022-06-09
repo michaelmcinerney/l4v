@@ -3290,7 +3290,7 @@ proof (rule ext)
 qed
 
 lemma dom_tcb_cte_cases_iff:
-  "(x \<in> dom tcb_cte_cases) = (\<exists>y < 5. unat x = y * (2^cteSizeBits))"
+  "(x \<in> dom tcb_cte_cases) = (\<exists>y < 6. unat x = y * (2^cteSizeBits))"
   unfolding tcb_cte_cases_def
   by (auto simp: unat_arith_simps objBits_simps')
 
@@ -3494,7 +3494,7 @@ proof (rule conjI)
 qed
 
 lemma tcb_ptr_orth_cte_ptrs:
-  "{ptr_val p..+size_of TYPE(tcb_C)} \<inter> {ctcb_ptr_to_tcb_ptr p..+5 * size_of TYPE(cte_C)} = {}"
+  "{ptr_val p..+size_of TYPE(tcb_C)} \<inter> {ctcb_ptr_to_tcb_ptr p..+6 * size_of TYPE(cte_C)} = {}"
   apply (rule disjointI)
   apply (clarsimp simp: ctcb_ptr_to_tcb_ptr_def intvl_def field_simps size_of_def ctcb_offset_defs)
   apply unat_arith
@@ -3503,7 +3503,7 @@ lemma tcb_ptr_orth_cte_ptrs:
   done
 
 lemma tcb_ptr_orth_cte_ptrs':
-  "ptr_span (tcb_Ptr (regionBase + 0x400)) \<inter> ptr_span (Ptr regionBase :: (cte_C[5]) ptr) = {}"
+  "ptr_span (tcb_Ptr (regionBase + 0x400)) \<inter> ptr_span (Ptr regionBase :: (cte_C[6]) ptr) = {}"
   apply (rule disjointI)
   apply (clarsimp simp: ctcb_ptr_to_tcb_ptr_def size_td_array
                         intvl_def field_simps size_of_def ctcb_offset_def)
@@ -3651,7 +3651,7 @@ lemma cnc_tcb_helper:
 proof -
   define ko where "ko \<equiv> (KOCTE (makeObject :: cte))"
   let ?ptr = "cte_Ptr (ctcb_ptr_to_tcb_ptr p)"
-  let ?arr_ptr = "Ptr (ctcb_ptr_to_tcb_ptr p) :: (cte_C[5]) ptr"
+  let ?arr_ptr = "Ptr (ctcb_ptr_to_tcb_ptr p) :: (cte_C[6]) ptr"
   let ?sp = "\<sigma>\<lparr>ksPSpace := ks\<rparr>"
   let ?s = "\<sigma>\<lparr>ksPSpace := ?ks\<rparr>"
   let ?gs = "?gs' (globals x)"
@@ -3673,7 +3673,7 @@ proof -
      apply (simp add: ko_def objBits_simps')
     apply (simp add: ko_def objBits_simps align_of_def)
     done
-  hence guard: "\<forall>n<5. c_guard (CTypesDefs.ptr_add ?ptr (of_nat n))"
+  hence guard: "\<forall>n<6. c_guard (CTypesDefs.ptr_add ?ptr (of_nat n))"
     by (simp add: ko_def kotcb_def objBits_simps' align_of_def)
 
   have arr_guard: "c_guard ?arr_ptr"
@@ -3690,7 +3690,7 @@ proof -
 
   have empty_smaller:
     "region_is_bytes (ptr_val p) (size_of TYPE(tcb_C)) x"
-    "region_is_bytes' (ctcb_ptr_to_tcb_ptr p) (5 * size_of TYPE(cte_C))
+    "region_is_bytes' (ctcb_ptr_to_tcb_ptr p) (6 * size_of TYPE(cte_C))
         (ptr_retyps_gen 1 p False (hrs_htd (t_hrs_' (globals x))))"
     using al region_is_bytes_subset[OF empty] tcb_ptr_to_ctcb_ptr_in_range'
     apply (simp add: objBits_simps kotcb_def)
@@ -3722,7 +3722,7 @@ proof -
   have "ptr_val p = ctcb_ptr_to_tcb_ptr p + ctcb_offset"
     by (simp add: ctcb_ptr_to_tcb_ptr_def)
 
-  have cte_tcb_disjoint: "\<And>y. y \<in> (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 5}
+  have cte_tcb_disjoint: "\<And>y. y \<in> (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 6}
     \<Longrightarrow> {ptr_val p..+size_of TYPE(tcb_C)} \<inter> {ptr_val y..+size_of TYPE(cte_C)} = {}"
     apply (rule disjoint_subset2 [OF _ tcb_ptr_orth_cte_ptrs])
     apply (clarsimp simp: intvl_def size_of_def)
@@ -3733,7 +3733,7 @@ proof -
   have cl_cte: "(cslift (x\<lparr>globals := ?gs\<rparr>) :: cte_C typ_heap) =
     (\<lambda>y. if y \<in> (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ>
                  of_nat) `
-                {k. k < 5}
+                {k. k < 6}
          then Some (from_bytes (replicate (size_of TYPE(cte_C)) 0)) else cslift x y)"
     using cgp unfolding heap_updates_defs
     apply (simp add: ptr_retyp_to_array[simplified] hrs_comm[symmetric] Let_def)
@@ -3856,7 +3856,7 @@ proof -
 
   have cl_rest:
     "\<lbrakk>typ_uinfo_t TYPE(tcb_C) \<bottom>\<^sub>t typ_uinfo_t TYPE('a :: mem_type);
-      typ_uinfo_t TYPE(cte_C[5]) \<bottom>\<^sub>t typ_uinfo_t TYPE('a :: mem_type);
+      typ_uinfo_t TYPE(cte_C[6]) \<bottom>\<^sub>t typ_uinfo_t TYPE('a :: mem_type);
       typ_uinfo_t TYPE('a) \<noteq> typ_uinfo_t TYPE(word8) \<rbrakk> \<Longrightarrow>
     cslift (x\<lparr>globals := ?gs\<rparr>) = (cslift x :: 'a :: mem_type typ_heap)"
     using cgp
@@ -3894,12 +3894,12 @@ proof -
 
   \<comment> \<open>Ugh\<close>
   moreover have
-    "\<And>y. y \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 5}
+    "\<And>y. y \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 6}
     = (y && ~~ mask tcbBlockSizeBits = ctcb_ptr_to_tcb_ptr p \<and> y && mask tcbBlockSizeBits \<in> dom tcb_cte_cases)" (is "\<And>y. ?LHS y = ?RHS y")
   proof -
     fix y
 
-    have al_rl: "\<And>k. k < 5 \<Longrightarrow>
+    have al_rl: "\<And>k. k < 6 \<Longrightarrow>
       ctcb_ptr_to_tcb_ptr p + of_nat k * of_nat (size_of TYPE(cte_C)) && mask tcbBlockSizeBits = of_nat k * of_nat (size_of TYPE(cte_C))
       \<and> ctcb_ptr_to_tcb_ptr p + of_nat k * of_nat (size_of TYPE(cte_C)) && ~~ mask tcbBlockSizeBits = ctcb_ptr_to_tcb_ptr p" using al
       apply -
@@ -3911,7 +3911,7 @@ proof -
        apply (simp add: size_of_def word_bits_conv objBits_simps')+
       done
 
-    have al_rl2: "\<And>k. k < 5 \<Longrightarrow> unat (of_nat k * of_nat (size_of TYPE(cte_C)) :: machine_word) = k * (2^cteSizeBits)"
+    have al_rl2: "\<And>k. k < 6 \<Longrightarrow> unat (of_nat k * of_nat (size_of TYPE(cte_C)) :: machine_word) = k * (2^cteSizeBits)"
        apply (subst Abs_fnat_hom_mult)
        apply (subst unat_of_nat64)
        apply (simp add: size_of_def word_bits_conv objBits_simps')+
@@ -3930,7 +3930,7 @@ proof -
   qed
 
   ultimately have rl_cte: "(map_to_ctes (ks(ctcb_ptr_to_tcb_ptr p \<mapsto> KOTCB makeObject)) :: machine_word \<Rightarrow> cte option)
-    = (\<lambda>x. if x \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 5}
+    = (\<lambda>x. if x \<in> ptr_val ` (CTypesDefs.ptr_add (cte_Ptr (ctcb_ptr_to_tcb_ptr p)) \<circ> of_nat) ` {k. k < 6}
          then Some (CTE NullCap nullMDBNode)
          else map_to_ctes ks x)"
     apply simp
@@ -3970,7 +3970,7 @@ proof -
                 (lookup_fault_C.words_C (tcbLookupFailure_C undefined)))
           (tcbLookupFailure_C undefined),
        tcbPriority_C := 0, tcbMCP_C := 0, tcbDomain_C := 0, tcbTimeSlice_C := 0,
-       tcbFaultHandler_C := 0, tcbIPCBuffer_C := 0,
+       tcbIPCBuffer_C := 0,
        tcbSchedNext_C := tcb_Ptr 0, tcbSchedPrev_C := tcb_Ptr 0,
        tcbEPNext_C := tcb_Ptr 0, tcbEPPrev_C := tcb_Ptr 0,
        tcbBoundNotification_C := ntfn_Ptr 0\<rparr>"
@@ -3978,7 +3978,7 @@ proof -
     apply (simp add: from_bytes_def)
     apply (simp add: typ_info_simps tcb_C_tag_def)
     apply (simp add: ti_typ_pad_combine_empty_ti ti_typ_pad_combine_td align_of_def padup_def
-      final_pad_def size_td_lt_ti_typ_pad_combine Let_def size_of_def)(* takes ages *)
+      final_pad_def size_td_lt_ti_typ_pad_combine Let_def size_of_def)
     apply (simp add: update_ti_adjust_ti update_ti_t_machine_word_0s
       typ_info_simps thread_state_C_tag_def seL4_Fault_C_tag_def
       lookup_fault_C_tag_def update_ti_t_ptr_0s arch_tcb_C_tag_def
@@ -5294,7 +5294,7 @@ lemma ccorres_placeNewObject_tcb:
     hs
    (placeNewObject regionBase (makeObject :: tcb) 0)
    (\<acute>tcb :== tcb_Ptr (regionBase + 0x400);;
-        (global_htd_update (\<lambda>s. ptr_retyp (Ptr (ptr_val (tcb_' s) - ctcb_offset) :: (cte_C[5]) ptr)
+        (global_htd_update (\<lambda>s. ptr_retyp (Ptr (ptr_val (tcb_' s) - ctcb_offset) :: (cte_C[6]) ptr)
             \<circ> ptr_retyp (tcb_' s)));;
         (Guard C_Guard \<lbrace>hrs_htd \<acute>t_hrs \<Turnstile>\<^sub>t \<acute>tcb\<rbrace>
            (call (\<lambda>s. s\<lparr>context_' := Ptr &((Ptr &(tcb_' s\<rightarrow>[''tcbArch_C'']) :: arch_tcb_C ptr)\<rightarrow>[''tcbContext_C''])\<rparr>) Arch_initContext_'proc (\<lambda>s t. s\<lparr>globals := globals t\<rparr>) (\<lambda>s' s''. Basic (\<lambda>s. s))));;
@@ -5309,7 +5309,7 @@ lemma ccorres_placeNewObject_tcb:
    prefer 2
    apply (rule c_guard_tcb;
           clarsimp simp: ctcb_ptr_to_tcb_ptr_def ctcb_offset_defs range_cover.aligned)
-  apply (subgoal_tac "hrs_htd (hrs_htd_update (ptr_retyp (Ptr regionBase :: (cte_C[5]) ptr)
+  apply (subgoal_tac "hrs_htd (hrs_htd_update (ptr_retyp (Ptr regionBase :: (cte_C[6]) ptr)
                                 \<circ> ptr_retyp (tcb_Ptr (regionBase + 0x400)))
                  (t_hrs_' (globals x))) \<Turnstile>\<^sub>t tcb_Ptr (regionBase + 0x400)")
    prefer 2
@@ -5332,7 +5332,7 @@ lemma ccorres_placeNewObject_tcb:
     apply (rule h_t_valid_field[rotated], simp+)+
    apply (clarsimp simp: hrs_htd_update)
    apply (subgoal_tac "{regionBase + 0x400 ..+ size_of TYPE(tcb_C)} \<subseteq> {regionBase ..+ 2 ^ tcbBlockSizeBits}")
-    apply (subgoal_tac "{regionBase ..+ 5*size_of TYPE(cte_C)} \<subseteq> {regionBase ..+ 2 ^ tcbBlockSizeBits}")
+    apply (subgoal_tac "{regionBase ..+ 6*size_of TYPE(cte_C)} \<subseteq> {regionBase ..+ 2 ^ tcbBlockSizeBits}")
      apply (intro h_t_valid_ptr_retyps_gen_disjoint
                     [where n=1 and arr=False, unfolded ptr_retyps_gen_def, simplified];
             clarsimp simp: rf_sr_def cstate_relation_def Let_def carch_state_relation_def
@@ -6709,6 +6709,12 @@ lemma ctes_of_ko_at_strong:
   apply (erule order_trans)
   apply (subst word_plus_and_or_coroll2[where x = p and w = "mask tcbBlockSizeBits",symmetric])
   apply (clarsimp simp:tcb_cte_cases_def field_simps split:if_split_asm)
+       apply (subst p_assoc_help)
+       apply (rule word_plus_mono_right[OF _ is_aligned_no_wrap'])
+         apply (simp add: objBits_simps')
+        apply (rule Aligned.is_aligned_neg_mask)
+        apply (rule le_refl,simp)
+       apply (simp add: objBits_simps')
       apply (subst p_assoc_help)
       apply (rule word_plus_mono_right[OF _ is_aligned_no_wrap'])
         apply (simp add: objBits_simps')
@@ -6717,17 +6723,17 @@ lemma ctes_of_ko_at_strong:
       apply (simp add: objBits_simps')
      apply (subst p_assoc_help)
      apply (rule word_plus_mono_right[OF _ is_aligned_no_wrap'])
-       apply (simp add: objBits_simps')
+     apply (simp add:objBits_simps')
       apply (rule Aligned.is_aligned_neg_mask)
       apply (rule le_refl,simp)
      apply (simp add: objBits_simps')
     apply (subst p_assoc_help)
     apply (rule word_plus_mono_right[OF _ is_aligned_no_wrap'])
-    apply (simp add:objBits_simps')
+      apply (simp add: objBits_simps')
      apply (rule Aligned.is_aligned_neg_mask)
      apply (rule le_refl,simp)
     apply (simp add: objBits_simps')
-   apply (subst p_assoc_help)
+   apply (subst p_assoc_help)+
    apply (rule word_plus_mono_right[OF _ is_aligned_no_wrap'])
      apply (simp add: objBits_simps')
     apply (rule Aligned.is_aligned_neg_mask)
@@ -7288,12 +7294,12 @@ lemma gsCNodes_typ_region_bytes:
 
 lemma tcb_ctes_typ_region_bytes:
   "cvariable_array_map_relation (map_to_tcbs (ksPSpace \<sigma>))
-      (\<lambda>x. 5) cte_Ptr (hrs_htd hrs)
+      (\<lambda>x. 6) cte_Ptr (hrs_htd hrs)
     \<Longrightarrow> pspace_no_overlap' ptr bits \<sigma>
     \<Longrightarrow> pspace_aligned' \<sigma>
     \<Longrightarrow> is_aligned ptr bits
     \<Longrightarrow> cpspace_tcb_relation (ksPSpace \<sigma>) hrs
-    \<Longrightarrow> cvariable_array_map_relation (map_to_tcbs (ksPSpace \<sigma>)) (\<lambda>x. 5)
+    \<Longrightarrow> cvariable_array_map_relation (map_to_tcbs (ksPSpace \<sigma>)) (\<lambda>x. 6)
         cte_Ptr (typ_region_bytes ptr bits (hrs_htd hrs))"
   apply (clarsimp simp: cvariable_array_map_relation_def
                         h_t_array_valid_def)
