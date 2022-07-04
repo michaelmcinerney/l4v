@@ -402,7 +402,7 @@ lemma getObject_get_assert:
   apply (rule ext)
   apply (rename_tac x)
   apply (case_tac "ksPSpace x p")
-   apply (clarsimp simp: obj_at'_def assert_opt_def assert_def split_def  getObject_def2 deflt
+   apply (clarsimp simp: obj_at'_def assert_opt_def assert_def split_def getObject_def2 deflt
                          loadObject_default_def gets_the_def  gets_def get_def bind_def return_def
                          fail_def in_omonad
                   split: option.split if_split option.splits)
@@ -838,7 +838,7 @@ lemma oblivious_getObject_ksPSpace_default:
                    projectKO_def alignCheck_assert magnitudeCheck_assert)
   apply (intro oblivious_bind; simp)
   by (auto simp: oblivious_def gets_the_def assert_opt_def bind_def gets_def return_def
-                 oassert_opt_def  read_magnitudeCheck_def get_def fail_def
+                 oassert_opt_def read_magnitudeCheck_def get_def fail_def
           split: option.splits)
 
 lemmas oblivious_getObject_ksPSpace_tcb[simp]
@@ -985,7 +985,7 @@ lemma setObject_modify_assert:
    apply (simp only: objBits_def  koTypeOf_injectKO)
    apply (simp add: magnitudeCheck_assert2 simpler_modify_def)
    apply (clarsimp simp: assert_def magnitudeCheck_assert2)
-   apply (clarsimp simp: omonad_defs bind_def return_def )
+   apply (clarsimp simp: omonad_defs bind_def return_def)
    apply fastforce
   apply (clarsimp simp: assert_opt_def assert_def magnitudeCheck_assert2
                  split: option.split)
@@ -1210,21 +1210,15 @@ lemma tcbSchedDequeue_rewrite:
   done
 
 lemma monadic_rewrite_remove_return:
-  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (do y \<leftarrow> return (); f od) g"
+   "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (do y \<leftarrow> return (); f od) g"
   by (fastforce simp: state_assert_def monadic_rewrite_def exec_get)
 
-lemma monadic_rewrite_stateAssert:
-  "monadic_rewrite F E (Q and P) (stateAssert P xs) (return ())"
-  by (simp add: stateAssert_def monadic_rewrite_def exec_get)
+lemma monadic_rewrite_add_return:
+   "monadic_rewrite False True P f g \<Longrightarrow> monadic_rewrite False True P g (do y \<leftarrow> return (); f od)"
+  by (auto simp: state_assert_def monadic_rewrite_def exec_get)
 
-lemma monadic_rewrite_rewrite_head:
-  "\<lbrakk>monadic_rewrite F True P f f'; monadic_rewrite F True P (f' >>= g) (h >>= j)\<rbrakk>
-   \<Longrightarrow> monadic_rewrite F True P (f >>= g) (h >>= j)"
-  apply (clarsimp simp: monadic_rewrite_def bind_def)
-  apply (cases F)
-   apply metis
-  apply force
-  done
+lemmas monadic_rewrite_add_return:
+  "monadic_rewrite_remove_return"
 
 lemma switchToThread_rewrite:
   "monadic_rewrite True True
@@ -1234,9 +1228,13 @@ lemma switchToThread_rewrite:
        (do Arch.switchToThread t; setCurThread t od)"
   apply (simp add: switchToThread_def Thread_H.switchToThread_def)
   apply (rule monadic_rewrite_imp)
-   apply (rule monadic_rewrite_rewrite_head)
+  thm monadic_rewrite_rewrite_head
+  thm monadic_rewrite_bind
+   apply (rule monadic_rewrite_trans)
+    apply (rule monadic_rewrite_bind_head)
     apply (rule monadic_rewrite_stateAssert)
-   apply (rule monadic_rewrite_remove_return)
+   apply (subst return_bind[symmetric])
+  apply (rule monadic_rewrite_remove_return)
    apply (rule monadic_rewrite_trans)
     apply (rule monadic_rewrite_bind_tail)
      apply (rule monadic_rewrite_bind)

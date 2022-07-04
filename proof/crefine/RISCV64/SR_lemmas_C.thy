@@ -2010,7 +2010,7 @@ proof -
 qed
 
 lemma obj_at'_is_canonical:
-"\<lbrakk>pspace_canonical' s; obj_at' P t s\<rbrakk> \<Longrightarrow> canonical_address t"
+  "\<lbrakk>pspace_canonical' s; obj_at' P t s\<rbrakk> \<Longrightarrow> canonical_address t"
   apply (clarsimp simp: obj_at'_def pspace_canonical'_def)
   by (drule_tac x=t in bspec) clarsimp+
 
