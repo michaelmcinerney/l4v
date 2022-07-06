@@ -1195,9 +1195,9 @@ lemma st_tcb_at_h_t_valid:
 (* MOVE *)
 lemma exs_getObject:
   assumes x: "\<And>q n ko. loadObject p q n ko =
-                (loadObject_default p q n ko :: ('a :: pspace_storable) kernel_r)"
+                (loadObject_default p q n ko :: 'a :: pspace_storable kernel_r)"
   and objat: "obj_at' (P :: ('a::pspace_storable \<Rightarrow> bool)) p s"
-  shows      "\<lbrace>(=) s\<rbrace> getObject p \<exists>\<lbrace>\<lambda>r :: ('a :: pspace_storable). (=) s\<rbrace>"
+  shows      "\<lbrace>(=) s\<rbrace> getObject p \<exists>\<lbrace>\<lambda>r :: 'a :: pspace_storable. (=) s\<rbrace>"
   using objat unfolding exs_valid_def obj_at'_def
   apply clarsimp
   apply (rule_tac x = "(the (projectKO_opt ko), s)" in bexI)
@@ -1210,10 +1210,10 @@ lemma exs_getObject:
   by (fastforce simp: word_le_less_eq)
 
 lemma setObject_eq:
-  fixes ko :: "('a :: pspace_storable)"
+  fixes ko :: "'a :: pspace_storable"
   assumes x: "\<And>(val :: 'a) old ptr ptr' next. updateObject val old ptr ptr' next =
                 (updateObject_default val old ptr ptr' next :: kernel_object kernel)"
-  assumes P: "\<And>(v::'a::pspace_storable). (1 :: machine_word) < 2 ^ (objBits v)"
+  assumes P: "\<And>v::'a::pspace_storable. (1 :: machine_word) < 2 ^ (objBits v)"
   and     ob: "\<And>(v :: 'a) (v' :: 'a). objBits v = objBits v'"
   and objat: "obj_at' (P :: ('a::pspace_storable \<Rightarrow> bool)) p s"
   shows  "((), s\<lparr> ksPSpace := (ksPSpace s)(p \<mapsto> injectKO ko)\<rparr>) \<in> fst (setObject p ko s)"
@@ -1231,7 +1231,7 @@ lemma setObject_eq:
 lemma getObject_eq:
   fixes ko :: "'a :: pspace_storable"
   assumes x: "\<And>q n ko. loadObject p q n ko =
-                (loadObject_default p q n ko :: ('a :: pspace_storable) kernel_r)"
+                (loadObject_default p q n ko :: 'a :: pspace_storable kernel_r)"
   assumes P: "\<And>(v::'a). (1 :: machine_word) < 2 ^ (objBits v)"
   and objat: "ko_at' ko p s"
   shows      "(ko, s) \<in> fst (getObject p s)"

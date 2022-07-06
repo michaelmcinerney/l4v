@@ -148,7 +148,7 @@ lemma setObject_modify:
 lemma getObject_return:
   fixes v :: "'a :: pspace_storable" shows
   "\<lbrakk> \<And>q n ko. loadObject p q n ko =
-                (loadObject_default p q n ko :: ('a :: pspace_storable) kernel_r);
+                (loadObject_default p q n ko :: 'a :: pspace_storable kernel_r);
      ko_at' v p s; (1 :: machine_word) < 2 ^ objBits v \<rbrakk> \<Longrightarrow>
    getObject p s = return v s"
   apply (clarsimp simp: getObject_def readObject_def omonad_defs split_def gets_the_def gets_def
@@ -392,7 +392,7 @@ lemma obj_at_partial_overwrite_id2:
 
 lemma getObject_get_assert:
   assumes deflt: "\<And>q n ko. loadObject p q n ko =
-                             (loadObject_default p q n ko :: ('a :: pspace_storable) kernel_r)"
+                             (loadObject_default p q n ko :: 'a :: pspace_storable kernel_r)"
   shows
   "(getObject p :: ('a :: pspace_storable) kernel)
    = do v \<leftarrow> gets (obj_at' (\<lambda>x :: 'a. True) p);
@@ -418,9 +418,9 @@ lemma getObject_get_assert:
 
 lemma getObject_isolatable:
   "\<lbrakk> \<And>q n ko. loadObject p q n ko =
-                             (loadObject_default p q n ko :: ('a :: pspace_storable) kernel_r);
+                             (loadObject_default p q n ko :: 'a :: pspace_storable kernel_r);
       \<And>tcb. projectKO_opt (KOTCB tcb) = (None :: 'a option) \<rbrakk> \<Longrightarrow>
-   thread_actions_isolatable idx (getObject p :: ('a :: pspace_storable) kernel)"
+   thread_actions_isolatable idx (getObject p :: 'a :: pspace_storable kernel)"
   apply (clarsimp simp: thread_actions_isolatable_def)
   apply (simp add: getObject_get_assert split_def
                    isolate_thread_actions_def bind_select_f_bind[symmetric]
@@ -833,7 +833,7 @@ lemma empty_fail_isRunnable:
 lemma oblivious_getObject_ksPSpace_default:
   "\<lbrakk> \<forall>s. ksPSpace (f s) = ksPSpace s;
      \<And>a b c ko. (loadObject a b c ko :: 'a kernel_r) \<equiv> loadObject_default a b c ko \<rbrakk>
-   \<Longrightarrow> oblivious f (getObject p :: ('a :: pspace_storable) kernel)"
+   \<Longrightarrow> oblivious f (getObject p :: 'a :: pspace_storable kernel)"
   apply (simp add: getObject_def2 split_def loadObject_default_def
                    projectKO_def alignCheck_assert magnitudeCheck_assert)
   apply (intro oblivious_bind; simp)
@@ -1267,10 +1267,11 @@ lemma threadGet_isolatable:
                thread_actions_isolatable_fail)
   done
 
+(* FIXME RT: Maybe no longer true, now that setCurThread contains the ready_qs_runnable assertion,
+which depends on the thread state, and could be modified by partial_overwrite *)
 lemma setCurThread_isolatable:
   "thread_actions_isolatable idx (setCurThread t)"
-sorry (* Maybe no longer true, now that setCurThread contains the ready_qs_runnable assertion,
-which depends on the thread state, and could be modified by partial_overwrite *)
+  oops
 (*  by (simp add: setCurThread_def modify_isolatable) *)
 
 lemma isolate_thread_actions_tcbs_at:
@@ -1501,7 +1502,7 @@ lemma emptySlot_isolatable:
 lemmas fastpath_isolatables
     = setEndpoint_isolatable getCTE_isolatable
       assert_isolatable cteInsert_isolatable
-      switchToThread_isolatable setCurThread_isolatable
+      switchToThread_isolatable (* setCurThread_isolatable *)
       emptySlot_isolatable updateMDB_isolatable
       thread_actions_isolatable_returns
 
