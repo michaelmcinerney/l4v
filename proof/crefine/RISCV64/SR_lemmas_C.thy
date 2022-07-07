@@ -209,6 +209,30 @@ lemma cap_get_tag_IRQHandlerCap:
   apply (simp add: cap_get_tag_isCap isCap_simps)
   done
 
+lemma cap_get_tag_SchedControlCap:
+  assumes cr: "ccap_relation cap cap'"
+  shows "(cap_get_tag cap' = scast cap_sched_control_cap) = (cap = capability.SchedControlCap)"
+  using cr
+  apply -
+  apply (rule iffI)
+   apply (erule ccap_relationE)
+   apply (clarsimp simp add: cap_lifts cap_to_H_def Let_def)
+  apply (simp add: cap_get_tag_isCap isCap_simps Let_def)
+  done
+
+lemma cap_get_tag_SchedContextCap:
+  assumes cr: "ccap_relation cap cap'"
+  shows "(cap_get_tag cap' = scast cap_sched_context_cap) =
+   (cap = capability.SchedContextCap (ucast (capSCPtr_CL (cap_sched_context_cap_lift cap')))
+                                     (unat (capSCSizeBits_CL (cap_sched_context_cap_lift cap'))))"
+  using cr
+  apply -
+  apply (rule iffI)
+   apply (erule ccap_relationE)
+   apply (clarsimp simp add: cap_lifts cap_to_H_def Let_def)
+  apply (simp add: cap_get_tag_isCap isCap_simps Let_def)
+  done
+
 lemma cap_get_tag_IRQControlCap:
   assumes cr: "ccap_relation cap cap'"
   shows "(cap_get_tag cap' = scast cap_irq_control_cap) =
@@ -219,6 +243,20 @@ lemma cap_get_tag_IRQControlCap:
    apply (clarsimp simp add: cap_lifts cap_get_tag_isCap isCap_simps cap_to_H_def)
   apply (simp add: cap_get_tag_isCap isCap_simps)
   done
+
+lemma cap_get_tag_ReplyCap:
+   assumes cr: "ccap_relation cap cap'"
+   shows "(cap_get_tag cap' = scast cap_reply_cap) =
+   (cap =
+       ReplyCap (capReplyPtr_CL (cap_reply_cap_lift cap'))
+                (to_bool (capReplyCanGrant_CL (cap_reply_cap_lift cap'))))"
+   using cr
+   apply -
+   apply (rule iffI)
+    apply (erule ccap_relationE)
+    apply (clarsimp simp add: cap_lifts cap_to_H_def)
+   apply (simp add: cap_get_tag_isCap isCap_simps)
+   done
 
 lemma cap_get_tag_ZombieCap:
   assumes cr: "ccap_relation cap cap'"
@@ -273,6 +311,9 @@ lemmas cap_get_tag_to_H_iffs =
      cap_get_tag_CNodeCap
      cap_get_tag_IRQHandlerCap
      cap_get_tag_IRQControlCap
+     cap_get_tag_ReplyCap
+     cap_get_tag_SchedControlCap
+     cap_get_tag_SchedContextCap
      cap_get_tag_ZombieCap
      cap_get_tag_UntypedCap
      cap_get_tag_DomainCap

@@ -662,7 +662,6 @@ lemma setObject_assert_modify:
                  split: option.splits)
   done
 
-
 lemma thread_actions_isolatable_mapM_x:
   "\<lbrakk> \<And>x. thread_actions_isolatable idx (f x);
      \<And>x t. f x \<lbrace>tcb_at' t\<rbrace> \<rbrakk> \<Longrightarrow> thread_actions_isolatable idx (mapM_x f xs)"
@@ -918,6 +917,7 @@ lemma tcbSchedEnqueue_tcbPriority[wp]:
   apply (wp | simp cong: if_cong)+
   done
 
+(* FIXME RT: move following lemmas about tcbPriority to Refine or possibly DInvs (see VER-1299) *)
 crunches unbindMaybeNotification, blockedCancelIPC, replyRemoveTCB, cancelSignal
   for tcbPriority_obj_at'[wp]: "obj_at' (\<lambda>tcb. P (tcbPriority tcb)) t'"
   (wp: setBoundNotification_oa_queued setThreadState_oa_queued crunch_wps
