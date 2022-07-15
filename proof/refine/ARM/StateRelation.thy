@@ -1227,7 +1227,7 @@ lemma scBits_inverse_sc:
   apply (rule scBits_inverse_us)
   by (simp add: sc_const_eq)
 
-lemma minRefillLength_ARM: "minRefillLength = 12"
+lemma minRefillLength_ARM: "minRefillLength = 10"
   by (auto simp: minRefillLength_def minSchedContextBits_def refillAbsoluteMax'_def
                  schedContextStructSize_def refillSizeBytes_def shiftL_nat)
 
@@ -1258,15 +1258,15 @@ lemma MIN_REFILLS_le_minRefillLength:
 
 lemmas scBits_simps = scBits_inverse_us refillAbsoluteMax_def sc_size_bounds_def sc_const_conc
 
-lemma scBits_at_least_6:
-  "6 \<le> scBitsFromRefillLength' us"
+lemma scBits_at_least_7:
+  "7 \<le> scBitsFromRefillLength' us"
 proof -
   note sc_const_eq[simp]
   have "ceil_log (sizeof_sched_context_t)
            \<le> ceil_log (us * refill_size_bytes + sizeof_sched_context_t)"
     apply (simp only: sc_const_eq(2)[symmetric, simplified schedContextStructSize_def, simplified])
     by (simp add: ceil_log_le_mono)
-  moreover have "ceil_log (sizeof_sched_context_t) = 6"
+  moreover have "ceil_log (sizeof_sched_context_t) = 7"
     apply (simp add: sc_const_eq(2)[symmetric, simplified schedContextStructSize_def, simplified] ceil_log_def)
     by (fastforce intro!: discrete_log_eqI)
   ultimately show ?thesis
@@ -1275,7 +1275,7 @@ qed
 
 lemma scBits_pos'[simp]:
   "0 < scBitsFromRefillLength' us"
-  using scBits_at_least_6
+  using scBits_at_least_7
   by (metis gr0I not_numeral_le_zero)
 
 lemma scBits_pos_power2:
