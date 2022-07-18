@@ -216,9 +216,9 @@ list of pointers to waiting threads;
 >     scRefillCount :: Int,
 >     scRefills :: [Refill]}
 
-> -- currently copied directly from sizeof_sched_context_t
+> -- numbers from MCS C: (9 * sizeof(word_t)) + (3 * sizeof(ticks_t))
 > schedContextStructSize :: Int
-> schedContextStructSize = 96
+> schedContextStructSize = (9 * wordBits) + (3 * 8)
 
 > -- similarly, (2 * sizeof(ticks_t))
 > refillSizeBytes :: Int
