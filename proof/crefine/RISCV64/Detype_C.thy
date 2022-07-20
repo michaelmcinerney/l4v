@@ -322,10 +322,10 @@ proof -
 
   hence "?oran' \<inter> ?ran' = {}" by simp
   thus "{ptr_val x..+size_of TYPE('b)} \<inter> ?ran' = {}"
-  apply (rule disjoint_subset[rotated])
-  apply (rule intvl_start_le)
-  apply (clarsimp simp: size_of_def)
-  by (fastforce intro: sof po tp)
+    apply (rule disjoint_subset[rotated])
+    apply (rule intvl_start_le)
+    apply (clarsimp simp: size_of_def)
+    by (fastforce intro: sof po tp)
   qed
 
 lemma vut_subseteq:
@@ -1015,7 +1015,7 @@ lemma cnotification_relation_restrict:
   assumes  vuc: "s \<turnstile>' capability.UntypedCap d ptr bits idx"
   and     invs: "invs' s"
   and sym_refs: "sym_refs (state_refs_of' s)"
-  and       rl: "\<forall>(p :: machine_word) P. ko_wp_at' P p s \<and> (\<forall>ko. P ko \<longrightarrow> live' ko) \<longrightarrow> p \<notin> {ptr..ptr + 2 ^ bits - 1}"
+  and       rl: "\<forall>p P. ko_wp_at' P p s \<and> (\<forall>ko. P ko \<longrightarrow> live' ko) \<longrightarrow> p \<notin> {ptr..ptr + 2 ^ bits - 1}"
   and     meps: "map_to_ntfns (ksPSpace s) p = Some ntfn"
   shows "cnotification_relation (cslift s' |` (- Ptr ` {ptr..+2 ^ bits})) ntfn b = cnotification_relation (cslift s') ntfn b"
 proof -

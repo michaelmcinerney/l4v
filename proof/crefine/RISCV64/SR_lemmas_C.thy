@@ -2179,7 +2179,7 @@ lemma unat_scast_numDomains:
 (* Sanity check for hard coded sizeof_sched_context_t *)
 lemma sizeof_sched_context_t_eq:
   "sizeof_sched_context_t = size_of TYPE(sched_context_C)"
-  by (simp add: sizeof_sched_context_t_def)
+  by (simp add: sizeof_sched_context_t_def word_size_def)
 
 end
 end
