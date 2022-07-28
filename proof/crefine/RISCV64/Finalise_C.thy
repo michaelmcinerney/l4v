@@ -2023,7 +2023,8 @@ sorry (* FIXME RT: schedContext_unbindNtfn_ccorres *)
 
 lemma reply_remove_ccorres:
   "ccorres dc xfdc
-    (invs' and sc_at' scPtr) (\<lbrace>\<acute>reply = Ptr replyPtr\<rbrace> \<inter> \<lbrace>\<acute>tcb = tcb_ptr_to_ctcb_ptr tcbPtr\<rbrace>) []
+    (invs' and reply_at' replyPtr and tcb_at' tcbPtr)
+    (\<lbrace>\<acute>reply = Ptr replyPtr\<rbrace> \<inter> \<lbrace>\<acute>tcb = tcb_ptr_to_ctcb_ptr tcbPtr\<rbrace>) []
     (replyRemove replyPtr tcbPtr) (Call reply_remove_'proc)"
 sorry (* FIXME RT: reply_remove_ccorres *)
 
