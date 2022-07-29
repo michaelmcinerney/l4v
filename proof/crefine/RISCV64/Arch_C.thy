@@ -909,8 +909,7 @@ lemma decodeRISCVPageTableInvocation_ccorres:
     (* not mapped *)
     apply (simp add: throwError_bind invocationCatch_def)
     apply (rule ccorres_equals_throwError)
-
-     apply (fastforce simp: throwError_bind split: list.splits)
+     apply (fastforce simp: throwError_bind split: list.split)
     apply (rule syscall_error_throwError_ccorres_n)
     apply (simp add: syscall_error_to_H_cases)
    (* mapped *)
