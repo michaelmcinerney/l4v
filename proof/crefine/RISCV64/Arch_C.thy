@@ -117,6 +117,7 @@ using [[goals_limit=20]]
       apply simp
      apply (clarsimp simp: carch_state_relation_def cmachine_state_relation_def
                            cvariable_array_map_const_add_map_option[where f="tcb_no_ctes_proj"]
+                           refill_buffer_relation_def typ_heap_simps
                     dest!: ksPSpace_update_eq_ExD)
     apply (simp add: cte_wp_at_ctes_of)
     apply (wp mapM_x_wp' | wpc | simp)+
@@ -147,7 +148,7 @@ declare Kernel_C.asid_pool_C_size [simp del]
 lemma createObjects_asidpool_ccorres:
   shows "ccorres dc xfdc
    ((\<lambda>s. \<exists>p. cte_wp_at' (\<lambda>cte. cteCap cte = UntypedCap isdev frame pageBits idx ) p s)
-    and pspace_aligned' and pspace_distinct' and valid_objs'
+    and pspace_aligned' and pspace_distinct' and pspace_bounded' and valid_objs'
     and ret_zero frame (2 ^ pageBits)
     and valid_global_refs' and pspace_no_overlap' frame pageBits)
    ({s. region_actually_is_bytes frame (2^pageBits) s})
@@ -157,7 +158,7 @@ lemma createObjects_asidpool_ccorres:
    (global_htd_update (\<lambda>_. ptr_retyp (ap_Ptr frame))))"
 proof -
   have helper: "\<forall>\<sigma> x. (\<sigma>, x) \<in> rf_sr \<and> is_aligned frame pageBits \<and> frame \<noteq> 0
-  \<and> pspace_aligned' \<sigma> \<and> pspace_distinct' \<sigma>
+  \<and> pspace_aligned' \<sigma> \<and> pspace_distinct' \<sigma> \<and> pspace_bounded' \<sigma>
   \<and> pspace_no_overlap' frame pageBits \<sigma>
   \<and> ret_zero frame (2 ^ pageBits) \<sigma>
   \<and> region_actually_is_bytes frame (2 ^ pageBits) x
@@ -180,7 +181,7 @@ proof -
 
   assume "?P \<sigma> x"
   hence rf: "(\<sigma>, x) \<in> rf_sr" and al: "is_aligned frame pageBits" and ptr0: "frame \<noteq> 0"
-    and pal: "pspace_aligned' \<sigma>" and pdst: "pspace_distinct' \<sigma>"
+    and pal: "pspace_aligned' \<sigma>" and pdst: "pspace_distinct' \<sigma>" and pbound: "pspace_bounded' \<sigma>"
     and pno: "pspace_no_overlap' frame pageBits \<sigma>"
     and zro: "ret_zero frame (2 ^ pageBits) \<sigma>"
     and actually: "region_actually_is_bytes frame (2 ^ pageBits) x"
@@ -249,14 +250,14 @@ proof -
      simplified, OF empty[folded szko] szo[symmetric], unfolded szko]
 
   have szb: "pageBits < word_bits" by simp
-  have mko: "\<And>dev. makeObjectKO dev (Inl (KOArch (KOASIDPool f))) = Some ko"
+  have mko: "\<And>dev us d. makeObjectKO dev us d (Inl (KOArch (KOASIDPool f))) = Some ko"
     by (simp add: ko_def makeObjectKO_def)
 
 
   note rl = projectKO_opt_retyp_other [OF rc pal pno' ko_def]
 
   note cterl = retype_ctes_helper
-                 [OF pal pdst pno' al' le_refl
+                 [OF pal pdst pbound pno' al' le_refl
                      range_cover_sz'[where 'a=machine_word_len,
                                      folded word_bits_def, OF rc]
                      mko rc, simplified]
@@ -318,7 +319,8 @@ proof -
                           cvariable_array_ptr_retyps[OF szo]
                           foldr_upd_app_if [folded data_map_insert_def]
                           zero_ranges_ptr_retyps
-                          rl empty projectKOs)
+                          rl empty)
+    subgoal sorry (* FIXME RT: refill_buffer_relation *)
     done
   qed
 
@@ -534,8 +536,8 @@ shows
      apply (strengthen descendants_range_in_subseteq'[mk_strg I E] refl)
      apply (simp add: untypedBits_defs word_size_bits_def asid_wf_def)
      apply (intro context_conjI)
-       apply (simp add: is_aligned_def)
-      apply (simp add: mask_def)
+        apply (simp add: is_aligned_def)
+       apply fastforce
       apply (rule descendants_range_caps_no_overlapI'[where d=isdev and cref = parent])
         apply simp
        apply (fastforce simp: cte_wp_at_ctes_of is_aligned_neg_mask_eq)
@@ -761,7 +763,7 @@ lemma decodeRISCVPageTableInvocation_ccorres:
              \<inter> {s. buffer_' s = option_to_ptr buffer})
        hs
        (decodeRISCVMMUInvocation label args cptr slot cp extraCaps
-              >>= invocationCatch thread isBlocking isCall InvokeArchObject)
+              >>= invocationCatch thread isBlocking isCall canDonate InvokeArchObject)
        (Call decodeRISCVPageTableInvocation_'proc)"
    (is "_ \<Longrightarrow> _ \<Longrightarrow> ccorres _ _ ?pre ?pre' _ _ _")
   supply Collect_const[simp del] if_cong[cong] option.case_cong[cong]
