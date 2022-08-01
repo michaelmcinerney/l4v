@@ -798,9 +798,9 @@ lemma ntfn_q_refs'_no_NTFNBound[simp]:
 
 lemma cancelBadgedSends_ccorres:
   "ccorres dc xfdc (invs' and ep_at' ptr)
-              (UNIV \<inter> {s. epptr_' s = Ptr ptr} \<inter> {s. badge_' s = bdg}) []
+              (UNIV \<inter> {s. epptr_' s = Ptr ptr} \<inter> {s. badge___unsigned_long_' s = bdg}) []
        (cancelBadgedSends ptr bdg) (Call cancelBadgedSends_'proc)"
-  apply (cinit lift: epptr_' badge_' simp: whileAnno_def)
+  apply (cinit lift: epptr_' badge___unsigned_long_' simp: whileAnno_def)
    apply (simp add: list_case_return2
               cong: list.case_cong Structures_H.endpoint.case_cong call_ignore_cong
                del: Collect_const)
