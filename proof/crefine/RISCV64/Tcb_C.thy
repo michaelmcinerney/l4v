@@ -12,15 +12,15 @@ begin
 lemma getObject_sched:
   "(x::tcb, s') \<in> fst (getObject t s) \<Longrightarrow>
   (x,s'\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>) \<in> fst (getObject t (s\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>))"
-  apply (clarsimp simp: in_monad getObject_def split_def loadObject_default_def
-                        magnitudeCheck_def projectKOs
-                  split: option.splits)
-  done
+  using oblivious_getObject_ksPSpace_tcb
+  apply (clarsimp simp: oblivious_def)
+  apply (drule_tac x="ksSchedulerAction_update (\<lambda>_. ChooseNewThread)" in meta_spec)
+  by fastforce
 
 lemma threadGet_sched:
   "(x, s') \<in> fst (threadGet t f s) \<Longrightarrow>
   (x,s'\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>) \<in> fst (threadGet t f (s\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>))"
-  apply (clarsimp simp: in_monad threadGet_def liftM_def)
+  apply (clarsimp simp: in_monad threadGet_getObject liftM_def)
   apply (drule getObject_sched)
   apply fastforce
   done
@@ -28,10 +28,10 @@ lemma threadGet_sched:
 lemma setObject_sched:
   "(x, s') \<in> fst (setObject t (v::tcb) s) \<Longrightarrow>
   (x, s'\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>) \<in> fst (setObject t v (s\<lparr>ksSchedulerAction := ChooseNewThread\<rparr>))"
-  apply (clarsimp simp: in_monad setObject_def split_def updateObject_default_def
-                        magnitudeCheck_def projectKOs
-                  split: option.splits)
-  done
+  using oblivious_setObject_ksPSpace_tcb
+  apply (clarsimp simp: oblivious_def)
+  apply (drule_tac x="ksSchedulerAction_update (\<lambda>_. ChooseNewThread)" in meta_spec)
+  by fastforce
 
 lemma threadSet_sched:
   "(x, s') \<in> fst (threadSet f t s) \<Longrightarrow>
@@ -59,11 +59,10 @@ lemma doMachineOp_sched:
   done
 
 context begin interpretation Arch . (*FIXME: arch_split*)
-crunch queues[wp]: setupReplyMaster "valid_queues"
-  (simp: crunch_simps wp: crunch_wps)
 
 crunch curThread [wp]: restart "\<lambda>s. P (ksCurThread s)"
   (wp: crunch_wps simp: crunch_simps)
+
 end
 
 context kernel_m
@@ -77,7 +76,6 @@ lemma getMRs_rel_sched:
   apply (rule exI, rule conjI, assumption)
   apply (subst det_wp_use, rule det_wp_getMRs)
    apply (simp add: cur_tcb'_def split: option.splits)
-   apply (simp add: valid_ipc_buffer_ptr'_def)
   apply (subst (asm) det_wp_use, rule det_wp_getMRs)
    apply (simp add: cur_tcb'_def)
   apply (clarsimp simp: getMRs_def in_monad)
@@ -94,21 +92,58 @@ lemma getMRs_rel_sched:
   apply (erule doMachineOp_sched)
   done
 
+thm getObject_def2
+find_theorems getObject return  -valid
+thm loadObject_default_def2
+lemma loadObject_default_def3:
+  "(gets_the (loadObject_default ptr ptr' next obj)) = do
+     assert (ptr = ptr');
+     val \<leftarrow> (case projectKO_opt obj of None \<Rightarrow> fail | Some k \<Rightarrow> return k);
+     alignCheck ptr (objBits val);
+     assert (objBits val < word_bits);
+     magnitudeCheck ptr next (objBits val);
+     return val
+   od"
+  using loadObject_default_def2 by force
+
+lemma jkl:
+  "(gets_the (loadObject_default ptr ptr' next obj)) \<equiv> do
+     assert (ptr = ptr');
+     val \<leftarrow> projectKO obj;
+     alignCheck ptr (objBits val);
+     magnitudeCheck ptr next (objBits val);
+     return val
+  od"
+
+lemma asdf:
+ "magnitudeCheck x y n = (case y of None \<Rightarrow> return ()
+               | Some z \<Rightarrow> when (z - x < 1 << n) fail)"
+by (auto simp: magnitudeCheck_def read_magnitudeCheck_def gets_the_def in_monad omonad_defs
+gets_def get_def assert_opt_def fail_def return_def bind_def' fail_def
+when_def split: option.splits if_splits)
+
+
+
 lemma getObject_state:
-  " \<lbrakk>(x, s') \<in> fst (getObject t' s); ko_at' ko t s\<rbrakk>
+  " \<lbrakk>(x, s) \<in> fst (getObject t' s); ko_at' ko t s; ko_at' ko' t' s\<rbrakk>
   \<Longrightarrow> (if t = t' then tcbState_update (\<lambda>_. st) x else x,
-      s'\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>)
+      s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>)
       \<in> fst (getObject t' (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
+sorry
   apply (simp split: if_split)
   apply (rule conjI)
    apply clarsimp
-   apply (clarsimp simp: getObject_def split_def loadObject_default_def in_monad
-                         Corres_C.in_magnitude_check' projectKOs objBits_simps')
-   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs objBits_simps)
-   apply (simp add: magnitudeCheck_def in_monad split: option.splits)
-   apply clarsimp
+apply (clarsimp simp: getObject_def2 loadObject_default_def3)
+   apply (clarsimp simp:  split_def   in_monad
+                         Corres_C.in_magnitude_check' projectKOs objBits_simps)
+   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs objBits_simps return_def)
+
+   apply (clarsimp simp add: asdf in_monad split: option.splits)
+
+
    apply (simp add: lookupAround2_char2)
    apply (clarsimp split: if_split_asm)
+
    apply (erule_tac x=x2 in allE)
    apply (clarsimp simp: ps_clear_def)
    apply (drule_tac x=x2 in orthD2)
@@ -117,18 +152,58 @@ lemma getObject_state:
    apply (erule impE)
     apply simp
    apply (simp flip: add_mask_fold)
+   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs objBits_simps' return_def)
    apply (erule notE, rule word_diff_ls'(3))
     apply unat_arith
    apply (drule is_aligned_no_overflow, simp add: word_bits_def)
-  apply clarsimp
-  apply (clarsimp simp: getObject_def split_def loadObject_default_def in_monad
-                        Corres_C.in_magnitude_check' projectKOs objBits_simps')
-  apply (simp add: magnitudeCheck_def in_monad split: option.splits)
+
+
+   apply (simp add: lookupAround2_char2)
+   apply (clarsimp split: if_split_asm)
+   apply (erule_tac x=x2a in allE)
+   apply (clarsimp simp: ps_clear_def)
+   apply (drule_tac x=x2a in orthD2)
+    apply fastforce
+   apply clarsimp
+   apply (erule impE)
+    apply simp
+   apply (simp flip: add_mask_fold)
+   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs objBits_simps' return_def)
+   apply (erule notE, rule word_diff_ls'(3))
+    apply unat_arith
+   apply (drule is_aligned_no_overflow, simp add: word_bits_def)
+thm getObject_return_tcb
+find_theorems (120) getObject -valid
+apply clarsimp
+apply (rule getObject_eq)
+thm getObject_eq
+
+apply (prop_tac "ko_at' (tcbState_update (\<lambda>_. st) ko) t' (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto>
+                      KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>)")
+apply (auto simp: obj_at_simps split: if_splits kernel_object.splits)[1]
+apply (frule getObject_return_tcb)
+
+apply (clarsimp simp: objBits_simps')
+
+apply clarsimp
+
+\<comment> \<open>1\<close>
+thm loadObject_default_Some''
+apply (clarsimp simp: getObject_def2 loadObject_default_def3)
+   apply (clarsimp simp:  split_def   in_monad
+                         Corres_C.in_magnitude_check' projectKOs objBits_simps)
+   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs objBits_simps return_def)
+
+   apply (clarsimp simp add: asdf in_monad split: option.splits)
+thm lookupAround2_char2
+find_theorems lookupAround2
+find_theorems loadObject_default
   apply clarsimp
   apply (simp add: lookupAround2_char2)
   apply (clarsimp split: if_split_asm)
-   apply (erule_tac x=t in allE)
+   apply (erule_tac x=t' in allE)
    apply simp
+find_theorems lookupAround2
    apply (clarsimp simp: obj_at'_real_def projectKOs
                          ko_wp_at'_def objBits_simps)
    apply (simp add: ps_clear_def)
@@ -156,12 +231,12 @@ lemma getObject_state:
   apply fastforce
   done
 
-
 lemma threadGet_state:
-  "\<lbrakk> (uc, s') \<in> fst (threadGet (atcbContextGet o tcbArch) t' s); ko_at' ko t s \<rbrakk> \<Longrightarrow>
-   (uc, s'\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>) \<in>
+  "\<lbrakk> (uc, s) \<in> fst (threadGet (atcbContextGet o tcbArch) t' s); ko_at' ko t s \<rbrakk> \<Longrightarrow>
+   (uc, s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>) \<in>
   fst (threadGet (atcbContextGet o tcbArch) t' (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
   apply (clarsimp simp: threadGet_def liftM_def in_monad)
+sorry
   apply (drule (1) getObject_state [where st=st])
   apply (rule exI)
   apply (erule conjI)
@@ -172,6 +247,7 @@ lemma asUser_state:
   "\<lbrakk>(x,s) \<in> fst (asUser t' f s); ko_at' ko t s; \<And>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace> \<rbrakk> \<Longrightarrow>
   (x,s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>) \<in>
   fst (asUser t' f (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
+sorry
   apply (clarsimp simp: asUser_def in_monad select_f_def)
   apply (frule use_valid, rule threadGet_inv [where P="(=) s"], rule refl)
   apply (frule use_valid, assumption, rule refl)
@@ -344,12 +420,37 @@ lemma getMRs_rel_state:
   apply (erule doMachineOp_state)
   done
 
+lemma setThreadState_runnable_simp:
+  "runnable' ts \<Longrightarrow> setThreadState ts t =
+   threadSet (tcbState_update (\<lambda>x. ts)) t"
+  apply (simp add: setThreadState_def isRunnable_def isStopped_def liftM_def)
+  apply (subst bind_return[symmetric], rule bind_cong[OF refl])
+  apply (drule use_valid[OF _ threadSet_pred_tcb_at_state[where proj="itcbState" and p=t and P="(=) ts"]])
+   apply simp
+  apply (subst bind_known_operation_eq)
+       apply wp+
+     apply clarsimp
+    apply (subst eq_commute, erule conjI[OF _ refl])
+   apply (rule empty_fail_getThreadState)
+  apply (simp add: getCurThread_def getSchedulerAction_def exec_gets)
+  apply (auto simp: when_def split: Structures_H.thread_state.split)
+  done
+find_theorems getMRs_rel
+term getMRs
+thm getMRs_def
+thm decodeWriteRegisters_def
+lemma helper:
+  "getMRs_rel args buffer s \<Longrightarrow> getMRs_rel args buffer (ksReadyQueues_update f s)"
+apply (clarsimp simp: getMRs_rel_def getMRs_def)
+
+find_theorems getMRs_rel
 lemma setThreadState_getMRs_rel:
   "\<lbrace>getMRs_rel args buffer and cur_tcb' and case_option \<top> valid_ipc_buffer_ptr' buffer
            and (\<lambda>_. runnable' st)\<rbrace>
       setThreadState st t \<lbrace>\<lambda>_. getMRs_rel args buffer\<rbrace>"
   apply (rule hoare_gen_asm')
-  apply (simp add: setThreadState_runnable_simp)
+  apply (simp add: setThreadState_def scheduleTCB_def)
+
   apply (simp add: threadSet_def)
   apply wp
    apply (simp add: setObject_def split_def updateObject_default_def)
