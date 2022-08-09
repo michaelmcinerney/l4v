@@ -227,11 +227,12 @@ where
       (\<lambda>fault. when blocking $ handle_fault thread fault)
       (\<lambda>(slot,cap,extracaps,buffer). doE
             args \<leftarrow> liftE $ get_mrs thread buffer info;
-            decode_invocation (mi_label info) args ptr slot cap extracaps
+            oper \<leftarrow> decode_invocation (mi_label info) args ptr slot cap extracaps;
+            returnOk (oper, buffer, args)
        odE)
       (\<lambda>err. when calling $
             reply_from_kernel thread $ msg_from_syscall_error err)
-      (\<lambda>oper. doE
+      (\<lambda>(oper, buffer, args). doE
             without_preemption $ set_thread_state thread Restart;
             reply \<leftarrow> perform_invocation blocking calling oper;
             without_preemption $ do

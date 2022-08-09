@@ -247,7 +247,8 @@ If there was no fault, then the capability, message registers and message label 
 
 >         (\(slot, cap, extracaps, buffer) -> do
 >             args <- withoutFailure $ getMRs thread buffer info
->             decodeInvocation (msgLabel info) args ptr slot cap extracaps)
+>             oper <- decodeInvocation (msgLabel info) args ptr slot cap extracaps
+>             return (oper, buffer, args))
 
 If a system call error was encountered while decoding the operation, and the user is waiting for a reply, then generate an error message.
 
@@ -258,8 +259,10 @@ Otherwise, the operation is performed. If there is a result, it is converted to 
 
 While the system call is running, the thread's state is set to "Restart", so any preemption will cause the system call to restart at user level when the thread resumes. If it is still set to "Restart" when the operation completes, it is reset to "Running" so the thread resumes at the next instruction. Also, if this is a call, then a reply message is generated when the thread is restarted.
 
->         (\oper -> do
+>         (\(oper, buffer, args) -> do
 >             withoutPreemption $ setThreadState Restart thread
+>             stateAssert (getMRs_rel_asrt args buffer)
+>                 "Assert that `sysargs_rel args buffer s` holds"
 >             reply <- performInvocation isBlocking isCall oper
 >             withoutPreemption $ do
 >                 state <- getThreadState thread

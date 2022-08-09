@@ -282,4 +282,5 @@ The function "findM" searches a list, returning the first item for which the giv
 >     r <- f x
 >     if r then return $ Just x else findM f xs
 
-
+> getMRs_rel_asrt :: [Word] -> Maybe (PPtr Word) -> KernelState -> Bool
+> getMRs_rel_asrt _ _ _ = True

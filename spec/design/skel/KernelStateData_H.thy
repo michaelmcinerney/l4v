@@ -85,7 +85,7 @@ where
     return r
   od"
 
-#INCLUDE_HASKELL SEL4/Model/StateData.lhs NOT doMachineOp KernelState ReadyQueue Kernel assert stateAssert findM funArray newKernelState capHasProperty
-#INCLUDE_HASKELL SEL4/Model/StateData.lhs decls_only ONLY capHasProperty
+#INCLUDE_HASKELL SEL4/Model/StateData.lhs NOT doMachineOp KernelState ReadyQueue Kernel assert stateAssert findM funArray newKernelState capHasProperty getMRs_rel_asrt
+#INCLUDE_HASKELL SEL4/Model/StateData.lhs decls_only ONLY capHasProperty getMRs_rel_asrt
 
 end
