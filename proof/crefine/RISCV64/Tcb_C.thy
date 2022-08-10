@@ -92,44 +92,12 @@ lemma getMRs_rel_sched:
   apply (erule doMachineOp_sched)
   done
 
-thm getObject_def2
-find_theorems getObject return  -valid
-thm loadObject_default_def2
-lemma loadObject_default_def3:
-  "(gets_the (loadObject_default ptr ptr' next obj)) = do
-     assert (ptr = ptr');
-     val \<leftarrow> (case projectKO_opt obj of None \<Rightarrow> fail | Some k \<Rightarrow> return k);
-     alignCheck ptr (objBits val);
-     assert (objBits val < word_bits);
-     magnitudeCheck ptr next (objBits val);
-     return val
-   od"
-  using loadObject_default_def2 by force
-
-lemma jkl:
-  "(gets_the (loadObject_default ptr ptr' next obj)) \<equiv> do
-     assert (ptr = ptr');
-     val \<leftarrow> projectKO obj;
-     alignCheck ptr (objBits val);
-     magnitudeCheck ptr next (objBits val);
-     return val
-  od"
-
-lemma asdf:
- "magnitudeCheck x y n = (case y of None \<Rightarrow> return ()
-               | Some z \<Rightarrow> when (z - x < 1 << n) fail)"
-by (auto simp: magnitudeCheck_def read_magnitudeCheck_def gets_the_def in_monad omonad_defs
-gets_def get_def assert_opt_def fail_def return_def bind_def' fail_def
-when_def split: option.splits if_splits)
-
-
-
 lemma getObject_state:
   " \<lbrakk>(x, s) \<in> fst (getObject t' s); ko_at' ko t s; ko_at' ko' t' s\<rbrakk>
   \<Longrightarrow> (if t = t' then tcbState_update (\<lambda>_. st) x else x,
       s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>)
       \<in> fst (getObject t' (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
-sorry
+sorry (*
   apply (simp split: if_split)
   apply (rule conjI)
    apply clarsimp
@@ -229,25 +197,25 @@ find_theorems lookupAround2
    apply (drule is_aligned_no_overflow)
    apply simp
   apply fastforce
-  done
+  done *)
 
 lemma threadGet_state:
   "\<lbrakk> (uc, s) \<in> fst (threadGet (atcbContextGet o tcbArch) t' s); ko_at' ko t s \<rbrakk> \<Longrightarrow>
    (uc, s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>) \<in>
   fst (threadGet (atcbContextGet o tcbArch) t' (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
   apply (clarsimp simp: threadGet_def liftM_def in_monad)
-sorry
+sorry (*
   apply (drule (1) getObject_state [where st=st])
   apply (rule exI)
   apply (erule conjI)
   apply (simp split: if_splits)
-  done
+  done *)
 
 lemma asUser_state:
   "\<lbrakk>(x,s) \<in> fst (asUser t' f s); ko_at' ko t s; \<And>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace> \<rbrakk> \<Longrightarrow>
   (x,s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>) \<in>
   fst (asUser t' f (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>))"
-sorry
+sorry (*
   apply (clarsimp simp: asUser_def in_monad select_f_def)
   apply (frule use_valid, rule threadGet_inv [where P="(=) s"], rule refl)
   apply (frule use_valid, assumption, rule refl)
@@ -343,7 +311,7 @@ sorry
   apply (cases s, clarsimp)
   apply (rule ext, clarsimp split: if_split)
   apply (case_tac tcb, clarsimp)
-  done
+  done *)
 
 lemma doMachineOp_state:
   "(rv,s') \<in> fst (doMachineOp f s) \<Longrightarrow>
@@ -377,77 +345,228 @@ next
     done
 qed
 
-lemma getMRs_rel_state:
-  "\<lbrakk>getMRs_rel args buffer s;
-    (cur_tcb' and case_option \<top> valid_ipc_buffer_ptr' buffer) s;
-    ko_at' ko t s \<rbrakk> \<Longrightarrow>
-  getMRs_rel args buffer (s\<lparr>ksPSpace := ksPSpace s(t \<mapsto> KOTCB (tcbState_update (\<lambda>_. st) ko))\<rparr>)"
+lemma oblivious_modify_return_value:
+  "oblivious f g \<Longrightarrow>  modify f \<lbrace>\<lambda>s. \<exists>t. (val, t) \<in> fst (g s)\<rbrace>"
+  by (fastforce simp: oblivious_def valid_def in_monad)
+
+lemma oblivious_modify_return_value':
+  "oblivious f g \<Longrightarrow>  modify f \<lbrace>\<lambda>s. val \<in> fst ` fst (g s)\<rbrace>"
+  by (force simp: oblivious_def valid_def in_monad image_def)
+
+lemma getMRs_rel_lift:
+  "\<lbrakk>\<And>thread buffer info. oblivious f (getMRs thread buffer info);
+    \<And>P. modify f \<lbrace>\<lambda>s. P (ksCurThread s)\<rbrace>\<rbrakk> \<Longrightarrow>
+   modify f \<lbrace>getMRs_rel args buffer\<rbrace>"
   apply (clarsimp simp: getMRs_rel_def)
-  apply (rule exI, erule conjI)
-  apply (subst (asm) det_wp_use, rule det_wp_getMRs)
-   apply (simp add: cur_tcb'_def)
-  apply (subst det_wp_use, rule det_wp_getMRs)
-   apply (simp add: cur_tcb'_def)
-   apply (rule conjI)
-    apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKOs
-                          objBits_simps ps_clear_def split: if_split)
-   apply (clarsimp simp: valid_ipc_buffer_ptr'_def split: option.splits)
-   apply (clarsimp simp: typ_at'_def ko_wp_at'_def projectKOs obj_at'_real_def
-                         objBits_simps ps_clear_def split: if_split)
-  apply (clarsimp simp: getMRs_def in_monad)
-  apply (frule use_valid, rule asUser_inv [where P="(=) s"])
-    apply (wp mapM_wp' getRegister_inv)[1]
-   apply simp
+  apply (rule hoare_vcg_ex_lift)
+  apply (rule hoare_vcg_conj_lift)
+   apply wpsimp
+  apply (rule_tac f=ksCurThread in hoare_lift_Pf3)
+   apply (fastforce intro: oblivious_modify_return_value')
+  by fastforce
+
+lemma getCurThread_no_fail[wp]:
+  "no_fail \<top> getCurThread"
+  unfolding getCurThread_def
+  by wpsimp
+
+lemma getSchedulerAction_no_fail[wp]:
+  "no_fail \<top> getSchedulerAction"
+  unfolding getSchedulerAction_def
+  by wpsimp
+
+lemma scheduleTCB_no_fail:
+  "no_fail (\<lambda>s'. weak_sch_act_wf (ksSchedulerAction s') s' \<and> valid_objs' s' \<and> tcb_at' thread s')
+           (scheduleTCB thread)"
+  unfolding scheduleTCB_def
+  apply (wpsimp wp: isSchedulable_no_fail rescheduleRequired_no_fail isSchedulable_wp)
+  by (clarsimp split: if_splits)
+
+lemma setThreadState_no_fail:
+  "no_fail (\<lambda>s'. weak_sch_act_wf (ksSchedulerAction s') s' \<and> valid_objs' s' \<and> tcb_at' thread s'
+                 \<and> runnable' ts)
+           (setThreadState ts thread)"
+  unfolding setThreadState_def
+  apply (wpsimp wp: no_fail_threadSet scheduleTCB_no_fail)
+   apply (wpsimp wp: threadSet_weak_sch_act_wf_runnable' threadSet_valid_objs')
   apply clarsimp
-  apply (drule (1) asUser_state)
-   apply (wp mapM_wp' getRegister_inv)[1]
-  apply (intro exI)
-  apply (erule conjI)
-  apply (cases buffer)
-   apply (clarsimp simp: return_def)
-  apply clarsimp
-  apply (drule mapM_upd_inv [rotated -1])
-    prefer 3
-    apply fastforce
-   prefer 2
-   apply wp
-  apply (clarsimp simp: loadWordUser_def in_monad stateAssert_def word_size
-                  simp del: fun_upd_apply)
-  apply (rule conjI)
-   apply (clarsimp simp: pointerInUserData_def typ_at'_def ko_wp_at'_def
-                         projectKOs ps_clear_def obj_at'_real_def
-                  split: if_split)
-  apply (erule doMachineOp_state)
+  apply (erule valid_tcb'_tcbState_update[rotated])
+  apply (fastforce simp: valid_tcb_state'_def split: thread_state.splits)
   done
 
-lemma setThreadState_runnable_simp:
-  "runnable' ts \<Longrightarrow> setThreadState ts t =
-   threadSet (tcbState_update (\<lambda>x. ts)) t"
-  apply (simp add: setThreadState_def isRunnable_def isStopped_def liftM_def)
-  apply (subst bind_return[symmetric], rule bind_cong[OF refl])
-  apply (drule use_valid[OF _ threadSet_pred_tcb_at_state[where proj="itcbState" and p=t and P="(=) ts"]])
-   apply simp
-  apply (subst bind_known_operation_eq)
-       apply wp+
-     apply clarsimp
-    apply (subst eq_commute, erule conjI[OF _ refl])
-   apply (rule empty_fail_getThreadState)
-  apply (simp add: getCurThread_def getSchedulerAction_def exec_gets)
-  apply (auto simp: when_def split: Structures_H.thread_state.split)
-  done
-find_theorems getMRs_rel
-term getMRs
-thm getMRs_def
-thm decodeWriteRegisters_def
-lemma helper:
-  "getMRs_rel args buffer s \<Longrightarrow> getMRs_rel args buffer (ksReadyQueues_update f s)"
-apply (clarsimp simp: getMRs_rel_def getMRs_def)
+lemma threadSet_modify_monadic_rewrite:
+  "monadic_rewrite False True
+     (tcb_at' thread) (threadSet f thread)
+     (modify (ksPSpace_update (\<lambda>ps. ps(thread \<mapsto> case ps thread of Some (KOTCB tcb) \<Rightarrow> KOTCB (f tcb)))))"
+  apply (clarsimp simp: monadic_rewrite_def)
+  by (fastforce intro: threadSet_det)
 
-find_theorems getMRs_rel
+abbreviation arch_tcb_at' :: "(arch_tcb \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
+  "arch_tcb_at' test ptr s \<equiv> obj_at' (\<lambda>ko. test (tcbArch ko)) ptr s"
+
+lemma oblivious_doMachineOp[simp]:
+  "(\<And>P.  modify f \<lbrace>arch_tcb_at' P tptr\<rbrace>)
+      \<Longrightarrow> oblivious f (asUser tptr m)"
+thm submonad_asUser.guarded_sm
+apply (subst submonad_asUser.guarded_sm)
+  apply (simp add: submonad_asUser.guarded_sm)
+  unfolding asUser_def
+apply (intro oblivious_bind)
+apply (simp add: threadGet_getObject)
+thm oblivious_bind
+apply (intro oblivious_bind)
+apply (rule oblivious_getObject_ksPSpace_tcb)
+
+find_theorems oblivious  gets
+find_theorems asUser modify
+  apply (clarsimp simp: oblivious_def )
+oops
+
+find_theorems (188)  readObject
+thm threadGet_def
+thm get_mrs_def
+term get_mrs
+
+definition
+  oblivious_wp :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a) \<Rightarrow> ('a, 'b) nondet_monad \<Rightarrow> bool" where
+ "oblivious_wp P f m \<equiv>
+    (\<forall>s. (P s \<longrightarrow>
+      ((\<forall>(rv, s') \<in> fst (m s). (rv, f s') \<in> fst (m (f s)))
+       \<and> (\<forall>(rv, s') \<in> fst (m (f s)). \<exists>s''. (rv, s'') \<in> fst (m s) \<and> s' = f s'')
+       \<and> snd (m (f s)) = snd (m s))))"
+thm setThreadState_rewrite_simple
+find_theorems threadSet modify -valid
+term fun_upd
+find_theorems modify -valid
+find_theorems kheap_update fun_upd
+thm monadic_rewrite_def
+lemma asdf:
+  "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow> oblivious_wp (tcb_at t)
+     (kheap_update (\<lambda>kh. kh(t \<mapsto> case kh t of Some (TCB tcb) \<Rightarrow> TCB (f tcb))))
+     (thread_get proj t)"
+  unfolding thread_get_def
+  apply (clarsimp simp: oblivious_wp_def obj_at_def is_tcb_def)
+  by (clarsimp simp: oblivious_wp_def gets_the_def in_monad bind_def gets_def get_def return_def
+arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def fail_def
+assert_opt_def fail_def get_tcb_def split: if_splits Structures_A.kernel_object.splits)
+apply safe
+lemma asdf:
+  "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow> oblivious_wp (tcb_at t)
+     (kheap_update
+       (\<lambda>ps. ps(t \<mapsto>
+           case_option undefined
+            (Structures_A.kernel_object.case_kernel_object undefined
+              (\<lambda>tcb. TCB (f tcb)) undefined undefined undefined
+              undefined undefined)
+            (ps t))))
+     (thread_get proj thread)"
+  unfolding thread_get_def
+find_theorems thread_get -valid
+apply (clarsimp simp: oblivious_wp_def gets_the_def in_monad bind_def gets_def get_def return_def
+arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def fail_def
+assert_opt_def fail_def get_tcb_def split: if_splits Structures_A.kernel_object.splits)
+apply safe
+apply (auto simp: oblivious_wp_def gets_the_def in_monad bind_def gets_def get_def return_def
+arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def fail_def
+assert_opt_def fail_def get_tcb_def split: if_splits Structures_A.kernel_object.splits)[1]
+
+find_theorems (54) set_thread_state -valid
+term fun_upd
+lemma thread_state_update_get_mrs_oblivious:
+  "oblivious
+     (kheap_update
+       (\<lambda>ps. ps(t \<mapsto> (case (ps t) of
+          Some (TCB tcb) \<Rightarrow> (Some (TCB tcb))
+        | _ \<Rightarrow> undefined))))
+        (get_mrs thread buf info)"
+typ kernel_object
+lemma threadState_update_getMRs_oblivious:
+  "oblivious
+        (kheap_update
+          (\<lambda>ps. ps(t \<mapsto> case_option undefined
+               (Structures_A.case_kernel_object (\<lambda>a. undefined) (\<lambda>tcb. TCB (tcb_state_update (\<lambda>_. st) tcb))
+                 undefined undefined undefined undefined undefined)
+               (ps t))))
+        (get_mrs thread buffer info)"
+unfolding get_mrs_def
+  apply (intro oblivious_bind)
+defer
+apply wpsimp
+apply wpsimp
+find_theorems oblivious
+apply wpsimp
+apply wpsimp
+defer
+defer
+apply wpsimp
+thm set_thread_state_def
+lemma threadState_update_getMRs_oblivious:
+  "oblivious
+        (ksPSpace_update
+          (\<lambda>ps. ps(t \<mapsto>
+              case_option undefined
+               (case_kernel_object (\<lambda>a. undefined)
+                 (\<lambda>a. undefined) undefined undefined undefined
+                 (\<lambda>tcb. KOTCB (tcbState_update (\<lambda>_. st) tcb)) (\<lambda>a. undefined)
+                 (\<lambda>a. undefined) (\<lambda>a. undefined) (\<lambda>a. undefined))
+               (ps t))))
+        (getMRs thread buffer info)"
+  unfolding getMRs_def
+  apply (intro oblivious_bind)
+apply wpsimp
+apply wpsimp
+defer
+defer
+apply wpsimp
+apply wpsimp
+find_theorems ovalid
+find_theorems tcbArch
+find_theorems pred_tcb_at'
+find_theorems oblivious
+find_theorems asUser name: inv
+find_theorems (240) asUser
+thm asUser_def
+thm get_mrs_def getMRs_def
+find_theorems get_mrs getMRs
+
+lemma oblivious_thread_get:
+  "True"
+
+
 lemma setThreadState_getMRs_rel:
-  "\<lbrace>getMRs_rel args buffer and cur_tcb' and case_option \<top> valid_ipc_buffer_ptr' buffer
-           and (\<lambda>_. runnable' st)\<rbrace>
-      setThreadState st t \<lbrace>\<lambda>_. getMRs_rel args buffer\<rbrace>"
+  "\<lbrace>getMRs_rel args buffer and tcb_at' t and case_option \<top> valid_ipc_buffer_ptr' buffer
+    and (\<lambda>_. runnable' st)
+    and (\<lambda>s. pred_map (\<lambda>tcb. \<not> tcbInReleaseQueue tcb) (tcbs_of' s) (ksCurThread s)
+             \<and> pred_map (\<lambda>scPtr. isScActive scPtr s) (tcbSCs_of s) (ksCurThread s))
+    and (\<lambda>s. weak_sch_act_wf (ksSchedulerAction s) s) and valid_objs'\<rbrace>
+   setThreadState st t
+   \<lbrace>\<lambda>_. getMRs_rel args buffer\<rbrace>"
+  apply (rule monadic_rewrite_refine_valid
+                [where P=Q and P'=Q and P''=Q for Q, simplified pred_conj_def, simplified])
+    apply (rule monadic_rewrite_sym)
+    apply (rule monadic_rewrite_imp)
+     apply (rule monadic_rewrite_weaken_failure)
+       apply (rule setThreadState_rewrite_simple)
+      apply (rule setThreadState_no_fail)
+     apply (rule no_fail_threadSet)
+    apply clarsimp
+  apply (rule monadic_rewrite_refine_valid
+                [where P=Q and P'=Q and P''=Q for Q, simplified pred_conj_def, simplified])
+    apply (rule monadic_rewrite_sym)
+    apply (rule monadic_rewrite_imp)
+apply (rule threadSet_modify_monadic_rewrite)
+  apply fastforce
+thm getMRs_rel_lift
+apply (rule hoare_weaken_pre)
+apply (rule getMRs_rel_lift)
+find_theorems oblivious
+subgoal sorry
+apply wpsimp
+  apply fastforce
+apply wpsimp
+     apply (wpsimp wp: no_fail_threadSet)
+done
+find_theorems threadSet modify
   apply (rule hoare_gen_asm')
   apply (simp add: setThreadState_def scheduleTCB_def)
 
@@ -464,7 +583,11 @@ lemma setThreadState_getMRs_rel:
   apply (clarsimp split: if_split simp del: fun_upd_apply)
   apply (simp add: getMRs_rel_state)
   done
-
+term stateAssertE
+term msgLength
+thm getMRs_corres
+term message_info_map
+typ Structures_A.message_info
 lemma setThreadState_sysargs_rel:
   "\<lbrace>sysargs_rel args buffer and (\<lambda>_. runnable' st)\<rbrace> setThreadState st t \<lbrace>\<lambda>_. sysargs_rel args buffer\<rbrace>"
   apply (cases buffer, simp_all add: sysargs_rel_def)

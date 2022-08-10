@@ -475,3 +475,6 @@ release queue have runnable' thread state. We add an assertion that it does hold
 
 > release_q_runnable_asrt :: KernelState -> Bool
 > release_q_runnable_asrt _ = True
+
+> sysargs_rel_asrt :: [Word] -> Maybe (PPtr Word) -> KernelState -> Bool
+> sysargs_rel_asrt _ _ _ = True

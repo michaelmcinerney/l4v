@@ -1054,8 +1054,11 @@ lemma getMRs_user_word:
 declare if_split [split]
 
 definition
-  "getMRs_rel args buffer \<equiv> \<lambda>s. \<exists>mi. msgLength mi \<le> msgMaxLength \<and> fst (getMRs (ksCurThread s) buffer mi s) = {(args, s)}"
-
+  "getMRs_rel args buffer \<equiv>
+     \<lambda>s. \<exists>mi. msgLength mi \<le> msgMaxLength  \<and> args \<in> fst ` fst (getMRs (ksCurThread s) buffer mi s)"
+find_theorems valid_ipc_buffer_ptr' -valid
+find_consts name: msg name: n
+term get_mrs
 definition
   "sysargs_rel args buffer \<equiv>
           cur_tcb'
@@ -1183,6 +1186,11 @@ lemma array_assertion_valid_ipc_buffer_ptr_abs:
 lemmas ccorres_move_array_assertion_ipc_buffer
     = ccorres_move_array_assertions [OF array_assertion_valid_ipc_buffer_ptr_abs]
 
+(* FIXME RT: move *)
+lemma det_wp_use':
+  "\<lbrakk>det_wp P f; P s; s' \<in> fst (f s)\<rbrakk> \<Longrightarrow> fst (f s) = {s'}"
+  by (fastforce simp: det_wp_def)
+
 lemma getSyscallArg_ccorres_foo:
   "ccorres (\<lambda>a rv. rv = args ! n) ret__unsigned_long_'
          (sysargs_rel args buffer and sysargs_rel_n args buffer n)
@@ -1243,7 +1251,7 @@ lemma getSyscallArg_ccorres_foo:
      apply wp[1]
     apply (rule_tac P="\<exists>b. buffer = Some b" in hoare_gen_asm)
     apply (clarsimp simp: option_to_ptr_def option_to_0_def)
-    apply (rule_tac P="\<lambda>s. valid_ipc_buffer_ptr' (ptr_val (Ptr b)) s \<and> i < msgLength mi \<and>
+    apply (rule_tac P="\<lambda>s. valid_ipc_buffer_ptr' (ptr_val (Ptr ba)) s \<and> i < msgLength mi \<and>
                            msgLength mi \<le> msgMaxLength \<and> scast n_msgRegisters \<le> i"
                  in hoare_pre(1))
      apply (wp getMRs_user_word)
@@ -1251,23 +1259,22 @@ lemma getSyscallArg_ccorres_foo:
    apply simp
   apply (clarsimp simp: sysargs_rel_def sysargs_rel_n_def)
   apply (rule conjI, clarsimp simp: unat_of_nat64 word_bits_def)
-   apply (drule equalityD2)
-   apply clarsimp
    apply (drule use_valid, rule getMRs_length, assumption)
    apply (simp add: n_msgRegisters_def  split: if_split_asm)
   apply (rule conjI)
    apply (clarsimp simp: option_to_ptr_def option_to_0_def
       word_less_nat_alt word_le_nat_alt unat_of_nat64 word_bits_def
       n_msgRegisters_def not_less msgMaxLength_def)
-   apply (drule equalityD2)
-   apply clarsimp
    apply (drule use_valid, rule getMRs_length)
     apply (simp add: word_le_nat_alt msgMaxLength_def)
    apply (simp split: if_split_asm)
   apply (rule conjI, clarsimp simp: cur_tcb'_def)
   apply clarsimp
-  apply (clarsimp simp: bind_def gets_def return_def split_def get_def)
-  done
+  apply (clarsimp simp: bind_def gets_def return_def split_def get_def getMRs_rel_def)
+  apply (frule_tac s=s and P="(=) s" in use_valid[OF _ get_mrs_inv'])
+   apply fastforce
+  apply (rule_tac f="getMRs (ksCurThread s) buffer mi" in det_wp_use')
+    by (fastforce intro: det_wp_getMRs)+
 
 end
 
