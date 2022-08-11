@@ -1178,6 +1178,31 @@ crunches reply_from_kernel
   for pspace_aligned[wp]: pspace_aligned
   and pspace_distinct[wp]: pspace_distinct
 
+definition
+  "get_mrs_rel args buffer \<equiv>
+     \<lambda>s. \<exists>mi. unat (mi_length mi) \<le> msg_max_length
+         \<and> args \<in> fst ` fst (get_mrs (cur_thread s) buffer mi s)"
+
+definition
+  "getMRs_rel args buffer \<equiv>
+     \<lambda>s. \<exists>mi. msgLength mi \<le> msgMaxLength  \<and> args \<in> fst ` fst (getMRs (ksCurThread s) buffer mi s)"
+
+definition
+  "sysargs_rel' args buffer \<equiv>
+          cur_tcb'
+          and case_option \<top> valid_ipc_buffer_ptr' buffer
+          and getMRs_rel args buffer
+          and (\<lambda>_. length args > length msg_registers \<longrightarrow> buffer \<noteq> None)"
+
+defs getMRs_rel_asrt_def:
+  "getMRs_rel_asrt \<equiv> \<lambda>args buffer s. getMRs_rel args buffer s"
+
+definition inv_relation' ::
+  "(Invocations_A.invocation * ( 64 word option ) * (64 word list)) \<Rightarrow>
+   (Invocations_H.invocation * ( 64 word option ) * (64 word list)) \<Rightarrow> bool"
+  where
+  "inv_relation' a b  \<equiv> inv_relation (fst a) (fst b) \<and> fst (snd a) = fst (snd b) \<and> snd (snd a) = snd (snd b)"
+
 lemma handleInvocation_corres:
   "c \<longrightarrow> b \<Longrightarrow>
    corres (dc \<oplus> dc)
@@ -1200,16 +1225,37 @@ lemma handleInvocation_corres:
                  apply simp
                 apply (simp add: split_def)
                 apply (rule corres_split_deprecated [OF _ getMRs_corres])
-                  apply (rule decodeInvocation_corres, simp_all)[1]
+                 apply (rule corres_splitEE [OF _ decodeInvocation_corres])
+find_theorems corres_underlying returnOk
+thm decodeInvocation_corres
+thm corres_returnOk
+using [[goals_limit=100]]
+apply (rule_tac r=inv_relation' in corres_returnOk)
+apply (clarsimp simp: inv_relation'_def)
+  apply fastforce
+  apply fastforce
+  apply fastforce
+                   apply (fastforce simp: list_all2_map2 list_all2_map1 elim:  list_all2_mono)
+                  apply (fastforce simp: list_all2_map2 list_all2_map1 elim:  list_all2_mono)
                    apply (fastforce simp: list_all2_map2 list_all2_map1 elim:  list_all2_mono)
                   apply (fastforce simp: list_all2_map2 list_all2_map1 elim:  list_all2_mono)
                  apply wp[1]
                 apply (drule sym[OF conjunct1])
                 apply simp
                 apply wp[1]
+                 apply wp[1]
+                apply (drule sym[OF conjunct1])
+                apply simp
+                apply wp[1]
                apply (clarsimp simp: when_def)
                apply (rule replyFromKernel_corres)
+apply (case_tac rve; clarsimp)
               apply (rule corres_split_deprecated [OF _ setThreadState_corres])
+find_theorems corres_underlying stateAssertE
+thm corres_stateAssertE_add_assertion
+apply (rule corres_stateAssertE_add_assertion)
+thm corres_splitEE [OF _ performInvocation_corres]
+apply (rule corres_guard_imp)
                  apply (rule corres_splitEE [OF _ performInvocation_corres])
                      apply simp
                      apply (rule corres_split_deprecated [OF _ getThreadState_corres])
@@ -1223,9 +1269,26 @@ lemma handleInvocation_corres:
                         apply (rule conjI, rule impI)
                          apply (wp reply_from_kernel_tcb_at)
                         apply (rule impI, wp+)
-                    apply (simp)+
-                  apply (wpsimp wp: hoare_drop_imps|strengthen invs_distinct invs_psp_aligned)+
-               apply (rule_tac Q="\<lambda>rv. einvs and simple_sched_action and valid_invocation rve
+                    apply (simp add: inv_relation'_def)+
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+
+
+
+
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+apply (clarsimp simp: inv_relation'_def)
+apply simp
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+                  apply (wpsimp wp: hoare_drop_imps  simp: inv_relation'_def|strengthen invs_distinct invs_psp_aligned)
+  apply simp
+  apply force
+subgoal sorry
+apply simp
+               apply (rule_tac Q="\<lambda>rv. einvs and simple_sched_action and valid_invocation aj
                                    and (\<lambda>s. thread = cur_thread s)
                                    and st_tcb_at active thread"
                           in hoare_post_imp)
@@ -1233,7 +1296,7 @@ lemma handleInvocation_corres:
                                elim!: st_tcb_weakenE)
                apply (wp sts_st_tcb_at' set_thread_state_simple_sched_action
                 set_thread_state_active_valid_sched)
-              apply (rule_tac Q="\<lambda>rv. invs' and valid_invocation' rve'
+              apply (rule_tac Q="\<lambda>rv. invs' and valid_invocation' ah
                                       and (\<lambda>s. thread = ksCurThread s)
                                       and st_tcb_at' active' thread
                                       and (\<lambda>s. ksSchedulerAction s = ResumeCurrentThread)"
