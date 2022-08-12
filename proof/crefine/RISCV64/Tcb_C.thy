@@ -352,7 +352,8 @@ lemma oblivious_modify_return_value:
 lemma oblivious_modify_return_value':
   "oblivious f g \<Longrightarrow>  modify f \<lbrace>\<lambda>s. val \<in> fst ` fst (g s)\<rbrace>"
   by (force simp: oblivious_def valid_def in_monad image_def)
-
+find_theorems setThreadState monadic_rewrite
+find_theorems threadSet modify
 lemma getMRs_rel_lift:
   "\<lbrakk>\<And>thread buffer info. oblivious f (getMRs thread buffer info);
     \<And>P. modify f \<lbrace>\<lambda>s. P (ksCurThread s)\<rbrace>\<rbrakk> \<Longrightarrow>
@@ -403,6 +404,11 @@ lemma threadSet_modify_monadic_rewrite:
 
 abbreviation arch_tcb_at' :: "(arch_tcb \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> kernel_state \<Rightarrow> bool" where
   "arch_tcb_at' test ptr s \<equiv> obj_at' (\<lambda>ko. test (tcbArch ko)) ptr s"
+find_theorems threadSet modify
+lemma threadSet_oblivious:
+  "(\<forall>tcb. f (f' tcb) = f' (f tcb)) \<Longrightarrow>
+   oblivious ((ksPSpace_update (\<lambda>ps. ps(tptr \<mapsto> case ps tptr of Some (KOTCB tcb) \<Rightarrow> KOTCB (f tcb)))))
+             (threadSet f' tptr)"
 
 lemma oblivious_doMachineOp[simp]:
   "(\<And>P.  modify f \<lbrace>arch_tcb_at' P tptr\<rbrace>)
@@ -411,10 +417,17 @@ thm submonad_asUser.guarded_sm
 apply (subst submonad_asUser.guarded_sm)
   apply (simp add: submonad_asUser.guarded_sm)
   unfolding asUser_def
+find_theorems (72) setObject modify -valid -corres_underlying
+thm setObject_modify_tcb
+thm getObject_return_tcb
 apply (intro oblivious_bind)
+find_theorems oblivious
 apply (simp add: threadGet_getObject)
+thm oblivious_def
+find_theorems getObject return
 thm oblivious_bind
 apply (intro oblivious_bind)
+thm oblivious_getObject_ksPSpace_tcb
 apply (rule oblivious_getObject_ksPSpace_tcb)
 
 find_theorems oblivious  gets
@@ -440,15 +453,117 @@ term fun_upd
 find_theorems modify -valid
 find_theorems kheap_update fun_upd
 thm monadic_rewrite_def
-lemma asdf:
-  "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow> oblivious_wp (tcb_at t)
+lemma oblivious_thread_get:
+  "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow>
+   oblivious_wp (tcb_at t)
      (kheap_update (\<lambda>kh. kh(t \<mapsto> case kh t of Some (TCB tcb) \<Rightarrow> TCB (f tcb))))
      (thread_get proj t)"
   unfolding thread_get_def
   apply (clarsimp simp: oblivious_wp_def obj_at_def is_tcb_def)
   by (clarsimp simp: oblivious_wp_def gets_the_def in_monad bind_def gets_def get_def return_def
-arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def fail_def
-assert_opt_def fail_def get_tcb_def split: if_splits Structures_A.kernel_object.splits)
+                     arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def
+                     assert_opt_def fail_def get_tcb_def
+              split: if_splits Structures_A.kernel_object.splits)
+term modify
+term the_run_state
+thm threadGet_def
+thm no_fail_bind
+\<comment> \<open>  assumes f: "oblivious_wp P upd f"
+  assumes g: "\<And>rv. oblivious_wp (R rv) upd (g rv)"
+  assumes v: "\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>"
+  shows "oblivious_wp (P and Q) upd (f >>= (\<lambda>rv. g rv))"\<close>
+lemma oblivious_wp_bind[wp]:
+  assumes a: "oblivious_wp P upd f"
+      and b: "\<And>rv. oblivious_wp (R rv) upd (g rv)"
+      and c: "\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>"
+
+  shows "oblivious_wp (P and Q) upd (f >>= (\<lambda>rv. g rv))"
+  apply (insert a b c)
+  apply (simp add: oblivious_wp_def bind_def)
+  apply (erule allEI)
+  apply (intro impI)
+  apply (elim conjE)
+  apply (intro conjI)
+apply (elim impE)
+apply assumption
+    apply (drule conjunct1)
+    apply (clarsimp simp: in_monad valid_def)
+apply (drule_tac x=s in spec)
+apply (elim impE)
+apply assumption
+apply (drule_tac x=a in meta_spec)
+apply rotate_tac
+apply (drule_tac x=b in spec)
+apply (elim impE)
+
+  apply fastforce
+  apply force
+
+
+apply (elim impE)
+apply assumption
+
+   apply (drule conjunct2, drule conjunct1)
+
+   apply (clarsimp simp: in_monad valid_def modify_def get_def bind_def put_def)
+apply (drule_tac x="(a, b)" in bspec)
+apply blast
+apply clarsimp
+apply (drule_tac x=a in meta_spec)
+apply (drule_tac x=s in spec)
+apply (elim impE)
+
+  apply fastforce
+  apply force
+
+
+  apply (clarsimp simp: bind_def disj_commute)
+  apply (rule disj_cong [OF refl])
+  apply (rule iffI)
+   apply (clarsimp simp: split_def valid_def)
+
+
+
+
+  apply (drule(1) bspec)
+  apply (clarsimp simp: split_def)
+
+  apply (rule bexI [rotated], assumption)
+  apply fastforce
+
+
+  apply clarsimp
+  apply (drule(1) bspec)
+  apply (clarsimp simp: split_def valid_def)
+  apply (erule (1) my_BallE)
+  apply (rule bexI [rotated], assumption)
+  apply fastforce
+done
+
+lemma oblivious_wp_pre:
+  "\<lbrakk> oblivious_wp P f m; \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> oblivious_wp Q f m  "
+  by (simp add: no_fail_def)
+
+lemma oblivious_threadGet:
+  "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow>
+   oblivious_wp (tcb_at' t)
+     (ksPSpace_update (\<lambda>ps. ps(t \<mapsto> case ps t of Some (KOTCB tcb) \<Rightarrow> KOTCB (f tcb))))
+     (threadGet proj t)"
+  unfolding threadGet_getObject
+thm no_fail_pre
+thm oblivious_bind
+
+  unfolding thread_get_def
+  apply (clarsimp simp: oblivious_wp_def obj_at_def is_tcb_def)
+  by (clarsimp simp: oblivious_wp_def gets_the_def in_monad bind_def gets_def get_def return_def
+                     arch_tcb_get_registers_def user_regs_def obj_at_def is_tcb_def
+                     assert_opt_def fail_def get_tcb_def
+              split: if_splits Structures_A.kernel_object.splits)
+
+
+definition to_modify :: "('s,unit) nondet_monad\<Rightarrow> ('s \<Rightarrow> 's)" where
+  "to_modify m \<equiv> \<lambda>s. snd (the_run_state m s)"
+
 apply safe
 lemma asdf:
   "(\<forall>tcb. proj (f tcb) = proj tcb) \<Longrightarrow> oblivious_wp (tcb_at t)
@@ -586,6 +701,12 @@ find_theorems threadSet modify
 term stateAssertE
 term msgLength
 thm getMRs_corres
+find_theorems getMRs
+term typ_at
+term a_type
+term aa_type
+find_theorems (82) valid_ipc_buffer_ptr' -valid
+find_consts name: valid name: buffer
 term message_info_map
 typ Structures_A.message_info
 lemma setThreadState_sysargs_rel:
@@ -2555,7 +2676,7 @@ lemma decodeWriteRegisters_ccorres:
             \<inter> {s. unat (length___unsigned_long_' s) = length args}
             \<inter> {s. buffer_' s = option_to_ptr buffer}) []
      (decodeWriteRegisters args cp
-            >>= invocationCatch thread isBlocking isCall InvokeTCB)
+            >>= invocationCatch thread isBlocking isCall canDonate InvokeTCB)
      (Call decodeWriteRegisters_'proc)"
   supply unsigned_numeral[simp del]
   apply (cinit' lift: cap_' length___unsigned_long_' buffer_' simp: decodeWriteRegisters_def)
