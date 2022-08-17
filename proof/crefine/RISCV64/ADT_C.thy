@@ -51,9 +51,10 @@ definition
    if e = SyscallEvent syscall.SysCall \<or> e = SyscallEvent syscall.SysReplyRecv
    then exec_C \<Gamma> (\<acute>cptr :== CALL getRegister(\<acute>ksCurThread, scast Kernel_C.capRegister);;
                   \<acute>msgInfo :== CALL getRegister(\<acute>ksCurThread, scast Kernel_C.msgInfoRegister);;
+                  \<acute>reply___unsigned_long :== CALL getRegister(\<acute>ksCurThread, scast Kernel_C.replyRegister);;
                    IF e = SyscallEvent syscall.SysCall
                    THEN CALL fastpath_call(\<acute>cptr, \<acute>msgInfo)
-                   ELSE CALL fastpath_reply_recv(\<acute>cptr, \<acute>msgInfo) FI)
+                   ELSE CALL fastpath_reply_recv(\<acute>cptr, \<acute>msgInfo, \<acute>reply___unsigned_long) FI)
    else callKernel_C e"
 
 definition
@@ -103,6 +104,7 @@ lemma setTCBContext_C_corres:
   apply (thin_tac "(a,b) \<in> fst t" for a b t)+
   apply (clarsimp simp: rf_sr_def cstate_relation_def Let_def cpspace_relation_def
                         carch_state_relation_def cmachine_state_relation_def
+                        refill_buffer_relation_def
                         typ_heap_simps' update_tcb_map_tos)
   apply (simp add: map_to_ctes_upd_tcb_no_ctes map_to_tcbs_upd tcb_cte_cases_def
                    cvariable_relation_upd_const ko_at_projectKO_opt cteSizeBits_def)
@@ -683,6 +685,10 @@ lemma ccontext_relation_imp_eq:
   apply (auto dest: cregs_relation_imp_eq)
   done
 
+lemma objBits_type_tcb:
+  "koTypeOf (KOTCB tcb) = koTypeOf (KOTCB tcb') \<Longrightarrow> objBitsKO (KOTCB tcb) = objBitsKO (KOTCB tcb')"
+  by (auto simp: objBitsKO_def)
+
 lemma map_to_ctes_tcb_ctes:
   notes if_cong[cong]
   shows
@@ -693,8 +699,8 @@ lemma map_to_ctes_tcb_ctes:
   apply (clarsimp simp: obj_at'_real_def ko_wp_at'_def projectKO_opt_tcb
                  split: kernel_object.splits)
   apply (case_tac ko, simp_all, clarsimp)
-  apply (clarsimp simp: objBits_type[of "KOTCB tcb" "KOTCB undefined"]
-                        objBits_type[of "KOTCB tcb'" "KOTCB undefined"])
+  apply (clarsimp simp: objBits_type_tcb[where tcb=tcb and tcb'=undefined]
+                        objBits_type_tcb[where tcb=tcb' and tcb'=undefined])
   apply (rule conjI)
    apply (drule ps_clear_def3[THEN iffD1,rotated 2],
           assumption, simp add: objBits_simps')+
@@ -747,14 +753,18 @@ lemma cfault_rel_imp_eq:
               split: if_split_asm seL4_Fault_CL.splits)
 
 lemma cthread_state_rel_imp_eq:
-  "cthread_state_relation x z \<Longrightarrow> cthread_state_relation y z \<Longrightarrow> x=y"
+  "\<exists>s. ksPSpace s = ah \<and> no_0_obj' s \<Longrightarrow> cthread_state_relation x z \<Longrightarrow> cthread_state_relation y z \<Longrightarrow> x=y"
   apply (simp add: cthread_state_relation_def split_def)
   apply (cases x)
-  apply (cases y, simp_all add: ThreadState_BlockedOnReceive_def
+  apply (cases y)
+apply ( clarsimp simp add: ThreadState_BlockedOnReceive_def
     ThreadState_BlockedOnReply_def ThreadState_BlockedOnNotification_def
     ThreadState_Running_def ThreadState_Inactive_def
     ThreadState_IdleThreadState_def ThreadState_BlockedOnSend_def
-    ThreadState_Restart_def)+
+    ThreadState_Restart_def ThreadState_BlockedOnReceive_def option_to_0_def
+no_0_obj'_def
+split: option.splits)+
+
   done
 
 lemma ksPSpace_valid_objs_tcbBoundNotification_nonzero:
@@ -799,7 +809,7 @@ lemma cpspace_tcb_relation_unique:
    apply (case_tac x, case_tac y, case_tac "the (clift ch (tcb_Ptr (p+0x200)))")
    apply (clarsimp simp: ctcb_relation_def ran_tcb_cte_cases)
    apply (clarsimp simp: option_to_ptr_def option_to_0_def split: option.splits)
-   apply (auto simp: cfault_rel_imp_eq cthread_state_rel_imp_eq carch_tcb_relation_def
+   apply (auto simp: cfault_rel_imp_eq  carch_tcb_relation_def
                      ccontext_relation_imp_eq2 up_ucast_inj_eq ctcb_size_bits_def)
   done
 
