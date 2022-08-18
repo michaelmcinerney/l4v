@@ -5072,7 +5072,7 @@ lemma sendIPC_ccorres [corres]:
            \<inter> \<lbrace>\<acute>thread = tcb_ptr_to_ctcb_ptr thread\<rbrace>
            \<inter> \<lbrace>\<acute>epptr = Ptr epptr\<rbrace>
            \<inter> \<lbrace>badge && mask 64 = badge\<rbrace>) hs
-     (sendIPC blocking do_call badge canGrant canDonate canGrantReply thread epptr)
+     (sendIPC blocking do_call badge canGrant canGrantReply canDonate thread epptr)
      (Call sendIPC_'proc)"
   unfolding K_def
   apply (rule ccorres_gen_asm2)
