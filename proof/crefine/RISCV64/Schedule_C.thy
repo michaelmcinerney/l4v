@@ -450,6 +450,66 @@ lemma isHighestPrio_ccorres:
                   split: if_splits)
   done
 
+lemma isRoundRobin_ccorres:
+  "ccorres dc xfdc \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> [] (isRoundRobin scPtr) (Call isRoundRobin_'proc)"
+sorry (* FIXME RT: isRoundRobin_ccorres *)
+
+lemma refill_full_ccorres:
+  "ccorres dc xfdc \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> [] (refillFull scPtr) (Call refill_full_'proc)"
+sorry (* FIXME RT: refill_full_ccorres *)
+
+lemma refill_single_ccorres:
+  "ccorres dc xfdc \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> [] (refillSingle scPtr) (Call refill_single_'proc)"
+sorry (* FIXME RT: refill_single_ccorres *)
+
+lemma refill_capacity_ccorres:
+  "ccorres dc xfdc
+     \<top> (\<lbrace>\<acute>sc = Ptr scPtr\<rbrace> \<inter> \<lbrace>\<acute>usage = usage\<rbrace>) []
+     (refillCapacity scPtr usage) (Call refill_capacity_'proc)"
+sorry (* FIXME RT: refill_capacity_ccorres *)
+
+lemma refill_sufficient_ccorres:
+  "ccorres dc xfdc
+     \<top> (\<lbrace>\<acute>sc = Ptr scPtr\<rbrace> \<inter> \<lbrace>\<acute>usage = usage\<rbrace>) []
+     (refillSufficient scPtr usage) (Call refill_sufficient_'proc)"
+sorry (* FIXME RT: refill_sufficient_ccorres *)
+
+lemma refill_ready_ccorres:
+  "ccorres dc xfdc
+     \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> []
+     (refillReady scPtr) (Call refill_ready_'proc)"
+sorry (* FIXME RT: refill_ready_ccorres *)
+
+lemma sc_active_ccorres:
+  "ccorres dc xfdc
+     \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> []
+     (scActive scPtr) (Call sc_active_'proc)"
+sorry (* FIXME RT: sc_active_ccorres *)
+
+lemma sc_released_ccorres:
+  "ccorres dc xfdc
+     \<top> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace> []
+     (scReleased scPtr) (Call sc_released_'proc)"
+sorry (* FIXME RT: sc_released_ccorres *)
+
+lemma switchSchedContext_ccorres:
+  "ccorres dc xfdc \<top> UNIV [] switchSchedContext (Call switchSchedContext_'proc)"
+sorry (* FIXME RT: switchSchedContext_ccorres *)
+
+lemma refill_budget_check_ccorres:
+  "ccorres dc xfdc
+     \<top> \<lbrace>\<acute>usage = usage\<rbrace> []
+     (refillBudgetCheck usage) (Call refill_budget_check_'proc)"
+sorry (* FIXME RT: refill_budget_check_ccorres *)
+
+lemma checkDomainTime_ccorres:
+  "ccorres dc xfdc invs' \<top> [] checkDomainTime (Call checkDomainTime_'proc)"
+sorry (* FIXME RT: checkDomainTime_ccorres *)
+
+lemma commitTime_ccorres:
+  "ccorres dc xfdc \<top> UNIV [] commitTime (Call commitTime_'proc)"
+sorry (* FIXME RT: commitTime_ccorres *)
+
 lemma schedule_ccorres:
   "ccorres dc xfdc invs' UNIV [] schedule (Call schedule_'proc)"
 sorry (* FIXME RT: schedule_ccorres

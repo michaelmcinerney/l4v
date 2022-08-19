@@ -3051,6 +3051,20 @@ lemma reply_unlink_ccorres:
     (replyUnlink tcbPtr replyPtr) (Call reply_unlink_'proc)"
 sorry (* FIXME RT: reply_unlink_ccorres *)
 
+lemma reply_pop_ccorres:
+  "ccorres dc xfdc
+    (invs' and tcb_at' tcbPtr and reply_at' replyPtr)
+    (\<lbrace>\<acute>reply = Ptr replyPtr\<rbrace> \<inter> \<lbrace>\<acute>tcb = tcb_ptr_to_ctcb_ptr tcbPtr\<rbrace>) []
+    (replyPop replyPtr tcbPtr) (Call reply_pop_'proc)"
+sorry (* FIXME RT: reply_pop_ccorres *)
+
+lemma reply_remove_ccorres:
+  "ccorres dc xfdc
+    (invs' and tcb_at' tcbPtr and reply_at' replyPtr)
+    (\<lbrace>\<acute>reply = Ptr replyPtr\<rbrace> \<inter> \<lbrace>\<acute>tcb = tcb_ptr_to_ctcb_ptr tcbPtr\<rbrace>) []
+    (replyRemove replyPtr tcbPtr) (Call reply_remove_'proc)"
+sorry (* FIXME RT: reply_remove_ccorres *)
+
 lemma cancelIPC_ccorres1:
   assumes cteDeleteOne_ccorres:
   "\<And>w slot. ccorres dc xfdc

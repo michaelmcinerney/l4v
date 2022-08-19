@@ -1250,6 +1250,33 @@ sorry (* FIXME RT: handleRecv_ccorres
   apply (case_tac w, clarsimp+)
   done *)
 
+lemma mcsPreemptionPoint_ccorres:
+  "ccorres dc xfdc invs' UNIV []
+     (mcsPreemptionPoint irq_opt) (Call mcsPreemptionPoint_'proc)"
+sorry (* FIXME RT: endTimeslice_ccorres *)
+
+lemma endTimeslice_ccorres:
+  "ccorres dc xfdc invs' \<lbrace>\<acute>can_timeout_fault = from_bool canTimeoutFault\<rbrace> []
+     (endTimeslice canTimeoutFault) (Call endTimeslice_'proc)"
+sorry (* FIXME RT: endTimeslice_ccorres *)
+
+lemma chargeBudget_ccorres:
+  "ccorres dc xfdc
+     invs'
+     (\<lbrace>\<acute>consumed = consumed\<rbrace> \<inter> \<lbrace>\<acute>canTimeoutFault = from_bool canTimeoutFault\<rbrace>) []
+     (chargeBudget consumed canTimeoutFault isCurCPU) (Call chargeBudget_'proc)"
+sorry (* FIXME RT: chargeBudget_ccorres *)
+
+lemma checkBudget_ccorres:
+  "ccorres dc xfdc invs' UNIV []
+     checkBudget (Call checkBudget_'proc)"
+sorry (* FIXME RT: chargeBudget_ccorres *)
+
+lemma checkBudgetRestart_ccorres:
+  "ccorres dc xfdc invs' UNIV []
+     checkBudgetRestart (Call checkBudgetRestart_'proc)"
+sorry (* FIXME RT: chargeBudget_ccorres *)
+
 lemma handleYield_ccorres:
   "ccorres dc xfdc
        (invs' and ct_active')

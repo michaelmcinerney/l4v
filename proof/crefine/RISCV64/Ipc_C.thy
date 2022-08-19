@@ -5638,6 +5638,12 @@ lemma schedContext_bindTCB_ccorres:
      (schedContextBindTCB scPtr tcbPtr) (Call schedContext_bindTCB_'proc)"
 sorry (* FIXME RT: schedContext_bindTCB_ccorres *)
 
+lemma schedContext_bindNtfn_ccorres:
+  "ccorres dc xfdc
+     \<top> (\<lbrace>\<acute>tcb = tcb_ptr_to_ctcb_ptr tcbPtr\<rbrace> \<inter> \<lbrace>\<acute>sc = Ptr scPtr\<rbrace>) []
+     (schedContextBindNtfn scPtr tcbPtr) (Call schedContext_bindNtfn_'proc)"
+sorry (* FIXME RT: schedContext_bindNtfn_ccorres *)
+
 lemma completeSignal_ccorres:
   notes if_split[split del]
   shows

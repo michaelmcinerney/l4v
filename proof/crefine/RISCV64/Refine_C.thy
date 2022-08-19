@@ -1202,9 +1202,7 @@ theorem true_fp_refinement:
   apply (simp add: fw_sim_def rel_semi_def)
   done
 *)
-find_theorems name: decodeSchedContext
-find_theorems name: decodeSchedContext_UnbindObject
-find_theorems invokeSchedContext_UnbindObject_'proc ccorres
+
 end
 
 end
